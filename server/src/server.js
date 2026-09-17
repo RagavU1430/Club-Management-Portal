@@ -7,7 +7,7 @@ import { errorHandler, notFound } from "./middleware/error.js";
 import { login, me, changePassword, logout, requireAuth } from "./controllers/auth.js";
 import { list as eventsList, stats, getOne, create, update, remove, exportCSV, registerForEvent, getEventRegistrations, exportEventRegistrationsCSV, exportEventRegistrationsExcel, deleteEventRegistration } from "./controllers/events.js";
 import { list as teamList, roles, create as createTeam, update as updateTeam, remove as removeTeam, clearAll as clearAllTeam } from "./controllers/team.js";
-import { getGoogleSheetSettings, updateGoogleSheetSettings, syncAllSheets, syncSingleEventSheet, getMessengerSettings, updateMessengerSettings, sendTestSmsController } from "./controllers/settings.js";
+import { getGoogleSheetSettings, updateGoogleSheetSettings, syncAllSheets, syncSingleEventSheet, getMessengerSettings, updateMessengerSettings, sendTestSmsController, getEmailSettings, updateEmailSettings, sendTestEmailController } from "./controllers/settings.js";
 import { getClubDetails, updateClubDetails, listActivities, createActivity, updateActivity, deleteActivity } from "./controllers/club.js";
 import { upload } from "./middleware/upload.js";
 import { initFirebase, isFirebaseReady } from "./config/firebase.js";
@@ -70,6 +70,11 @@ app.post("/api/events/:id/sync-sheet", requireAuth, syncSingleEventSheet);
 app.get("/api/settings/messenger", requireAuth, getMessengerSettings);
 app.post("/api/settings/messenger", requireAuth, updateMessengerSettings);
 app.post("/api/settings/messenger/test", requireAuth, sendTestSmsController);
+
+// Gmail & Email Notification Configuration
+app.get("/api/settings/email", requireAuth, getEmailSettings);
+app.post("/api/settings/email", requireAuth, updateEmailSettings);
+app.post("/api/settings/email/test", requireAuth, sendTestEmailController);
 
 // Firebase Cloud Firestore Status
 app.get("/api/settings/firebase", requireAuth, (_req, res) => {

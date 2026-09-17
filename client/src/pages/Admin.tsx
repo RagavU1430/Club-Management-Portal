@@ -27,7 +27,6 @@ import {
   Save,
   Info,
   Camera,
-  Smartphone,
   Send,
 } from "lucide-react";
 import { GithubIcon, LinkedinIcon } from "../components/SocialIcons";
@@ -174,6 +173,7 @@ export default function Admin() {
           { id: "events", label: "Events & Registrations", icon: Calendar },
           { id: "team", label: "Coordinators", icon: Users },
           { id: "club", label: "Club & Activities", icon: Sparkles },
+          { id: "email", label: "Email Settings", icon: Mail },
         ].map((t) => {
           const Icon = t.icon;
           return (
@@ -205,6 +205,9 @@ export default function Admin() {
       </div>
       <div className={tab === "club" ? "block" : "hidden"}>
         <ClubManager />
+      </div>
+      <div className={tab === "email" ? "block" : "hidden"}>
+        <EmailSettingsManager />
       </div>
     </main>
   );
@@ -242,20 +245,7 @@ function EventManager() {
   const [copiedScript, setCopiedScript] = useState(false);
   const [sheetMsg, setSheetMsg] = useState("");
 
-  // SMS & WhatsApp Gateway State
-  const [showMessengerModal, setShowMessengerModal] = useState(false);
-  const [messengerConfig, setMessengerConfig] = useState<any>(null);
-  const [smsProvider, setSmsProvider] = useState("fast2sms");
-  const [fast2smsApiKey, setFast2smsApiKey] = useState("");
-  const [twilioSid, setTwilioSid] = useState("");
-  const [twilioToken, setTwilioToken] = useState("");
-  const [twilioFrom, setTwilioFrom] = useState("");
-  const [smsWebhookUrl, setSmsWebhookUrl] = useState("");
-  const [savingMessenger, setSavingMessenger] = useState(false);
-  const [messengerMsg, setMessengerMsg] = useState("");
-  const [testPhone, setTestPhone] = useState("");
-  const [sendingTestSms, setSendingTestSms] = useState(false);
-  const [testSmsResult, setTestSmsResult] = useState<{ success: boolean; message: string } | null>(null);
+
 
   const [showCreate, setShowCreate] = useState<boolean>(() => {
     try {
@@ -289,7 +279,6 @@ function EventManager() {
   useEffect(() => {
     load();
     loadSheetConfig();
-    loadMessengerConfig();
   }, []);
 
   async function load() {
@@ -348,87 +337,6 @@ function EventManager() {
     setSavingConfig(false);
   }
 
-  async function loadMessengerConfig() {
-    try {
-      const token = localStorage.getItem("aif_token");
-      const res = await apiFetch("/api/settings/messenger", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const d = await res.json();
-      if (d.success && d.data) {
-        setMessengerConfig(d.data);
-        setSmsProvider(d.data.provider || "fast2sms");
-        setFast2smsApiKey(d.data.fast2smsApiKey || "");
-        setTwilioSid(d.data.twilioSid || "");
-        setTwilioFrom(d.data.twilioFrom || "");
-        setSmsWebhookUrl(d.data.smsWebhookUrl || "");
-      }
-    } catch {}
-  }
-
-  async function handleSaveMessengerConfig(e: React.FormEvent) {
-    e.preventDefault();
-    setSavingMessenger(true);
-    setMessengerMsg("");
-    try {
-      const token = localStorage.getItem("aif_token");
-      const res = await apiFetch("/api/settings/messenger", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          provider: smsProvider,
-          fast2smsApiKey,
-          twilioSid,
-          twilioToken,
-          twilioFrom,
-          smsWebhookUrl,
-        }),
-      });
-      const d = await res.json();
-      if (d.success) {
-        setMessengerConfig(d.data);
-        setMessengerMsg("SMS & WhatsApp Gateway settings saved successfully!");
-        setTimeout(() => setMessengerMsg(""), 3500);
-      } else {
-        alert(d.message || "Failed to save SMS settings");
-      }
-    } catch (e: any) {
-      alert(e.message || "Failed to save SMS settings");
-    }
-    setSavingMessenger(false);
-  }
-
-  async function handleSendTestSms(e: React.FormEvent) {
-    e.preventDefault();
-    if (!testPhone.trim()) return;
-    setSendingTestSms(true);
-    setTestSmsResult(null);
-    try {
-      const token = localStorage.getItem("aif_token");
-      const res = await apiFetch("/api/settings/messenger/test", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          phone: testPhone.trim(),
-        }),
-      });
-      const d = await res.json();
-      if (d.success) {
-        setTestSmsResult({ success: true, message: d.message || "Test SMS sent successfully! Check your phone." });
-      } else {
-        setTestSmsResult({ success: false, message: d.error || d.message || "Failed to send test SMS." });
-      }
-    } catch (err: any) {
-      setTestSmsResult({ success: false, message: err.message || "Network error while sending test SMS." });
-    }
-    setSendingTestSms(false);
-  }
 
   async function handleSyncAll() {
     if (!sheetConfig?.hasWebhook && !webhookInput) {
@@ -631,48 +539,7 @@ function EventManager() {
         </div>
       </div>
 
-      {/* Real SMS & WhatsApp Gateway Banner */}
-      <div className="glass rounded-2xl p-4 sm:p-5 border border-blue-500/20 bg-gradient-to-r from-blue-950/25 via-slate-900/40 to-cyan-950/25 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="h-11 w-11 rounded-xl bg-blue-500/10 border border-blue-400/30 flex items-center justify-center shrink-0">
-            <Smartphone className="h-5 w-5 text-cyan-400" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h4 className="text-sm font-bold text-white font-display">Real SMS & Mobile Invitations</h4>
-              <span
-                className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 ${
-                  messengerConfig?.isConfigured
-                    ? "bg-emerald-500/15 text-emerald-300 border-emerald-400/30"
-                    : "bg-amber-500/15 text-amber-300 border-amber-400/30"
-                }`}
-              >
-                {messengerConfig?.isConfigured ? (
-                  <>
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>TELECOM SMS ACTIVE ({messengerConfig?.provider?.toUpperCase()})</span>
-                  </>
-                ) : (
-                  "○ SETUP FAST2SMS / TWILIO FOR DIRECT SMS"
-                )}
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Send automated confirmation SMS directly to both participant mobile numbers upon event registration.
-            </p>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap w-full lg:w-auto justify-end">
-          <button
-            onClick={() => setShowMessengerModal(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-cyan-400/15 border border-cyan-400/30 px-3.5 py-2 text-xs font-mono font-bold text-cyan-300 hover:bg-cyan-400/25 hover:text-white transition cursor-pointer"
-          >
-            <Smartphone className="h-3.5 w-3.5" />
-            <span>Configure SMS Gateway & Test</span>
-          </button>
-        </div>
-      </div>
 
       {/* Event Creation Form */}
       {showCreate && (
@@ -966,36 +833,7 @@ function EventManager() {
         />
       )}
 
-      {/* SMS & WhatsApp Gateway Setup Modal */}
-      {showMessengerModal && (
-        <SmsGatewayModal
-          config={messengerConfig}
-          onClose={() => {
-            setShowMessengerModal(false);
-            loadMessengerConfig();
-          }}
-          onSave={handleSaveMessengerConfig}
-          provider={smsProvider}
-          setProvider={setSmsProvider}
-          fast2smsApiKey={fast2smsApiKey}
-          setFast2smsApiKey={setFast2smsApiKey}
-          twilioSid={twilioSid}
-          setTwilioSid={setTwilioSid}
-          twilioToken={twilioToken}
-          setTwilioToken={setTwilioToken}
-          twilioFrom={twilioFrom}
-          setTwilioFrom={setTwilioFrom}
-          smsWebhookUrl={smsWebhookUrl}
-          setSmsWebhookUrl={setSmsWebhookUrl}
-          savingConfig={savingMessenger}
-          messengerMsg={messengerMsg}
-          testPhone={testPhone}
-          setTestPhone={setTestPhone}
-          onSendTestSms={handleSendTestSms}
-          sendingTestSms={sendingTestSms}
-          testResult={testSmsResult}
-        />
-      )}
+
     </div>
   );
 }
@@ -1147,9 +985,6 @@ function ResponsesModal({ event, onClose }: { event: any; onClose: () => void })
                     </td>
                     <td className="p-3">
                       <div className="text-slate-300 font-mono text-[11px]">{r.email}</div>
-                      <div className="text-[10px] text-cyan-300 font-mono">
-                        <span className="text-slate-500">M1: </span>{r.phone || "—"}
-                      </div>
                       {r.member2_phone && (
                         <div className="text-[10px] text-purple-300 font-mono">
                           <span className="text-slate-500">M2: </span>{r.member2_phone}
@@ -3314,6 +3149,278 @@ function ClubManager() {
         </form>
         )
       )}
+    </div>
+  );
+}
+
+/* ── Email Settings Manager ── */
+function EmailSettingsManager() {
+  const [config, setConfig] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  const [gmailUser, setGmailUser] = useState("");
+  const [gmailAppPassword, setGmailAppPassword] = useState("");
+  const [senderName, setSenderName] = useState("");
+  const [testEmail, setTestEmail] = useState("");
+  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [testResult, setTestResult] = useState<{ text: string; ok: boolean } | null>(null);
+
+  const authHeader = () => ({
+    Authorization: `Bearer ${localStorage.getItem("aif_token") || ""}`,
+    "Content-Type": "application/json",
+  });
+
+  useEffect(() => {
+    setLoading(true);
+    fetch("/api/settings/email", { headers: authHeader() })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) {
+          const cfg = d.data;
+          setConfig(cfg);
+          setGmailUser(cfg.gmailUser || "");
+          setSenderName(cfg.senderName || "");
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/settings/email", {
+        method: "POST",
+        headers: authHeader(),
+        body: JSON.stringify({ gmailUser, gmailAppPassword: gmailAppPassword || undefined, senderName }),
+      });
+      const d = await res.json();
+      if (!res.ok || !d.success) throw new Error(d.error || "Save failed.");
+      setConfig(d.data);
+      setGmailAppPassword("");
+      setMsg({ text: "Gmail settings saved successfully!", ok: true });
+    } catch (err: any) {
+      setMsg({ text: err.message, ok: false });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleTestEmail() {
+    if (!testEmail.trim() || !testEmail.includes("@")) {
+      setTestResult({ text: "Enter a valid recipient email address.", ok: false });
+      return;
+    }
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await fetch("/api/settings/email/test", {
+        method: "POST",
+        headers: authHeader(),
+        body: JSON.stringify({ toEmail: testEmail }),
+      });
+      const d = await res.json();
+      if (!res.ok || !d.success) throw new Error(d.error || "Test failed.");
+      setTestResult({ text: d.message || "Test email delivered successfully!", ok: true });
+    } catch (err: any) {
+      setTestResult({ text: err.message, ok: false });
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
+      </div>
+    );
+  }
+
+  const isConfigured = config?.isConfigured;
+
+  return (
+    <div className="space-y-8 max-w-2xl">
+      {/* Status Banner */}
+      <div
+        className={`flex items-center gap-3 rounded-2xl px-5 py-4 border ${
+          isConfigured
+            ? "bg-emerald-950/30 border-emerald-500/30"
+            : "bg-amber-950/30 border-amber-500/30"
+        }`}
+      >
+        <div
+          className={`h-2.5 w-2.5 rounded-full ${
+            isConfigured ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+          }`}
+        />
+        <div>
+          <p className={`text-sm font-bold ${ isConfigured ? "text-emerald-300" : "text-amber-300"}`}>
+            {isConfigured ? "✅ Gmail Notifications — ACTIVE" : "⚠️ Gmail Not Configured"}
+          </p>
+          <p className="text-xs text-slate-400 mt-0.5">
+            {isConfigured
+              ? `Sending as: ${config.gmailUser} (${config.senderName})`
+              : "Configure your Gmail App Password below to enable automated confirmation emails."}
+          </p>
+        </div>
+      </div>
+
+      {/* Config Form */}
+      <div className="glass rounded-2xl border border-white/10 p-6">
+        <h3 className="text-sm font-mono font-bold text-cyan-400 mb-1 flex items-center gap-2">
+          <Mail className="h-4 w-4" />
+          GMAIL NOTIFICATION SETTINGS
+        </h3>
+        <p className="text-xs text-slate-400 mb-5">
+          Participants receive a professional registration confirmation pass to their email address after signing up for any event.
+        </p>
+
+        <form onSubmit={handleSave} className="space-y-4">
+          <div>
+            <label className="block text-xs font-mono text-slate-400 mb-1.5">GMAIL ADDRESS</label>
+            <input
+              type="email"
+              required
+              value={gmailUser}
+              onChange={(e) => setGmailUser(e.target.value)}
+              placeholder="yourname@gmail.com"
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-mono text-slate-400 mb-1.5">
+              GOOGLE APP PASSWORD
+              <span className="ml-2 text-slate-500 normal-case font-sans">(leave blank to keep existing)</span>
+            </label>
+            <input
+              type="password"
+              value={gmailAppPassword}
+              onChange={(e) => setGmailAppPassword(e.target.value)}
+              placeholder={config?.hasAppPassword ? "●●●●●●●●●●●●●●●●" : "xxxx xxxx xxxx xxxx"}
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
+            />
+            <p className="mt-1.5 text-xs text-slate-500">
+              Generate one at{" "}
+              <a
+                href="https://myaccount.google.com/apppasswords"
+                target="_blank"
+                rel="noreferrer"
+                className="text-cyan-400 underline hover:text-cyan-300"
+              >
+                myaccount.google.com/apppasswords
+              </a>
+              {" "}(requires 2-Step Verification to be enabled on your Google account)
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-mono text-slate-400 mb-1.5">SENDER NAME</label>
+            <input
+              type="text"
+              value={senderName}
+              onChange={(e) => setSenderName(e.target.value)}
+              placeholder="AI Frontier Club"
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
+            />
+          </div>
+
+          {msg && (
+            <div
+              className={`rounded-xl px-4 py-3 text-xs border ${
+                msg.ok
+                  ? "bg-emerald-950/40 border-emerald-500/30 text-emerald-300"
+                  : "bg-red-950/40 border-red-500/30 text-red-300"
+              }`}
+            >
+              {msg.text}
+            </div>
+          )}
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex items-center gap-2 rounded-xl bg-cyan-400 px-6 py-2.5 text-xs font-mono font-bold text-black hover:bg-cyan-300 transition shadow-[0_0_15px_rgba(0,240,255,0.3)] disabled:opacity-50"
+            >
+              <Save className="h-3.5 w-3.5" />
+              {saving ? "Saving..." : "Save Gmail Settings"}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Test Email */}
+      <div className="glass rounded-2xl border border-white/10 p-6">
+        <h3 className="text-sm font-mono font-bold text-slate-300 mb-1 flex items-center gap-2">
+          <Send className="h-4 w-4 text-cyan-400" />
+          SEND TEST CONFIRMATION EMAIL
+        </h3>
+        <p className="text-xs text-slate-400 mb-4">
+          Verify your Gmail integration is working by sending a real test notification.
+        </p>
+
+        <div className="flex gap-3">
+          <input
+            type="email"
+            value={testEmail}
+            onChange={(e) => setTestEmail(e.target.value)}
+            placeholder="recipient@example.com"
+            className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
+          />
+          <button
+            onClick={handleTestEmail}
+            disabled={testing || !isConfigured}
+            className="flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-5 py-2.5 text-xs font-mono font-bold text-cyan-300 hover:bg-cyan-400/20 transition disabled:opacity-50 whitespace-nowrap"
+          >
+            <Send className="h-3.5 w-3.5" />
+            {testing ? "Sending..." : "Send Test"}
+          </button>
+        </div>
+
+        {!isConfigured && (
+          <p className="mt-2 text-xs text-amber-400">⚠️ Save your Gmail settings above before sending a test.</p>
+        )}
+
+        {testResult && (
+          <div
+            className={`mt-3 rounded-xl px-4 py-3 text-xs border ${
+              testResult.ok
+                ? "bg-emerald-950/40 border-emerald-500/30 text-emerald-300"
+                : "bg-red-950/40 border-red-500/30 text-red-300"
+            }`}
+          >
+            {testResult.text}
+          </div>
+        )}
+      </div>
+
+      {/* Email Preview Info */}
+      <div className="glass rounded-2xl border border-white/10 p-6">
+        <h3 className="text-sm font-mono font-bold text-slate-300 mb-3 flex items-center gap-2">
+          <Info className="h-4 w-4 text-cyan-400" />
+          WHAT PARTICIPANTS RECEIVE
+        </h3>
+        <ul className="space-y-2 text-xs text-slate-400">
+          {[
+            "An official, branded HTML email with a digital Registration Pass",
+            "Registration ID (e.g. AIF-3-42), Team Name, Member names & phones",
+            "Event date, time, and venue details",
+            "Step-by-step attendance instructions",
+            "College & Roll Number for gate verification",
+          ].map((item) => (
+            <li key={item} className="flex items-start gap-2">
+              <Check className="h-3.5 w-3.5 text-emerald-400 mt-0.5 shrink-0" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

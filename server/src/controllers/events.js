@@ -1,7 +1,7 @@
 import { db, rowToJSON } from "../config/db.js";
 import { ApiError } from "../utils/http.js";
 import { createEventSheet, recordRegistration } from "../services/googleSheets.js";
-import { sendAutomatedMobileInvitation } from "../services/messenger.js";
+import { sendRegistrationEmail } from "../services/emailService.js";
 import { saveEventToFirestore, deleteEventFromFirestore, saveRegistrationToFirestore } from "../services/firestoreService.js";
 import XLSX from "xlsx";
 
@@ -268,12 +268,12 @@ export async function registerForEvent(req, res) {
   // Automatically record response row into connected Google Sheet
   recordRegistration(event, regRecord).catch(err => console.warn("[googleSheets] record row failed:", err.message));
 
-  // Automatically dispatch mobile invitation & confirmation message to both participants
-  const msgResult = await sendAutomatedMobileInvitation({ event, registration: regRecord });
+  // Automatically dispatch official registration confirmation email via Gmail
+  const emailResult = await sendRegistrationEmail({ event, registration: regRecord });
 
   res.status(201).json({
     success: true,
-    message: "Registration successful! Automated mobile invitation dispatched.",
+    message: `Registration confirmed for ${event.title}! Official confirmation pass sent to ${regRecord.email}.`,
     data: {
       id: regId,
       registrationId: registrationCode,
@@ -287,13 +287,11 @@ export async function registerForEvent(req, res) {
       eventTitle: event.title,
       eventDate: event.date,
       venue: event.venue,
-      invitationMessage: msgResult.invitationMessage,
-      shortSms: msgResult.shortSms,
-      member1WhatsappUrl: msgResult.member1WhatsappUrl,
-      member2WhatsappUrl: msgResult.member2WhatsappUrl,
-      member1SmsUrl: msgResult.member1SmsUrl,
-      member2SmsUrl: msgResult.member2SmsUrl,
-      gatewayResult: msgResult.gatewayResult,
+      emailResult,
+      emailSent: emailResult.sent,
+      emailSubject: emailResult.subject,
+      emailText: emailResult.previewText,
+      gmailUrl: `https://mail.google.com/mail/u/0/#search/${encodeURIComponent(event.title)}`,
     }
   });
 }

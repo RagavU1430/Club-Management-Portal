@@ -11,6 +11,11 @@ import {
   saveMessengerConfig,
   sendTestSMS,
 } from "../services/messenger.js";
+import {
+  getEmailConfig,
+  saveEmailConfig,
+  sendTestEmail,
+} from "../services/emailService.js";
 import { db } from "../config/db.js";
 import { ApiError } from "../utils/http.js";
 
@@ -112,3 +117,49 @@ export async function sendTestSmsController(req, res) {
     data: result,
   });
 }
+
+// ── Gmail & Email Notification Settings ──
+export async function getEmailSettings(req, res) {
+  const config = getEmailConfig();
+  res.json({
+    success: true,
+    data: config,
+  });
+}
+
+export async function updateEmailSettings(req, res) {
+  const { gmailUser, gmailAppPassword, senderName } = req.body || {};
+  const updated = saveEmailConfig({
+    gmailUser,
+    gmailAppPassword,
+    senderName,
+  });
+  res.json({
+    success: true,
+    message: "Gmail configuration updated successfully.",
+    data: updated,
+  });
+}
+
+export async function sendTestEmailController(req, res) {
+  const { toEmail } = req.body || {};
+  if (!toEmail) {
+    throw new ApiError(400, "Recipient email address is required to send test email.");
+  }
+
+  const result = await sendTestEmail({ toEmail });
+  if (!result.success) {
+    return res.status(400).json({
+      success: false,
+      error: result.error || "Failed to deliver test email.",
+      details: result,
+    });
+  }
+
+  res.json({
+    success: true,
+    message: result.message || `Test email successfully delivered to ${toEmail}!`,
+    data: result,
+  });
+}
+
