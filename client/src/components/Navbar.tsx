@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Sparkles, ChevronRight } from "lucide-react";
-import ThemeToggle from "./ThemeToggle";
 
 const NAV_ITEMS = [
   { path: "/", label: "Home" },
@@ -36,15 +35,15 @@ export default function Navbar() {
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
-          ? "bg-white/85 dark:bg-[#050811]/85 backdrop-blur-xl border-b border-slate-200/80 dark:border-white/10 shadow-lg shadow-slate-200/50 dark:shadow-2xl dark:shadow-cyan-950/20 py-3"
-          : "bg-gradient-to-b from-white/90 to-transparent dark:from-[#050811]/90 dark:to-transparent py-5"
+          ? "bg-[#050811]/85 backdrop-blur-xl border-b border-white/10 shadow-2xl shadow-cyan-950/20 py-3"
+          : "bg-gradient-to-b from-[#050811]/90 to-transparent py-5"
       }`}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
           {/* Logo / Brand */}
           <Link to="/" className="group flex items-center gap-3">
-            <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-600/20 border border-cyan-500/30 dark:border-cyan-400/30 p-0.5 overflow-hidden transition duration-300 group-hover:border-cyan-500 dark:group-hover:border-cyan-400 group-hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] shadow-sm">
+            <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-600/20 border border-cyan-400/30 p-0.5 overflow-hidden transition duration-300 group-hover:border-cyan-400 group-hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] shadow-sm">
               <img
                 src="/poster_end.jpg"
                 alt="AI Frontier Emblem"
@@ -54,20 +53,20 @@ export default function Navbar() {
             </div>
 
             <div className="flex flex-col">
-              <span className="font-display text-lg font-extrabold tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5 transition-colors">
+              <span className="font-display text-lg font-extrabold tracking-wider text-white flex items-center gap-1.5 transition-colors">
                 AI FRONTIER
-                <span className="text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/20 dark:border-cyan-400/20">
+                <span className="text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-400/20">
                   CLUB
                 </span>
               </span>
-              <span className="text-[10px] tracking-widest uppercase text-slate-500 dark:text-slate-400 font-mono transition-colors">
+              <span className="text-[10px] tracking-widest uppercase text-slate-400 font-mono transition-colors">
                 AI & DATA SCIENCE GUILD
               </span>
             </div>
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1 bg-slate-200/50 dark:bg-white/[0.03] border border-slate-300/70 dark:border-white/10 rounded-full px-3 py-1.5 backdrop-blur-md transition-colors">
+          <nav className="hidden md:flex items-center gap-1 bg-white/[0.03] border border-white/10 rounded-full px-3 py-1.5 backdrop-blur-md transition-colors">
             {NAV_ITEMS.map((item) => {
               const isActive =
                 item.path === "/"
@@ -80,14 +79,14 @@ export default function Navbar() {
                   to={item.path}
                   className={`relative px-4 py-1.5 text-sm font-medium transition-colors duration-200 rounded-full ${
                     isActive
-                      ? "text-cyan-700 dark:text-cyan-300 font-semibold"
-                      : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+                      ? "text-cyan-300 font-semibold"
+                      : "text-slate-300 hover:text-white"
                   }`}
                 >
                   {isActive && (
                     <motion.div
                       layoutId="nav-pill"
-                      className="absolute inset-0 rounded-full bg-white dark:bg-gradient-to-r dark:from-cyan-500/20 dark:to-purple-600/20 border border-slate-200 dark:border-cyan-400/40 shadow-sm dark:shadow-[0_0_15px_rgba(0,240,255,0.25)]"
+                      className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-500/20 to-purple-600/20 border border-cyan-400/40 shadow-[0_0_15px_rgba(0,240,255,0.25)]"
                       transition={{ type: "spring", stiffness: 380, damping: 30 }}
                     />
                   )}
@@ -99,11 +98,8 @@ export default function Navbar() {
 
           {/* Actions & Status */}
           <div className="hidden md:flex items-center gap-3">
-            {/* Theme Toggle Button */}
-            <ThemeToggle />
-
             {/* Guild Status Badge */}
-            <div className="flex items-center gap-2 text-xs font-mono text-slate-600 dark:text-slate-400 bg-slate-200/60 dark:bg-white/[0.02] border border-slate-300/60 dark:border-white/5 px-3 py-1.5 rounded-full transition-colors">
+            <div className="flex items-center gap-2 text-xs font-mono text-slate-400 bg-white/[0.02] border border-white/5 px-3 py-1.5 rounded-full transition-colors">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
@@ -115,19 +111,18 @@ export default function Navbar() {
               to="/events"
               className="relative group inline-flex items-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 p-[1px] font-medium text-white transition focus:outline-none shadow-sm"
             >
-              <span className="flex items-center gap-1.5 rounded-[11px] bg-white dark:bg-[#050811] px-4 py-2 text-xs font-semibold tracking-wide text-cyan-700 dark:text-cyan-300 transition duration-300 group-hover:bg-transparent group-hover:text-white">
+              <span className="flex items-center gap-1.5 rounded-[11px] bg-[#050811] px-4 py-2 text-xs font-semibold tracking-wide text-cyan-300 transition duration-300 group-hover:bg-transparent group-hover:text-white">
                 <Sparkles className="h-3.5 w-3.5" />
                 Join Next Event
               </span>
             </Link>
           </div>
 
-          {/* Mobile menu and Theme toggle */}
+          {/* Mobile menu */}
           <div className="flex md:hidden items-center gap-2">
-            <ThemeToggle />
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="p-2 rounded-xl bg-slate-200/80 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white focus:outline-none"
+              className="p-2 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:text-white focus:outline-none"
               aria-label="Toggle Navigation Menu"
             >
               {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -144,7 +139,7 @@ export default function Navbar() {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.25 }}
-            className="md:hidden border-b border-slate-200 dark:border-white/10 bg-white/95 dark:bg-[#050811]/95 backdrop-blur-2xl px-6 py-6 transition-colors shadow-xl"
+            className="md:hidden border-b border-white/10 bg-[#050811]/95 backdrop-blur-2xl px-6 py-6 transition-colors shadow-xl"
           >
             <div className="flex flex-col gap-3">
               {NAV_ITEMS.map((item) => {
@@ -159,8 +154,8 @@ export default function Navbar() {
                     onClick={() => setMobileOpen(false)}
                     className={`flex items-center justify-between px-4 py-3 rounded-xl text-base font-medium transition ${
                       isActive
-                        ? "bg-cyan-500/15 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300 font-semibold"
-                        : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5"
+                        ? "bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 font-semibold"
+                        : "text-slate-300 hover:bg-white/5"
                     }`}
                   >
                     <span>{item.label}</span>
@@ -169,11 +164,11 @@ export default function Navbar() {
                 );
               })}
 
-              <div className="mt-4 pt-4 border-t border-slate-200 dark:border-white/10 flex flex-col gap-3">
-                <div className="flex items-center justify-between text-xs font-mono text-slate-500 dark:text-slate-400 px-2">
-                  <span>Theme & Status</span>
+              <div className="mt-4 pt-4 border-t border-white/10 flex flex-col gap-3">
+                <div className="flex items-center justify-between text-xs font-mono text-slate-400 px-2">
+                  <span>Guild Network</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-cyan-600 dark:text-cyan-400 font-semibold">● Online</span>
+                    <span className="text-cyan-400 font-semibold">● Online</span>
                   </div>
                 </div>
                 <Link

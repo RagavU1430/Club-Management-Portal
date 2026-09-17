@@ -9,7 +9,7 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   return (
-    <div className="relative min-h-screen flex flex-col bg-slate-50 text-slate-900 dark:bg-[#050811] dark:text-slate-100 selection:bg-cyan-400 selection:text-black transition-colors duration-300">
+    <div className="relative min-h-screen flex flex-col bg-[#050811] text-slate-100 selection:bg-cyan-400 selection:text-black">
       {/* Background Video Playback (Active on all pages EXCEPT /admin) */}
       <GlobalVideoBackground />
 

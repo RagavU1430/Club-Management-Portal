@@ -170,17 +170,16 @@ export default function GlobalVideoBackground() {
   if (isAdmin) return null;
 
   return (
-    <div className="fixed inset-0 w-full h-full z-0 pointer-events-none overflow-hidden bg-slate-100 dark:bg-[#050811] transition-colors duration-300">
+    <div className="fixed inset-0 w-full h-full z-0 pointer-events-none overflow-hidden bg-[#050811]">
       <canvas
         ref={canvasRef}
-        className="h-full w-full object-cover opacity-25 dark:opacity-85 transition-opacity duration-300"
+        className="h-full w-full object-cover"
         style={{ width: "100%", height: "100%" }}
       />
 
-      {/* Light mode ambient veil and gradients */}
-      <div className="absolute inset-0 bg-gradient-to-t from-slate-50 via-slate-50/70 to-transparent dark:from-[#050811] dark:via-transparent dark:to-transparent opacity-80 dark:opacity-65 pointer-events-none" />
-      <div className="absolute inset-0 bg-radial from-transparent via-transparent to-slate-200/50 dark:to-[#050811]/40 pointer-events-none" />
-      <div className="absolute inset-0 cyber-grid opacity-60 pointer-events-none" />
+      {/* Cyberpunk ambient lighting overlays for readable text & contrast */}
+      <div className="absolute inset-0 bg-gradient-to-t from-[#050811] via-transparent to-transparent opacity-65 pointer-events-none" />
+      <div className="absolute inset-0 bg-radial from-transparent via-transparent to-[#050811]/40 pointer-events-none" />
     </div>
   );
 }

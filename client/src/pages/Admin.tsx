@@ -84,19 +84,19 @@ export default function Admin() {
     return (
       <main className="flex min-h-[85vh] items-center justify-center px-4 py-20">
         <div className="w-full max-w-md">
-          <div className="glass rounded-2xl p-8 border border-slate-200/80 dark:border-white/10 shadow-2xl">
+          <div className="glass rounded-2xl p-8 border border-white/10 shadow-2xl">
             <div className="flex items-center gap-2 mb-2">
-              <span className="h-2 w-2 rounded-full bg-cyan-500 dark:bg-cyan-400 animate-ping" />
-              <span className="text-xs font-mono text-cyan-700 dark:text-cyan-300 tracking-wider font-semibold">RESTRICTED ACCESS</span>
+              <span className="h-2 w-2 rounded-full bg-cyan-400 animate-ping" />
+              <span className="text-xs font-mono text-cyan-300 tracking-wider font-semibold">RESTRICTED ACCESS</span>
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white font-display">Admin Portal</h1>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            <h1 className="text-2xl font-bold text-white font-display">Admin Portal</h1>
+            <p className="mt-1 text-xs text-slate-400">
               Sign in to manage club events, responses, and members.
             </p>
 
             <form onSubmit={handleLogin} className="mt-6 space-y-4">
               <div>
-                <label className="block text-xs font-mono text-slate-600 dark:text-slate-400 mb-1">EMAIL / ID</label>
+                <label className="block text-xs font-mono text-slate-400 mb-1">EMAIL / ID</label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
@@ -104,14 +104,14 @@ export default function Admin() {
                     required
                     value={login.email}
                     onChange={(e) => setLogin({ ...login, email: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/5 py-2.5 pl-10 pr-4 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-cyan-500 dark:focus:border-cyan-400 focus:outline-none"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
                     placeholder="admin@localhost"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-mono text-slate-600 dark:text-slate-400 mb-1">PASSWORD</label>
+                <label className="block text-xs font-mono text-slate-400 mb-1">PASSWORD</label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
@@ -119,14 +119,14 @@ export default function Admin() {
                     required
                     value={login.password}
                     onChange={(e) => setLogin({ ...login, password: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/5 py-2.5 pl-10 pr-4 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-cyan-500 dark:focus:border-cyan-400 focus:outline-none"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
                     placeholder="••••••••"
                   />
                 </div>
               </div>
 
               {loginErr && (
-                <div className="rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-500/30 p-3 text-xs text-red-600 dark:text-red-300">
+                <div className="rounded-lg bg-red-950/40 border border-red-500/30 p-3 text-xs text-red-300">
                   {loginErr}
                 </div>
               )}
@@ -148,25 +148,25 @@ export default function Admin() {
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-24">
       {/* Top Header */}
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-6">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
         <div>
-          <div className="inline-flex items-center gap-2 text-xs font-mono text-cyan-600 dark:text-cyan-400 mb-1 font-semibold">
-            <span className="h-2 w-2 rounded-full bg-cyan-500 dark:bg-cyan-400 animate-pulse" />
+          <div className="inline-flex items-center gap-2 text-xs font-mono text-cyan-400 mb-1 font-semibold">
+            <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
             CONSOLE ACTIVE // {auth.user.role.toUpperCase()}
           </div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white font-display">Club Management</h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400">Welcome back, {auth.user.name}.</p>
+          <h1 className="text-3xl font-black text-white font-display">Club Management</h1>
+          <p className="text-sm text-slate-400">Welcome back, {auth.user.name}.</p>
         </div>
         <button
           onClick={handleLogout}
-          className="rounded-xl glass px-4 py-2 text-xs font-mono text-slate-600 dark:text-slate-300 transition hover:text-red-600 dark:hover:text-white border border-slate-200/80 dark:border-white/10 hover:border-red-500/40 hover:bg-red-50 dark:hover:bg-red-950/20 cursor-pointer"
+          className="rounded-xl glass px-4 py-2 text-xs font-mono text-slate-300 transition hover:text-white border border-white/10 hover:border-red-500/40 hover:bg-red-950/20 cursor-pointer"
         >
           Sign Out
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="mb-8 flex flex-wrap gap-2 border-b border-slate-200 dark:border-white/5 pb-3">
+      <div className="mb-8 flex flex-wrap gap-2 border-b border-white/5 pb-3">
         {[
           { id: "events", label: "Events & Registrations", icon: Calendar },
           { id: "team", label: "Coordinators", icon: Users },
@@ -182,8 +182,8 @@ export default function Admin() {
               }}
               className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-mono uppercase tracking-wider transition cursor-pointer ${
                 tab === t.id
-                  ? "bg-cyan-500 dark:bg-cyan-400 text-white dark:text-black font-bold shadow-md shadow-cyan-500/25"
-                  : "glass text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200/80 dark:border-white/10"
+                  ? "bg-cyan-400 text-black font-bold shadow-md shadow-cyan-500/25"
+                  : "glass text-slate-300 hover:text-white border border-white/10"
               }`}
             >
               <Icon className="h-4 w-4" />

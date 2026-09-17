@@ -54,20 +54,20 @@ export default function Team() {
 
       {/* Header */}
       <div className="relative z-10 text-center max-w-3xl mx-auto mb-12">
-        <div className="inline-flex items-center gap-2 rounded-full bg-purple-500/10 dark:bg-purple-400/10 border border-purple-500/30 dark:border-purple-400/30 px-4 py-1.5 text-xs font-mono text-purple-700 dark:text-purple-300 mb-4 shadow-sm">
-          <Sparkles className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+        <div className="inline-flex items-center gap-2 rounded-full bg-purple-400/10 border border-purple-400/30 px-4 py-1.5 text-xs font-mono text-purple-300 mb-4 shadow-sm">
+          <Sparkles className="h-3.5 w-3.5 text-purple-400" />
           PERSONNEL // CORE ARCHITECTS
         </div>
-        <h1 className="font-display text-4xl sm:text-6xl font-black text-slate-900 dark:text-white glow-purple-text transition-colors">
+        <h1 className="font-display text-4xl sm:text-6xl font-black text-white glow-purple-text">
           COORDINATORS
         </h1>
-        <p className="mt-4 text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed transition-colors">
+        <p className="mt-4 text-base sm:text-lg text-slate-300 leading-relaxed">
           Meet the student leaders, mentors, and developers driving artificial intelligence innovation and learning at AI Frontier Club.
         </p>
       </div>
 
       {/* Search Bar */}
-      <div className="relative z-10 flex items-center justify-center gap-4 mb-10 pb-6 border-b border-slate-200 dark:border-white/10">
+      <div className="relative z-10 flex items-center justify-center gap-4 mb-10 pb-6 border-b border-white/10">
         <div className="relative w-full max-w-lg">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
@@ -75,7 +75,7 @@ export default function Team() {
             placeholder="Search coordinators by name, department, or skill..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="w-full rounded-xl border border-slate-300 dark:border-white/10 bg-white dark:bg-[#0c1222]/80 backdrop-blur-md py-2.5 pl-10 pr-4 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-purple-500 dark:focus:border-purple-400 focus:outline-none focus:ring-1 focus:ring-purple-400 shadow-sm transition"
+            className="w-full rounded-xl border border-white/10 bg-[#0c1222]/80 backdrop-blur-md py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:border-purple-400 focus:outline-none focus:ring-1 focus:ring-purple-400 shadow-sm transition"
           />
         </div>
       </div>
@@ -91,12 +91,12 @@ export default function Team() {
 
       {/* Empty State */}
       {!loading && filtered.length === 0 && (
-        <div className="relative z-10 text-center py-20 rounded-2xl glass border border-slate-200/80 dark:border-white/10 p-8 shadow-sm">
-          <User className="mx-auto h-12 w-12 text-slate-400 dark:text-slate-600 mb-4" />
-          <h3 className="font-display text-xl font-bold text-slate-900 dark:text-white">
+        <div className="relative z-10 text-center py-20 rounded-2xl glass border border-white/10 p-8 shadow-sm">
+          <User className="mx-auto h-12 w-12 text-slate-600 mb-4" />
+          <h3 className="font-display text-xl font-bold text-white">
             {members.length === 0 ? "No Coordinators Listed Yet" : "No coordinators matched"}
           </h3>
-          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto">
+          <p className="mt-2 text-sm text-slate-400 max-w-md mx-auto">
             {members.length === 0
               ? "All existing coordinators have been cleared. New coordinators added through the Admin console will appear here."
               : `No profile matches "${q}". Try a different keyword.`}
@@ -104,7 +104,7 @@ export default function Team() {
           {q && (
             <button
               onClick={() => setQ("")}
-              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-purple-500/10 dark:bg-purple-400/20 border border-purple-500/30 dark:border-purple-400/40 px-5 py-2 text-xs font-mono text-purple-700 dark:text-purple-300 hover:bg-purple-500 dark:hover:bg-purple-400 hover:text-white dark:hover:text-black transition cursor-pointer"
+              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-purple-400/20 border border-purple-400/40 px-5 py-2 text-xs font-mono text-purple-300 hover:bg-purple-400 hover:text-black transition cursor-pointer"
             >
               Reset Search
             </button>
@@ -143,8 +143,8 @@ function TeamCard({ member }: { member: TeamMember }) {
       onMouseLeave={() => setIsHovered(false)}
       className={`group relative rounded-3xl glass border transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden ${
         isHovered
-          ? "-translate-y-1.5 border-cyan-500/50 dark:border-cyan-400/50 shadow-xl shadow-cyan-500/10 dark:shadow-[0_20px_45px_-12px_rgba(0,240,255,0.22),0_0_25px_rgba(147,51,234,0.15)]"
-          : "border-slate-200/80 dark:border-white/10 shadow-sm dark:shadow-lg dark:shadow-black/40 hover:border-slate-300 dark:hover:border-white/20"
+          ? "-translate-y-1.5 border-cyan-400/50 shadow-[0_20px_45px_-12px_rgba(0,240,255,0.22),0_0_25px_rgba(147,51,234,0.15)]"
+          : "border-white/10 shadow-lg shadow-black/40 hover:border-white/20"
       }`}
     >
       {/* Ambient Neon Glows */}
@@ -161,7 +161,7 @@ function TeamCard({ member }: { member: TeamMember }) {
 
       {/* Top Cyber Accent Line */}
       <div
-        className={`pointer-events-none absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-500 dark:via-cyan-400 to-transparent transition-opacity duration-500 ease-out ${
+        className={`pointer-events-none absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent transition-opacity duration-500 ease-out ${
           isHovered ? "opacity-100" : "opacity-0"
         }`}
       />
@@ -170,19 +170,19 @@ function TeamCard({ member }: { member: TeamMember }) {
       <div className="p-6 relative z-10">
         {/* Top Badges */}
         <div className="flex items-center justify-between gap-2 mb-4">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-500/10 dark:bg-cyan-400/10 border border-cyan-500/25 dark:border-cyan-400/25 px-2.5 py-0.5 text-[10px] font-mono text-cyan-700 dark:text-cyan-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-cyan-500 dark:bg-cyan-400 animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-400/10 border border-cyan-400/25 px-2.5 py-0.5 text-[10px] font-mono text-cyan-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
             {member.department || "Artificial Intelligence & Data Science"}
           </span>
-          <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 flex items-center gap-1">
-            <Shield className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400/80" />
+          <span className="text-[10px] font-mono text-slate-400 flex items-center gap-1">
+            <Shield className="h-3.5 w-3.5 text-cyan-400/80" />
             CORE
           </span>
         </div>
 
         {/* Profile Avatar, Name & Role */}
         <div className="flex items-center gap-4">
-          <div className="relative h-16 w-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 via-purple-600/30 to-blue-500/20 border border-cyan-500/30 dark:border-cyan-400/30 flex items-center justify-center font-display text-2xl font-bold text-cyan-700 dark:text-cyan-300 shadow-inner overflow-hidden shrink-0 group-hover:border-cyan-500/60 dark:group-hover:border-cyan-400/60 group-hover:scale-105 transition-all duration-500 ease-out">
+          <div className="relative h-16 w-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 via-purple-600/30 to-blue-500/20 border border-cyan-400/30 flex items-center justify-center font-display text-2xl font-bold text-cyan-300 shadow-inner overflow-hidden shrink-0 group-hover:border-cyan-400/60 group-hover:scale-105 transition-all duration-500 ease-out">
             {member.photo ? (
               <img src={member.photo} alt={member.name} className="h-full w-full object-cover" />
             ) : (
@@ -191,15 +191,15 @@ function TeamCard({ member }: { member: TeamMember }) {
           </div>
 
           <div className="overflow-hidden">
-            <h3 className="font-display text-xl font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors duration-300 truncate">
+            <h3 className="font-display text-xl font-bold text-white group-hover:text-cyan-300 transition-colors duration-300 truncate">
               {member.name}
             </h3>
-            <p className="text-xs font-mono text-purple-700 dark:text-purple-300 font-semibold truncate mt-0.5">{member.role}</p>
+            <p className="text-xs font-mono text-purple-300 font-semibold truncate mt-0.5">{member.role}</p>
           </div>
         </div>
 
-        {/* Bio Text (Tight and clean, zero empty space below it) */}
-        <p className="mt-4 text-xs text-slate-600 dark:text-slate-300 leading-relaxed transition-colors">
+        {/* Bio Text */}
+        <p className="mt-4 text-xs text-slate-300 leading-relaxed">
           {member.bio || "Active coordinator advancing AI research, hackathons, and student initiatives."}
         </p>
 
@@ -207,35 +207,35 @@ function TeamCard({ member }: { member: TeamMember }) {
         <div
           className={`grid transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] ${
             !isHovered
-              ? "grid-rows-[1fr] opacity-100 mt-4 pt-3 border-t border-slate-200 dark:border-white/10"
+              ? "grid-rows-[1fr] opacity-100 mt-4 pt-3 border-t border-white/10"
               : "grid-rows-[0fr] opacity-0 mt-0 pt-0 border-t-0 border-transparent"
           }`}
         >
           <div className="overflow-hidden min-h-0">
-            <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-slate-400">
+            <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
               <div className="flex items-center gap-2">
                 {member.email && (
-                  <span title="Email available" className="text-cyan-600 dark:text-cyan-400/80">
+                  <span title="Email available" className="text-cyan-400/80">
                     <Mail className="h-3.5 w-3.5" />
                   </span>
                 )}
                 {member.phone && (
-                  <span title="Phone available" className="text-cyan-600 dark:text-cyan-400/80">
+                  <span title="Phone available" className="text-cyan-400/80">
                     <Phone className="h-3.5 w-3.5" />
                   </span>
                 )}
                 {member.linkedin && (
-                  <span title="LinkedIn profile" className="text-cyan-600 dark:text-cyan-400/80">
+                  <span title="LinkedIn profile" className="text-cyan-400/80">
                     <LinkedinIcon className="h-3.5 w-3.5" />
                   </span>
                 )}
                 {member.github && (
-                  <span title="GitHub profile" className="text-cyan-600 dark:text-cyan-400/80">
+                  <span title="GitHub profile" className="text-cyan-400/80">
                     <GithubIcon className="h-3.5 w-3.5" />
                   </span>
                 )}
               </div>
-              <span className="flex items-center gap-1.5 text-cyan-700 dark:text-cyan-300 group-hover:text-cyan-600 dark:group-hover:text-cyan-200 transition-colors font-semibold">
+              <span className="flex items-center gap-1.5 text-cyan-300 group-hover:text-cyan-200 transition-colors font-semibold">
                 <span>Hover for Details</span>
                 <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition-transform duration-300" />
               </span>
@@ -247,7 +247,7 @@ function TeamCard({ member }: { member: TeamMember }) {
         <div
           className={`grid transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
             isHovered
-              ? "grid-rows-[1fr] opacity-100 mt-4 pt-3 border-t border-slate-200 dark:border-white/10"
+              ? "grid-rows-[1fr] opacity-100 mt-4 pt-3 border-t border-white/10"
               : "grid-rows-[0fr] opacity-0 mt-0 pt-0 border-t-0 border-transparent"
           }`}
         >
@@ -258,18 +258,18 @@ function TeamCard({ member }: { member: TeamMember }) {
               }`}
             >
               {/* Email Card */}
-              <div className="rounded-xl bg-slate-100 dark:bg-white/5 p-2.5 border border-slate-200 dark:border-white/10 hover:border-cyan-500/40 dark:hover:border-cyan-400/40 transition-colors duration-300">
-                <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 dark:text-slate-400 mb-1">
-                  <span className="flex items-center gap-1 text-cyan-700 dark:text-cyan-300 font-semibold">
+              <div className="rounded-xl bg-white/5 p-2.5 border border-white/10 hover:border-cyan-400/40 transition-colors duration-300">
+                <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mb-1">
+                  <span className="flex items-center gap-1 text-cyan-300 font-semibold">
                     <Mail className="h-3 w-3" /> EMAIL
                   </span>
                   {member.email && (
                     <button
                       type="button"
                       onClick={handleCopyEmail}
-                      className="flex items-center gap-1 text-[10px] font-mono text-cyan-700 dark:text-cyan-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+                      className="flex items-center gap-1 text-[10px] font-mono text-cyan-300 hover:text-white transition-colors cursor-pointer"
                     >
-                      {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+                      {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
                       <span>{copied ? "Copied!" : "Copy"}</span>
                     </button>
                   )}
@@ -278,30 +278,30 @@ function TeamCard({ member }: { member: TeamMember }) {
                   <a
                     href={`mailto:${member.email}`}
                     onClick={(e) => e.stopPropagation()}
-                    className="text-xs text-slate-900 dark:text-white hover:text-cyan-600 dark:hover:text-cyan-300 font-mono transition-colors block truncate font-medium"
+                    className="text-xs text-white hover:text-cyan-300 font-mono transition-colors block truncate font-medium"
                   >
                     {member.email}
                   </a>
                 ) : (
-                  <span className="text-xs text-slate-400 dark:text-slate-500 font-mono italic">No email provided</span>
+                  <span className="text-xs text-slate-500 font-mono italic">No email provided</span>
                 )}
               </div>
 
               {/* Phone Card */}
-              <div className="rounded-xl bg-slate-100 dark:bg-white/5 p-2.5 border border-slate-200 dark:border-white/10 hover:border-cyan-500/40 dark:hover:border-cyan-400/40 transition-colors duration-300">
-                <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1 text-cyan-700 dark:text-cyan-300 font-semibold">
+              <div className="rounded-xl bg-white/5 p-2.5 border border-white/10 hover:border-cyan-400/40 transition-colors duration-300">
+                <div className="text-[10px] font-mono text-slate-400 mb-1 flex items-center gap-1 text-cyan-300 font-semibold">
                   <Phone className="h-3 w-3" /> PHONE / WHATSAPP
                 </div>
                 {member.phone ? (
                   <a
                     href={`tel:${member.phone}`}
                     onClick={(e) => e.stopPropagation()}
-                    className="text-xs text-slate-900 dark:text-white hover:text-cyan-600 dark:hover:text-cyan-300 font-mono transition-colors block font-medium"
+                    className="text-xs text-white hover:text-cyan-300 font-mono transition-colors block font-medium"
                   >
                     {member.phone}
                   </a>
                 ) : (
-                  <span className="text-xs text-slate-400 dark:text-slate-500 font-mono italic">No phone provided</span>
+                  <span className="text-xs text-slate-500 font-mono italic">No phone provided</span>
                 )}
               </div>
 
@@ -314,7 +314,7 @@ function TeamCard({ member }: { member: TeamMember }) {
                       target="_blank"
                       rel="noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-cyan-500/20 border border-slate-200 dark:border-white/10 hover:border-cyan-500/40 dark:hover:border-cyan-400/40 text-xs font-mono text-slate-600 dark:text-slate-300 hover:text-cyan-700 dark:hover:text-cyan-300 transition-all duration-300 shadow-sm"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-400/40 text-xs font-mono text-slate-300 hover:text-cyan-300 transition-all duration-300 shadow-sm"
                       title="LinkedIn"
                     >
                       <LinkedinIcon className="h-3.5 w-3.5" />
@@ -328,7 +328,7 @@ function TeamCard({ member }: { member: TeamMember }) {
                       target="_blank"
                       rel="noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-cyan-500/20 border border-slate-200 dark:border-white/10 hover:border-cyan-500/40 dark:hover:border-cyan-400/40 text-xs font-mono text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all duration-300 shadow-sm"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-400/40 text-xs font-mono text-slate-300 hover:text-white transition-all duration-300 shadow-sm"
                       title="GitHub"
                     >
                       <GithubIcon className="h-3.5 w-3.5" />
@@ -347,7 +347,7 @@ function TeamCard({ member }: { member: TeamMember }) {
                     <ExternalLink className="h-3 w-3" />
                   </a>
                 ) : (
-                  <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">AI Frontier Club</span>
+                  <span className="text-[10px] font-mono text-slate-500">AI Frontier Club</span>
                 )}
               </div>
             </div>

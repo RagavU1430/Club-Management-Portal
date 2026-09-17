@@ -71,27 +71,27 @@ export default function StatsRibbon() {
           return (
             <div
               key={item.label}
-              className={`group relative rounded-2xl glass p-6 transition-all duration-300 border border-slate-200/80 dark:border-white/10 ${item.border} ${item.glow}`}
+              className={`group relative rounded-2xl glass p-6 transition-all duration-300 border border-white/10 ${item.border} ${item.glow}`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-mono text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-medium">
+                <span className="font-mono text-xs text-slate-400 uppercase tracking-wider font-medium">
                   {item.label}
                 </span>
-                <div className={`p-2 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 ${item.color} transition-colors`}>
+                <div className={`p-2 rounded-xl bg-white/5 border border-white/10 ${item.color} transition-colors`}>
                   <Icon className="h-4 w-4" />
                 </div>
               </div>
 
               <div className="mt-4 flex items-baseline gap-2">
-                <span className="font-display text-4xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white transition-colors">
+                <span className="font-display text-4xl sm:text-5xl font-black tracking-tight text-white transition-colors">
                   {item.value}
                 </span>
               </div>
 
-              <p className="mt-2 text-xs text-slate-600 dark:text-slate-400 transition-colors">{item.sub}</p>
+              <p className="mt-2 text-xs text-slate-400 transition-colors">{item.sub}</p>
 
               {/* Top gradient highlight line */}
-              <div className="absolute top-0 left-6 right-6 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/30 dark:via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute top-0 left-6 right-6 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           );
         })}
