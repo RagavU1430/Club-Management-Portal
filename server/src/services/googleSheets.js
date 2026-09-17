@@ -135,7 +135,10 @@ export async function recordRegistration(event, reg) {
     sheetName,
     eventId: event.id,
     registrationId: registrationCode,
-    name: String(reg.name || "").trim(),
+    teamName: String(reg.teamName || reg.team_name || "").trim(),
+    member1: String(reg.member1 || reg.name || "").trim(),
+    member2: String(reg.member2 || "").trim(),
+    name: String(reg.member1 || reg.name || "").trim(),
     email: String(reg.email || "").trim().toLowerCase(),
     phone: String(reg.phone || "").trim(),
     college: String(reg.college || "").trim(),
@@ -218,7 +221,9 @@ function doPost(e) {
       if (sheet.getLastRow() === 0) {
         var headers = [
           "Registration ID",
-          "Full Name",
+          "Team Name",
+          "Member 1 (Lead)",
+          "Member 2",
           "Email Address",
           "Phone / WhatsApp",
           "College / Institution",
@@ -254,10 +259,10 @@ function doPost(e) {
       // Duplicate protection: check if registration ID or email already exists in sheet
       var lastRow = sheet.getLastRow();
       if (lastRow > 1 && (regId || email)) {
-        var values = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
+        var values = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
         for (var r = 0; r < values.length; r++) {
           var existingRegId = String(values[r][0] || "").trim();
-          var existingEmail = String(values[r][2] || "").trim().toLowerCase();
+          var existingEmail = String(values[r][4] || values[r][2] || "").trim().toLowerCase();
           if ((regId && existingRegId === regId) || (email && existingEmail === email)) {
             return ContentService.createTextOutput(JSON.stringify({
               success: true,
@@ -275,7 +280,9 @@ function doPost(e) {
 
       var row = [
         regIdStr,
-        data.name || "",
+        data.teamName || "",
+        data.member1 || data.name || "",
+        data.member2 || "",
         email,
         phoneStr,
         data.college || "",
@@ -287,7 +294,7 @@ function doPost(e) {
       sheet.appendRow(row);
 
       // Auto-resize columns so contents are never cut off
-      for (var col = 1; col <= 9; col++) {
+      for (var col = 1; col <= 11; col++) {
         sheet.autoResizeColumn(col);
       }
 

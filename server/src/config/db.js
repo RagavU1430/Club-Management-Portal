@@ -97,6 +97,9 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS event_registrations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     event_id INTEGER NOT NULL,
+    team_name TEXT NOT NULL DEFAULT '',
+    member1 TEXT NOT NULL DEFAULT '',
+    member2 TEXT NOT NULL DEFAULT '',
     name TEXT NOT NULL,
     email TEXT NOT NULL,
     phone TEXT NOT NULL DEFAULT '',
@@ -111,10 +114,11 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_registrations_event ON event_registrations(event_id);
 `);
 
-// Safe migration: Add webhook_url to events table if not present
-try {
-  db.exec("ALTER TABLE events ADD COLUMN webhook_url TEXT DEFAULT ''");
-} catch {}
+// Safe migrations
+try { db.exec("ALTER TABLE events ADD COLUMN webhook_url TEXT DEFAULT ''"); } catch {}
+try { db.exec("ALTER TABLE event_registrations ADD COLUMN team_name TEXT DEFAULT ''"); } catch {}
+try { db.exec("ALTER TABLE event_registrations ADD COLUMN member1 TEXT DEFAULT ''"); } catch {}
+try { db.exec("ALTER TABLE event_registrations ADD COLUMN member2 TEXT DEFAULT ''"); } catch {}
 
 // Settings table for global configs (e.g. Google Sheets webhook)
 db.exec(`

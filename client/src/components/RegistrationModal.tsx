@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Loader2, CheckCircle2, User, Mail, Phone, School, Hash } from "lucide-react";
+import { X, Loader2, CheckCircle2, User, Mail, Phone, School, Hash, Shield, Users } from "lucide-react";
 import { apiFetch } from "../utils/api";
 
 export interface EventItem {
@@ -30,7 +30,9 @@ export default function RegistrationModal({
   onSuccess?: () => void;
 }) {
   const [form, setForm] = useState({
-    name: "",
+    teamName: "",
+    member1: "",
+    member2: "",
     email: "",
     phone: "",
     college: "",
@@ -50,7 +52,10 @@ export default function RegistrationModal({
       const res = await apiFetch(`/api/events/${event.id}/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          name: form.member1,
+        }),
       });
       const d = await res.json();
       if (!res.ok || !d.success) throw new Error(d.message || "Registration failed.");
@@ -84,7 +89,7 @@ export default function RegistrationModal({
                 {event.title}
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                Fill in your details to secure your spot. Responses are recorded in the event roster and synced with the organizer Excel sheet.
+                Register your team. Responses are recorded in the event roster and synchronized with the organizer Excel sheet.
               </p>
             </div>
 
@@ -95,19 +100,55 @@ export default function RegistrationModal({
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4 text-left">
+              {/* ── Team Name ── */}
               <div>
                 <label className="block text-xs font-mono text-slate-400 mb-1">
-                  FULL NAME *
+                  TEAM NAME *
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Shield className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-cyan-400" />
                   <input
                     required
-                    placeholder="e.g. Alex Rivera"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="e.g. Neural Knights / Frontier AI"
+                    value={form.teamName}
+                    onChange={(e) => setForm({ ...form, teamName: e.target.value })}
                     className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
                   />
+                </div>
+              </div>
+
+              {/* ── Member 1 & Member 2 ── */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-mono text-slate-400 mb-1">
+                    MEMBER 1 (LEADER) *
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-cyan-400" />
+                    <input
+                      required
+                      placeholder="Full Name (Member 1)"
+                      value={form.member1}
+                      onChange={(e) => setForm({ ...form, member1: e.target.value })}
+                      className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono text-slate-400 mb-1">
+                    MEMBER 2 *
+                  </label>
+                  <div className="relative">
+                    <Users className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-purple-400" />
+                    <input
+                      required
+                      placeholder="Full Name (Member 2)"
+                      value={form.member2}
+                      onChange={(e) => setForm({ ...form, member2: e.target.value })}
+                      className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -245,10 +286,22 @@ export default function RegistrationModal({
                 <span className="text-slate-400 font-mono">REGISTRATION ID</span>
                 <span className="font-mono font-bold text-cyan-300">{successData.registrationId}</span>
               </div>
+              {successData.teamName && (
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-mono">TEAM NAME</span>
+                  <span className="text-white font-bold">{successData.teamName}</span>
+                </div>
+              )}
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-400 font-mono">PARTICIPANT</span>
-                <span className="text-white font-medium">{successData.name}</span>
+                <span className="text-slate-400 font-mono">MEMBER 1 (LEAD)</span>
+                <span className="text-cyan-300 font-medium">{successData.member1 || successData.name}</span>
               </div>
+              {successData.member2 && (
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-mono">MEMBER 2</span>
+                  <span className="text-purple-300 font-medium">{successData.member2}</span>
+                </div>
+              )}
               <div className="flex justify-between items-center text-xs">
                 <span className="text-slate-400 font-mono">EVENT</span>
                 <span className="text-white font-medium truncate max-w-[200px]">{event.title}</span>

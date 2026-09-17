@@ -866,6 +866,9 @@ function ResponsesModal({ event, onClose }: { event: any; onClose: () => void })
     const q = query.toLowerCase();
     return (
       r.name?.toLowerCase().includes(q) ||
+      r.team_name?.toLowerCase().includes(q) ||
+      r.member1?.toLowerCase().includes(q) ||
+      r.member2?.toLowerCase().includes(q) ||
       r.email?.toLowerCase().includes(q) ||
       r.college?.toLowerCase().includes(q) ||
       r.phone?.toLowerCase().includes(q) ||
@@ -902,7 +905,7 @@ function ResponsesModal({ event, onClose }: { event: any; onClose: () => void })
           <div className="relative w-full sm:w-72">
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
             <input
-              placeholder="Search by name, email, college..."
+              placeholder="Search by team, members, email, college..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pl-9 pr-4 text-xs text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
@@ -938,8 +941,8 @@ function ResponsesModal({ event, onClose }: { event: any; onClose: () => void })
               <thead className="bg-white/5 text-slate-400 font-mono border-b border-white/10 uppercase tracking-wider sticky top-0">
                 <tr>
                   <th className="p-3">ID</th>
-                  <th className="p-3">Participant</th>
-                  <th className="p-3">Phone</th>
+                  <th className="p-3">Team & Members</th>
+                  <th className="p-3">Contact</th>
                   <th className="p-3">College / Roll No</th>
                   <th className="p-3">Year</th>
                   <th className="p-3">Registered At</th>
@@ -951,10 +954,26 @@ function ResponsesModal({ event, onClose }: { event: any; onClose: () => void })
                   <tr key={r.id} className="hover:bg-white/5 transition">
                     <td className="p-3 font-mono text-[11px] text-cyan-400">{r.registrationCode || r.id}</td>
                     <td className="p-3">
-                      <div className="font-semibold text-white">{r.name}</div>
-                      <div className="text-[11px] text-slate-400">{r.email}</div>
+                      {r.team_name && (
+                        <span className="inline-block rounded bg-cyan-400/10 border border-cyan-400/20 px-2 py-0.5 text-[10px] font-mono text-cyan-300 font-bold mb-1">
+                          {r.team_name}
+                        </span>
+                      )}
+                      <div className="font-semibold text-white">
+                        <span className="text-slate-400 font-normal text-[11px]">M1: </span>
+                        {r.member1 || r.name}
+                      </div>
+                      {r.member2 && (
+                        <div className="text-[11px] text-purple-300">
+                          <span className="text-slate-400 font-normal">M2: </span>
+                          {r.member2}
+                        </div>
+                      )}
                     </td>
-                    <td className="p-3 font-mono text-slate-300">{r.phone || "—"}</td>
+                    <td className="p-3">
+                      <div className="text-slate-300 font-mono text-[11px]">{r.email}</div>
+                      <div className="text-[10px] text-slate-400 font-mono">{r.phone || "—"}</div>
+                    </td>
                     <td className="p-3">
                       <div className="text-white">{r.college || "—"}</div>
                       <div className="text-[10px] text-slate-400 font-mono">{r.roll_number || ""}</div>

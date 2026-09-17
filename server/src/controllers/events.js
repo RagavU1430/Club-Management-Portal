@@ -194,8 +194,25 @@ export async function registerForEvent(req, res) {
   const event = db.prepare("SELECT * FROM events WHERE id = ?").get(eventId);
   if (!event) throw new ApiError(404, "Event not found.");
 
-  const { name, email, phone = "", college = "", rollNumber = "", year = "", notes = "" } = req.body || {};
-  if (!name || !name.trim()) throw new ApiError(400, "Full Name is required.");
+  const {
+    teamName = "",
+    member1 = "",
+    member2 = "",
+    name = "",
+    email,
+    phone = "",
+    college = "",
+    rollNumber = "",
+    year = "",
+    notes = ""
+  } = req.body || {};
+
+  const leadName = (member1 || name || "").trim();
+  const m1 = leadName;
+  const m2 = (member2 || "").trim();
+  const tName = (teamName || "").trim();
+
+  if (!leadName) throw new ApiError(400, "Member 1 (or Full Name) is required.");
   if (!email || !email.trim() || !email.includes("@")) throw new ApiError(400, "Valid Email address is required.");
 
   // Check if already registered
@@ -210,9 +227,9 @@ export async function registerForEvent(req, res) {
 
   // Insert registration response
   const result = db.prepare(`
-    INSERT INTO event_registrations (event_id, name, email, phone, college, roll_number, year, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(eventId, name.trim(), email.trim().toLowerCase(), phone.trim(), college.trim(), rollNumber.trim(), year.trim(), notes.trim());
+    INSERT INTO event_registrations (event_id, team_name, member1, member2, name, email, phone, college, roll_number, year, notes)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(eventId, tName, m1, m2, leadName, email.trim().toLowerCase(), phone.trim(), college.trim(), rollNumber.trim(), year.trim(), notes.trim());
 
   const regId = result.lastInsertRowid;
   const registrationCode = `AIF-${eventId}-${regId}`;
@@ -221,7 +238,10 @@ export async function registerForEvent(req, res) {
   recordRegistration(event, {
     id: regId,
     registrationCode,
-    name: name.trim(),
+    teamName: tName,
+    member1: m1,
+    member2: m2,
+    name: leadName,
     email: email.trim().toLowerCase(),
     phone: phone.trim(),
     college: college.trim(),
@@ -237,7 +257,10 @@ export async function registerForEvent(req, res) {
     data: {
       id: regId,
       registrationId: registrationCode,
-      name: name.trim(),
+      teamName: tName,
+      member1: m1,
+      member2: m2,
+      name: leadName,
       email: email.trim().toLowerCase(),
       eventTitle: event.title,
       eventDate: event.date,
@@ -284,7 +307,9 @@ export async function exportEventRegistrationsExcel(req, res) {
 
     return {
       "Registration ID": `AIF-${eventId}-${r.id}`,
-      "Full Name": r.name || "",
+      "Team Name": r.team_name || "",
+      "Member 1 (Lead)": r.member1 || r.name || "",
+      "Member 2": r.member2 || "",
       "Email Address": r.email || "",
       "Phone / WhatsApp": r.phone ? String(r.phone).trim() : "",
       "Institution / College": r.college || "",
@@ -300,7 +325,9 @@ export async function exportEventRegistrationsExcel(req, res) {
   // Set professional auto-fit column widths
   worksheet["!cols"] = [
     { wch: 18 }, // Registration ID
-    { wch: 24 }, // Full Name
+    { wch: 22 }, // Team Name
+    { wch: 24 }, // Member 1
+    { wch: 24 }, // Member 2
     { wch: 30 }, // Email Address
     { wch: 20 }, // Phone
     { wch: 28 }, // College
@@ -333,7 +360,9 @@ export async function exportEventRegistrationsCSV(req, res) {
 
   const header = [
     "Registration ID",
-    "Full Name",
+    "Team Name",
+    "Member 1 (Lead)",
+    "Member 2",
     "Email Address",
     "Phone / WhatsApp",
     "Institution / College",
@@ -356,7 +385,9 @@ export async function exportEventRegistrationsCSV(req, res) {
 
     return [
       `AIF-${eventId}-${r.id}`,
-      r.name,
+      r.team_name || "",
+      r.member1 || r.name || "",
+      r.member2 || "",
       r.email,
       r.phone || "",
       r.college || "",
