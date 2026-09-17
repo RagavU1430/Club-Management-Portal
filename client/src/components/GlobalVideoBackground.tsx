@@ -7,13 +7,11 @@ const FRAME_PATH = (i: number) =>
 
 /**
  * Global Scroll-Driven Video Playback Component.
- * As you scroll down the page, the video smoothly scrubs from frame 0 to frame 180,
- * revealing the full video animation across all public pages (Home, Events, Team, About).
- * Completely disabled on /admin.
+ * Smoothly scrubs through frames across all pages (Home, Events, Team, About, etc.)
+ * as the user scrolls down each page.
  */
 export default function GlobalVideoBackground() {
   const { pathname } = useLocation();
-  const isHome = pathname === "/";
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imagesRef = useRef<(HTMLImageElement | null)[]>([]);
@@ -63,8 +61,6 @@ export default function GlobalVideoBackground() {
 
   // Preload all 180 frames aggressively
   useEffect(() => {
-    if (!isHome) return;
-
     imagesRef.current = new Array(TOTAL_FRAMES).fill(null);
 
     const loadSingle = (index: number): Promise<void> => {
@@ -94,12 +90,10 @@ export default function GlobalVideoBackground() {
         loadSingle(idx);
       });
     });
-  }, [renderFrame, isHome]);
+  }, [renderFrame]);
 
   // Window resize handler
   useEffect(() => {
-    if (!isHome) return;
-
     const handleResize = () => {
       if (canvasRef.current) {
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -112,15 +106,13 @@ export default function GlobalVideoBackground() {
     handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [renderFrame, isHome]);
+  }, [renderFrame]);
 
   // Scroll mapping: maps full page scroll depth to video frames (0 to 179)
   useEffect(() => {
-    if (!isHome) return;
-
     const handleScroll = () => {
       const scrollableHeight = document.documentElement.scrollHeight - window.innerHeight;
-      const maxScroll = Math.max(window.innerHeight * 0.5, scrollableHeight * 0.95);
+      const maxScroll = Math.max(window.innerHeight * 0.4, scrollableHeight * 0.9);
       const currentScroll = window.scrollY;
       const progress = Math.max(0, Math.min(1, currentScroll / maxScroll));
 
@@ -132,14 +124,18 @@ export default function GlobalVideoBackground() {
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
+    // Trigger on route change
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [pathname, isHome]);
+  }, [pathname]);
+
+  // Reset scroll & target frame smoothly when changing pages
+  useEffect(() => {
+    targetFrameRef.current = 0;
+  }, [pathname]);
 
   // Butter-smooth 60-120 FPS lerp interpolation loop
   useEffect(() => {
-    if (!isHome) return;
-
     let active = true;
     let lastRenderedFrame = -1;
 
@@ -165,21 +161,19 @@ export default function GlobalVideoBackground() {
       active = false;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [renderFrame, isHome]);
-
-  if (!isHome) return null;
+  }, [renderFrame]);
 
   return (
     <div className="fixed inset-0 w-full h-full z-0 pointer-events-none overflow-hidden bg-[#050811]">
       <canvas
         ref={canvasRef}
-        className="h-full w-full object-cover"
+        className="h-full w-full object-cover opacity-80"
         style={{ width: "100%", height: "100%" }}
       />
 
-      {/* Cyberpunk ambient lighting overlays for readable text & contrast */}
-      <div className="absolute inset-0 bg-gradient-to-t from-[#050811] via-transparent to-transparent opacity-65 pointer-events-none" />
-      <div className="absolute inset-0 bg-radial from-transparent via-transparent to-[#050811]/40 pointer-events-none" />
+      {/* Cyberpunk ambient lighting overlays for readability & high contrast across all pages */}
+      <div className="absolute inset-0 bg-gradient-to-t from-[#050811] via-[#050811]/40 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-radial from-transparent via-[#050811]/30 to-[#050811]/70 pointer-events-none" />
     </div>
   );
 }
