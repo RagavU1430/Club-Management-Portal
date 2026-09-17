@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Search, Mail, Sparkles, User, Shield, Phone, ExternalLink, Copy, Check, ArrowRight } from "lucide-react";
-import { GithubIcon, LinkedinIcon } from "../components/SocialIcons";
+import { GithubIcon, LinkedinIcon, WhatsappIcon } from "../components/SocialIcons";
 import { apiFetch } from "../utils/api";
 
 interface TeamMember {
@@ -14,6 +14,16 @@ interface TeamMember {
   phone?: string;
   github?: string;
   linkedin?: string;
+}
+
+function getWhatsAppUrl(phone?: string, name?: string) {
+  if (!phone) return null;
+  const digits = phone.replace(/[^0-9]/g, "");
+  if (!digits) return null;
+  // If 10 digits (standard Indian number without country code), prepend 91
+  const fullPhone = digits.length === 10 ? `91${digits}` : digits;
+  const msg = encodeURIComponent(`Hi ${name || "Coordinator"}, I would like to connect regarding the AI Frontier Club.`);
+  return `https://wa.me/${fullPhone}?text=${msg}`;
 }
 
 export default function Team() {
@@ -137,6 +147,9 @@ function TeamCard({ member }: { member: TeamMember }) {
       setTimeout(() => setCopied(false), 2000);
     }
   }
+
+  const whatsappUrl = getWhatsAppUrl(member.phone, member.name);
+  const connectHref = whatsappUrl || (member.email ? `mailto:${member.email}` : undefined);
 
   return (
     <div
@@ -288,16 +301,32 @@ function TeamCard({ member }: { member: TeamMember }) {
                 )}
               </div>
 
-              {/* Phone Card */}
+              {/* Phone / WhatsApp Card */}
               <div className="rounded-xl bg-white/5 p-2.5 border border-white/10 hover:border-cyan-400/40 transition-colors duration-300">
-                <div className="text-[10px] font-mono text-slate-400 mb-1 flex items-center gap-1 text-cyan-300 font-semibold">
-                  <Phone className="h-3 w-3" /> PHONE / WHATSAPP
+                <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mb-1">
+                  <span className="flex items-center gap-1 text-cyan-300 font-semibold">
+                    <Phone className="h-3 w-3" /> PHONE / WHATSAPP
+                  </span>
+                  {whatsappUrl && (
+                    <a
+                      href={whatsappUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-1 text-[10px] font-mono text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                    >
+                      <WhatsappIcon className="h-3 w-3" />
+                      <span>WhatsApp</span>
+                    </a>
+                  )}
                 </div>
                 {member.phone ? (
                   <a
-                    href={`tel:${member.phone}`}
+                    href={whatsappUrl || `tel:${member.phone}`}
+                    target={whatsappUrl ? "_blank" : undefined}
+                    rel={whatsappUrl ? "noopener noreferrer" : undefined}
                     onClick={(e) => e.stopPropagation()}
-                    className="text-xs text-white hover:text-cyan-300 font-mono transition-colors block font-medium"
+                    className="text-xs text-white hover:text-emerald-300 font-mono transition-colors block font-medium"
                   >
                     {member.phone}
                   </a>
@@ -315,7 +344,7 @@ function TeamCard({ member }: { member: TeamMember }) {
                       target="_blank"
                       rel="noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-400/40 text-xs font-mono text-slate-300 hover:text-cyan-300 transition-all duration-300 shadow-sm"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-400/40 text-xs font-mono text-slate-300 hover:text-cyan-300 transition-all duration-300 shadow-sm cursor-pointer"
                       title="LinkedIn"
                     >
                       <LinkedinIcon className="h-3.5 w-3.5" />
@@ -329,7 +358,7 @@ function TeamCard({ member }: { member: TeamMember }) {
                       target="_blank"
                       rel="noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-400/40 text-xs font-mono text-slate-300 hover:text-white transition-all duration-300 shadow-sm"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-400/40 text-xs font-mono text-slate-300 hover:text-white transition-all duration-300 shadow-sm cursor-pointer"
                       title="GitHub"
                     >
                       <GithubIcon className="h-3.5 w-3.5" />
@@ -338,12 +367,16 @@ function TeamCard({ member }: { member: TeamMember }) {
                   )}
                 </div>
 
-                {member.email ? (
+                {connectHref ? (
                   <a
-                    href={`mailto:${member.email}`}
+                    href={connectHref}
+                    target={whatsappUrl ? "_blank" : undefined}
+                    rel={whatsappUrl ? "noopener noreferrer" : undefined}
                     onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-mono font-bold shadow-md hover:shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer"
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 text-black text-xs font-mono font-bold shadow-md hover:shadow-cyan-500/20 hover:scale-105 transition-all duration-300 cursor-pointer"
+                    title={whatsappUrl ? `Message ${member.name} on WhatsApp` : `Email ${member.name}`}
                   >
+                    {whatsappUrl ? <WhatsappIcon className="h-3.5 w-3.5 fill-black" /> : null}
                     <span>Connect</span>
                     <ExternalLink className="h-3 w-3" />
                   </a>
