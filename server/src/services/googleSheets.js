@@ -141,8 +141,7 @@ export async function recordRegistration(event, reg) {
     name: String(reg.member1 || reg.name || "").trim(),
     email: String(reg.email || "").trim().toLowerCase(),
     member2Email: String(reg.member2_phone || reg.member2Phone || reg.member2Email || "").trim().toLowerCase(),
-    college: String(reg.college || "").trim(),
-    rollNumber: String(reg.rollNumber || reg.roll_number || "").trim(),
+    department: String(reg.department || reg.college || "").trim(),
     year: String(reg.year || "").trim(),
     notes: String(reg.notes || "").trim(),
     timestamp: formattedDate,
@@ -226,9 +225,8 @@ function doPost(e) {
           "Lead Email",
           "Member 2",
           "Member 2 Email",
-          "College / Institution",
-          "Roll Number",
-          "Year / Department",
+          "Department",
+          "Year of Study",
           "Notes / Queries",
           "Registered At"
         ];
@@ -275,7 +273,6 @@ function doPost(e) {
         }
       }
 
-      var rollStr = data.rollNumber ? "'" + String(data.rollNumber).trim() : "";
       var regIdStr = regId ? "'" + regId : "";
 
       var row = [
@@ -285,8 +282,7 @@ function doPost(e) {
         leadEmail,
         data.member2 || "",
         member2Email,
-        data.college || "",
-        rollStr,
+        data.department || data.college || "",
         data.year || "",
         data.notes || "",
         data.timestamp || new Date().toLocaleString()
@@ -294,7 +290,7 @@ function doPost(e) {
       sheet.appendRow(row);
 
       // Auto-resize columns so contents are never cut off
-      for (var col = 1; col <= 11; col++) {
+      for (var col = 1; col <= 10; col++) {
         sheet.autoResizeColumn(col);
       }
 

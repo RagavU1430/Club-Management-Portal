@@ -1,6 +1,23 @@
 import { useState } from "react";
-import { X, Loader2, User, Mail, School, Hash, Shield, Users, MailCheck } from "lucide-react";
+import { X, Loader2, User, Mail, GraduationCap, Shield, Users, MailCheck } from "lucide-react";
 import { apiFetch } from "../utils/api";
+
+export const DEPARTMENTS = [
+  "Artificial Intelligence and Data Science",
+  "Bio-Technology",
+  "Bio-Medical Engineering",
+  "Chemical Engineering",
+  "Civil Engineering",
+  "Computer and Communication Engineering",
+  "Computer Science and Engineering",
+  "Computer Science and Business System",
+  "Artificial Intelligence and Machine Learning",
+  "Electrical and Electronics Engineering",
+  "Electronics and Communication Engineering",
+  "Information Technology",
+  "Mechanical Engineering",
+  "Science & Humanities",
+];
 
 export interface EventItem {
   id: string | number;
@@ -35,8 +52,7 @@ export default function RegistrationModal({
     member2: "",
     email: "",        // Member 1 (Lead) email — confirmation pass goes here
     member2Email: "", // Member 2 email
-    college: "",
-    rollNumber: "",
+    department: "Artificial Intelligence and Data Science",
     year: "3rd Year",
     notes: "",
   });
@@ -58,9 +74,8 @@ export default function RegistrationModal({
           member2: form.member2,
           name: form.member1,
           email: form.email,
-          member2_phone: form.member2Email, // reuse member2_phone column to store member2 email
-          college: form.college,
-          rollNumber: form.rollNumber,
+          member2_phone: form.member2Email, // store member2 email
+          department: form.department,
           year: form.year,
           notes: form.notes,
         }),
@@ -209,42 +224,32 @@ export default function RegistrationModal({
                 </div>
               </div>
 
-              {/* ── College ── */}
-              <div>
-                <label className="block text-xs font-mono text-slate-400 mb-1">
-                  COLLEGE / INSTITUTION *
-                </label>
-                <div className="relative">
-                  <School className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input
-                    required
-                    placeholder="e.g. Stanford / MIT / IIT"
-                    value={form.college}
-                    onChange={(e) => setForm({ ...form, college: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
-                  />
-                </div>
-              </div>
-
+              {/* ── Department & Year of Study ── */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-xs font-mono text-slate-400 mb-1">
-                    ROLL NO. / REG. ID
+                    DEPARTMENT *
                   </label>
                   <div className="relative">
-                    <Hash className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <input
-                      placeholder="e.g. 21CS084"
-                      value={form.rollNumber}
-                      onChange={(e) => setForm({ ...form, rollNumber: e.target.value })}
-                      className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
-                    />
+                    <GraduationCap className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-cyan-400" />
+                    <select
+                      required
+                      value={form.department}
+                      onChange={(e) => setForm({ ...form, department: e.target.value })}
+                      className="w-full rounded-xl border border-white/10 bg-[#0d1321] py-2.5 pl-10 pr-4 text-sm text-white focus:border-cyan-400 focus:outline-none"
+                    >
+                      {DEPARTMENTS.map((dept) => (
+                        <option key={dept} value={dept} className="bg-[#0d1321] text-white">
+                          {dept}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-mono text-slate-400 mb-1">
-                    YEAR OF STUDY
+                    YEAR OF STUDY *
                   </label>
                   <select
                     value={form.year}

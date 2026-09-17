@@ -78,8 +78,8 @@ export function generateEmailContent({ event, registration }) {
   const email2 = registration.member2_phone || registration.member2Email || registration.member2email || "—"; // stored in member2_phone col
   const venue = event.venue || "Campus AI Lab & Auditorium";
   const regCode = registration.registrationCode || `AIF-${event.id}-${registration.id || ""}`;
-  const college = registration.college || "Your Institution";
-  const rollNumber = registration.rollNumber || registration.roll_number || "—";
+  const department = registration.department || registration.college || "Artificial Intelligence and Data Science";
+  const year = registration.year || "3rd Year";
 
   const subject = `Registration Confirmed: ${eventTitle} - Team ${teamName} (${regCode})`;
 
@@ -94,13 +94,13 @@ export function generateEmailContent({ event, registration }) {
     `Participant 1 Email: ${email1}\n` +
     `Participant 2: ${member2}\n` +
     `${email2 && email2 !== "—" ? `Participant 2 Email: ${email2}\n` : ""}` +
-    `College / Institution: ${college}\n` +
-    `Roll Number: ${rollNumber}\n` +
+    `Department: ${department}\n` +
+    `Year of Study: ${year}\n` +
     `Event Date and Schedule: ${formattedDate}\n` +
     `Venue: ${venue}\n\n` +
     `Instructions for attendees:\n` +
     `1. Please report at least 15 minutes before the event begins.\n` +
-    `2. Bring your valid College Identity Card and charged laptops with necessary dev environments.\n` +
+    `2. Bring your valid Identity Card and charged laptops with necessary dev environments.\n` +
     `3. Present this confirmation email (or Registration ID ${regCode}) at the check-in reception desk.\n\n` +
     `We look forward to seeing your team build and innovate.\n\n` +
     `Warm regards,\n` +

@@ -198,10 +198,7 @@ export async function exportCSV(req, res) {
 // ── POST /api/events/:id/register (Public Registration Form) ──
 export async function registerForEvent(req, res) {
   const eventId = Number(req.params.id);
-  const event = db.prepare("SELECT * FROM events WHERE id = ?").get(eventId);
-  if (!event) throw new ApiError(404, "Event not found.");
-
-  const {
+  const event = db.prepare("SELECT * FROM events WHERE id = ?").get(eventId);  const {
     teamName = "",
     member1 = "",
     member2 = "",
@@ -210,6 +207,7 @@ export async function registerForEvent(req, res) {
     phone = "",
     member2Phone = "",
     member2_phone = "",
+    department = "",
     college = "",
     rollNumber = "",
     year = "",
@@ -222,6 +220,7 @@ export async function registerForEvent(req, res) {
   const tName = (teamName || "").trim();
   const p1 = String(phone || "").trim();
   const p2 = String(member2Phone || member2_phone || "").trim();
+  const dept = String(department || college || "Artificial Intelligence and Data Science").trim();
 
   if (!leadName) throw new ApiError(400, "Member 1 (or Full Name) is required.");
   if (!email || !email.trim() || !email.includes("@")) throw new ApiError(400, "Valid Email address is required.");
@@ -236,11 +235,11 @@ export async function registerForEvent(req, res) {
     });
   }
 
-  // Insert registration response with both phone numbers
+  // Insert registration response
   const result = db.prepare(`
-    INSERT INTO event_registrations (event_id, team_name, member1, member2, name, email, phone, member2_phone, college, roll_number, year, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(eventId, tName, m1, m2, leadName, email.trim().toLowerCase(), p1, p2, college.trim(), rollNumber.trim(), year.trim(), notes.trim());
+    INSERT INTO event_registrations (event_id, team_name, member1, member2, name, email, phone, member2_phone, department, college, roll_number, year, notes)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(eventId, tName, m1, m2, leadName, email.trim().toLowerCase(), p1, p2, dept, dept, rollNumber.trim(), year.trim(), notes.trim());
 
   const regId = result.lastInsertRowid;
   const registrationCode = `AIF-${eventId}-${regId}`;
@@ -255,7 +254,9 @@ export async function registerForEvent(req, res) {
     email: email.trim().toLowerCase(),
     phone: p1,
     member2_phone: p2,
-    college: college.trim(),
+    member2Email: p2,
+    department: dept,
+    college: dept,
     rollNumber: rollNumber.trim(),
     year: year.trim(),
     notes: notes.trim(),
@@ -287,6 +288,8 @@ export async function registerForEvent(req, res) {
       email: email.trim().toLowerCase(),
       phone: p1,
       member2Phone: p2,
+      department: dept,
+      year: year.trim(),
       eventTitle: event.title,
       eventDate: event.date,
       venue: event.venue,
@@ -303,7 +306,7 @@ export async function registerForEvent(req, res) {
 // ── GET /api/events/:id/registrations (Admin Responses List) ──
 export async function getEventRegistrations(req, res) {
   const eventId = Number(req.params.id);
-  const event = db.prepare("SELECT id, title, date, venue FROM events WHERE id = ?").get(eventId);
+  const event = db.prepare("SELECT id, title, date FROM events WHERE id = ?").get(eventId);
   if (!event) throw new ApiError(404, "Event not found.");
 
   const list = db.prepare("SELECT * FROM event_registrations WHERE event_id = ? ORDER BY created_at DESC").all(eventId);
@@ -343,9 +346,8 @@ export async function exportEventRegistrationsExcel(req, res) {
       "Lead Email": r.email || "",
       "Member 2": r.member2 || "",
       "Member 2 Email": r.member2_phone || r.member2Phone || "",
-      "Institution / College": r.college || "",
-      "Roll Number": r.roll_number ? String(r.roll_number).trim() : "",
-      "Year / Department": r.year || "",
+      "Department": r.department || r.college || "",
+      "Year of Study": r.year || "",
       "Notes / Requirements": r.notes || "",
       "Registered At": formattedDate
     };
@@ -361,9 +363,8 @@ export async function exportEventRegistrationsExcel(req, res) {
     { wch: 30 }, // Lead Email
     { wch: 24 }, // Member 2
     { wch: 30 }, // Member 2 Email
-    { wch: 28 }, // College
-    { wch: 18 }, // Roll Number
-    { wch: 20 }, // Year
+    { wch: 36 }, // Department
+    { wch: 22 }, // Year
     { wch: 32 }, // Notes
     { wch: 24 }, // Registered At
   ];
@@ -396,9 +397,8 @@ export async function exportEventRegistrationsCSV(req, res) {
     "Lead Email",
     "Member 2",
     "Member 2 Email",
-    "Institution / College",
-    "Roll Number",
-    "Year / Department",
+    "Department",
+    "Year of Study",
     "Notes / Requirements",
     "Registration Timestamp"
   ];
@@ -421,8 +421,7 @@ export async function exportEventRegistrationsCSV(req, res) {
       r.email || "",
       r.member2 || "",
       r.member2_phone || "",
-      r.college || "",
-      r.roll_number || "",
+      r.department || r.college || "",
       r.year || "",
       r.notes || "",
       formattedDate

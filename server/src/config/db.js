@@ -121,6 +121,7 @@ try { db.exec("ALTER TABLE event_registrations ADD COLUMN team_name TEXT DEFAULT
 try { db.exec("ALTER TABLE event_registrations ADD COLUMN member1 TEXT DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE event_registrations ADD COLUMN member2 TEXT DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE event_registrations ADD COLUMN member2_phone TEXT DEFAULT ''"); } catch {}
+try { db.exec("ALTER TABLE event_registrations ADD COLUMN department TEXT DEFAULT ''"); } catch {}
 
 // Settings table for global configs (e.g. Google Sheets webhook)
 db.exec(`
