@@ -256,12 +256,9 @@ export default function RegistrationModal({
                     onChange={(e) => setForm({ ...form, year: e.target.value })}
                     className="w-full rounded-xl border border-white/10 bg-[#0d1321] py-2.5 px-4 text-sm text-white focus:border-cyan-400 focus:outline-none"
                   >
-                    <option value="1st Year">1st Year Undergraduate</option>
-                    <option value="2nd Year">2nd Year Undergraduate</option>
-                    <option value="3rd Year">3rd Year Undergraduate</option>
-                    <option value="Final Year">Final Year Undergraduate</option>
-                    <option value="Postgraduate / PhD">Postgraduate / PhD</option>
-                    <option value="Faculty / Professional">Faculty / Industry Professional</option>
+                    <option value="1st Year">1st Year</option>
+                    <option value="2nd Year">2nd Year</option>
+                    <option value="3rd Year">3rd Year</option>
                   </select>
                 </div>
               </div>
