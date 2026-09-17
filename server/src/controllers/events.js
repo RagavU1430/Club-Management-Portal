@@ -2,6 +2,7 @@ import { db, rowToJSON } from "../config/db.js";
 import { ApiError } from "../utils/http.js";
 import { createEventSheet, recordRegistration } from "../services/googleSheets.js";
 import { sendAutomatedMobileInvitation } from "../services/messenger.js";
+import { saveEventToFirestore, deleteEventFromFirestore, saveRegistrationToFirestore } from "../services/firestoreService.js";
 import XLSX from "xlsx";
 
 function pickBody(body = {}) {
@@ -148,6 +149,8 @@ export async function create(req, res) {
   const colNames = cols.join(", ");
   const result = db.prepare(`INSERT INTO events (${colNames}) VALUES (${placeholders})`).run(...vals);
   const row = db.prepare("SELECT * FROM events WHERE id = ?").get(result.lastInsertRowid);
+  // Persist to Firebase Cloud Firestore
+  saveEventToFirestore(row, row.id).catch(err => console.warn("[Firestore] save event failed:", err.message));
   // Automatically create a new tab in the connected Google Sheet
   createEventSheet(row).catch(err => console.warn("[googleSheets] create tab failed:", err.message));
   res.status(201).json({ success: true, data: decorate(row) });
@@ -170,7 +173,9 @@ export async function update(req, res) {
   const vals = entries.map(([, v]) => v);
   vals.push(id);
   db.prepare(`UPDATE events SET ${set} WHERE id = ?`).run(...vals);
-  res.json({ success: true, data: decorate(db.prepare("SELECT * FROM events WHERE id = ?").get(id)) });
+  const updatedRow = db.prepare("SELECT * FROM events WHERE id = ?").get(id);
+  saveEventToFirestore(updatedRow, id).catch(err => console.warn("[Firestore] update event failed:", err.message));
+  res.json({ success: true, data: decorate(updatedRow) });
 }
 
 // ── DELETE /api/events/:id ──
@@ -178,6 +183,7 @@ export async function remove(req, res) {
   const id = Number(req.params.id);
   if (!db.prepare("SELECT id FROM events WHERE id = ?").get(id)) throw new ApiError(404, "That event doesn't exist.");
   db.prepare("DELETE FROM events WHERE id = ?").run(id);
+  deleteEventFromFirestore(id).catch(err => console.warn("[Firestore] delete event failed:", err.message));
   res.json({ success: true, data: { id, deleted: true } });
 }
 
@@ -255,6 +261,9 @@ export async function registerForEvent(req, res) {
     notes: notes.trim(),
     created_at: new Date().toISOString()
   };
+
+  // Automatically save registration to Firebase Cloud Firestore
+  saveRegistrationToFirestore(regRecord).catch(err => console.warn("[Firestore] record registration failed:", err.message));
 
   // Automatically record response row into connected Google Sheet
   recordRegistration(event, regRecord).catch(err => console.warn("[googleSheets] record row failed:", err.message));

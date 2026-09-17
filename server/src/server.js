@@ -10,6 +10,8 @@ import { list as teamList, roles, create as createTeam, update as updateTeam, re
 import { getGoogleSheetSettings, updateGoogleSheetSettings, syncAllSheets, syncSingleEventSheet, getMessengerSettings, updateMessengerSettings, sendTestSmsController } from "./controllers/settings.js";
 import { getClubDetails, updateClubDetails, listActivities, createActivity, updateActivity, deleteActivity } from "./controllers/club.js";
 import { upload } from "./middleware/upload.js";
+import { initFirebase, isFirebaseReady } from "./config/firebase.js";
+import { syncAllToFirestore } from "./services/firestoreService.js";
 
 dotenv.config();
 
@@ -31,8 +33,10 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(process.env.UPLOAD_DIR || "uploads"));
 
-// ── seed ──
+// ── database & firebase init ──
 seed();
+initFirebase();
+syncAllToFirestore().catch(err => console.warn("[Firebase] Initial sync error:", err.message));
 
 // ── routes ──
 // Auth (public with rate limiting)
@@ -66,6 +70,18 @@ app.post("/api/events/:id/sync-sheet", requireAuth, syncSingleEventSheet);
 app.get("/api/settings/messenger", requireAuth, getMessengerSettings);
 app.post("/api/settings/messenger", requireAuth, updateMessengerSettings);
 app.post("/api/settings/messenger/test", requireAuth, sendTestSmsController);
+
+// Firebase Cloud Firestore Status
+app.get("/api/settings/firebase", requireAuth, (_req, res) => {
+  res.json({
+    success: true,
+    data: {
+      isConfigured: isFirebaseReady(),
+      provider: "Cloud Firestore (Firebase Admin SDK)",
+      projectId: process.env.FIREBASE_PROJECT_ID || "aifrontier-firebase",
+    },
+  });
+});
 
 app.get("/api/team", teamList);
 app.get("/api/team/roles", roles);
