@@ -5,9 +5,9 @@ import rateLimit from "express-rate-limit";
 import { db, seed } from "./config/db.js";
 import { errorHandler, notFound } from "./middleware/error.js";
 import { login, me, changePassword, logout, requireAuth } from "./controllers/auth.js";
-import { list as eventsList, stats, getOne, create, update, remove, exportCSV, registerForEvent, getEventRegistrations, exportEventRegistrationsCSV, exportEventRegistrationsExcel, deleteEventRegistration } from "./controllers/events.js";
+import { list as eventsList, stats, getOne, create, update, remove, exportCSV, registerForEvent, getEventRegistrations, exportEventRegistrationsCSV, exportEventRegistrationsExcel, deleteEventRegistration, lookupTicket } from "./controllers/events.js";
 import { list as teamList, roles, create as createTeam, update as updateTeam, remove as removeTeam, clearAll as clearAllTeam } from "./controllers/team.js";
-import { getGoogleSheetSettings, updateGoogleSheetSettings, syncAllSheets, syncSingleEventSheet, getMessengerSettings, updateMessengerSettings, sendTestSmsController, getEmailSettings, updateEmailSettings, sendTestEmailController } from "./controllers/settings.js";
+import { getGoogleSheetSettings, updateGoogleSheetSettings, syncAllSheets, syncSingleEventSheet, getEmailSettings, updateEmailSettings, sendTestEmailController } from "./controllers/settings.js";
 import { getClubDetails, updateClubDetails, listActivities, createActivity, updateActivity, deleteActivity } from "./controllers/club.js";
 import { upload } from "./middleware/upload.js";
 import { initFirebase, isFirebaseReady } from "./config/firebase.js";
@@ -24,11 +24,36 @@ const authLimiter = rateLimit({
   max: 10, // 10 attempts per IP
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, error: "Too many attempts. Please try again after 15 minutes." },
+  message: { success: false, error: "Too many login attempts. Please try again after 15 minutes." },
+});
+
+// Rate limiting for public registration & ticket lookup to protect Gmail SMTP quotas
+const registrationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // 20 submissions per IP per 15 mins
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: "Too many registration requests. Please wait a few minutes before trying again." },
 });
 
 // ── middleware ──
-app.use(cors({ origin: process.env.CLIENT_URL || "http://localhost:5173", credentials: true }));
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  process.env.CLIENT_URL,
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.some(o => origin === o || origin.endsWith(o.replace(/^https?:\/\//, "")))) {
+      return callback(null, true);
+    }
+    return callback(null, true); // Permissive CORS for public endpoints while allowing credentials
+  },
+  credentials: true,
+}));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(process.env.UPLOAD_DIR || "uploads"));
@@ -54,7 +79,8 @@ app.put("/api/events/:id", requireAuth, update);
 app.delete("/api/events/:id", requireAuth, remove);
 
 // Event Registrations & Excel/CSV Response Recording
-app.post("/api/events/:id/register", registerForEvent);
+app.post("/api/events/lookup-ticket", registrationLimiter, lookupTicket);
+app.post("/api/events/:id/register", registrationLimiter, registerForEvent);
 app.get("/api/events/:id/registrations", requireAuth, getEventRegistrations);
 app.get("/api/events/:id/registrations/export.csv", requireAuth, exportEventRegistrationsCSV);
 app.get("/api/events/:id/registrations/export.xlsx", requireAuth, exportEventRegistrationsExcel);
@@ -65,11 +91,6 @@ app.get("/api/settings/google-sheets", requireAuth, getGoogleSheetSettings);
 app.post("/api/settings/google-sheets", requireAuth, updateGoogleSheetSettings);
 app.post("/api/settings/google-sheets/sync", requireAuth, syncAllSheets);
 app.post("/api/events/:id/sync-sheet", requireAuth, syncSingleEventSheet);
-
-// SMS & WhatsApp Gateway Configuration & Real SMS Testing
-app.get("/api/settings/messenger", requireAuth, getMessengerSettings);
-app.post("/api/settings/messenger", requireAuth, updateMessengerSettings);
-app.post("/api/settings/messenger/test", requireAuth, sendTestSmsController);
 
 // Gmail & Email Notification Configuration
 app.get("/api/settings/email", requireAuth, getEmailSettings);

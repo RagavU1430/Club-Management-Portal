@@ -198,7 +198,27 @@ export async function exportCSV(req, res) {
 // ── POST /api/events/:id/register (Public Registration Form) ──
 export async function registerForEvent(req, res) {
   const eventId = Number(req.params.id);
-  const event = db.prepare("SELECT * FROM events WHERE id = ?").get(eventId);  const {
+  const event = db.prepare("SELECT * FROM events WHERE id = ?").get(eventId);
+  if (!event) throw new ApiError(404, "Event not found.");
+
+  // 1. Check Event Deadline (Past event check)
+  if (event.date) {
+    const eventTime = new Date(event.date).getTime();
+    // Allow up to 1 day after event date before hard close
+    if (!isNaN(eventTime) && eventTime < Date.now() - 86400000) {
+      throw new ApiError(400, "Registrations for this event have closed because the event has already concluded.");
+    }
+  }
+
+  // 2. Check Event Capacity Limits
+  if (event.capacity && Number(event.capacity) > 0) {
+    const currentCount = db.prepare("SELECT COUNT(*) as count FROM event_registrations WHERE event_id = ?").get(eventId)?.count || 0;
+    if (currentCount >= Number(event.capacity)) {
+      throw new ApiError(400, `Registration is closed. Maximum capacity (${event.capacity} seats) has been reached.`);
+    }
+  }
+
+  const {
     teamName = "",
     member1 = "",
     member2 = "",
@@ -223,9 +243,11 @@ export async function registerForEvent(req, res) {
   const dept = String(department || college || "Artificial Intelligence and Data Science").trim();
 
   if (!leadName) throw new ApiError(400, "Member 1 (or Full Name) is required.");
-  if (!email || !email.trim() || !email.includes("@")) throw new ApiError(400, "Valid Email address is required.");
+  if (!email || !email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    throw new ApiError(400, "A valid email address is required (e.g. user@domain.edu).");
+  }
 
-  // Check if already registered
+  // 3. Check for Duplicate Registration
   const existing = db.prepare("SELECT id FROM event_registrations WHERE event_id = ? AND LOWER(email) = ?").get(eventId, email.trim().toLowerCase());
   if (existing) {
     return res.json({
@@ -235,7 +257,7 @@ export async function registerForEvent(req, res) {
     });
   }
 
-  // Insert registration response
+  // 4. Insert registration response
   const result = db.prepare(`
     INSERT INTO event_registrations (event_id, team_name, member1, member2, name, email, phone, member2_phone, department, college, roll_number, year, notes)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -263,16 +285,11 @@ export async function registerForEvent(req, res) {
     created_at: new Date().toISOString()
   };
 
-  // Automatically save registration to Firebase Cloud Firestore
-  saveRegistrationToFirestore(regRecord).catch(err => console.warn("[Firestore] record registration failed:", err.message));
+  // 5. Asynchronous Integrations (Never block user response if external cloud is slow)
+  saveRegistrationToFirestore(regRecord).catch(err => console.warn("[Firestore] async sync error:", err.message));
+  recordRegistration(event, regRecord).catch(err => console.warn("[googleSheets] async sync error:", err.message));
 
-  // Wait for the connected Google Sheet to record the registration before responding.
-  const sheetResult = await recordRegistration(event, regRecord);
-  if (!sheetResult?.success) {
-    console.warn("[googleSheets] record row failed:", sheetResult?.error || sheetResult?.reason || "Unknown sheet sync error");
-  }
-
-  // Automatically dispatch official registration confirmation email via Gmail
+  // 6. Automatically dispatch official registration confirmation email via Gmail
   const emailResult = await sendRegistrationEmail({ event, registration: regRecord });
 
   res.status(201).json({
@@ -294,12 +311,68 @@ export async function registerForEvent(req, res) {
       eventDate: event.date,
       venue: event.venue,
       emailResult,
-      sheetResult,
       emailSent: emailResult.sent,
       emailSubject: emailResult.subject,
       emailText: emailResult.previewText,
       gmailUrl: `https://mail.google.com/mail/u/0/#search/${encodeURIComponent(event.title)}`,
     }
+  });
+}
+
+// ── POST /api/events/lookup-ticket (Public Self-Service Ticket Lookup) ──
+export async function lookupTicket(req, res) {
+  const { email, eventId } = req.body || {};
+  if (!email || !email.trim() || !email.includes("@")) {
+    throw new ApiError(400, "Valid email address is required to look up registration passes.");
+  }
+  const cleanEmail = email.trim().toLowerCase();
+
+  let sql = `
+    SELECT r.*, e.title as event_title, e.date as event_date, e.venue as event_venue
+    FROM event_registrations r
+    JOIN events e ON r.event_id = e.id
+    WHERE LOWER(r.email) = ? OR LOWER(r.member2_phone) = ?
+  `;
+  const params = [cleanEmail, cleanEmail];
+
+  if (eventId) {
+    sql += " AND r.event_id = ?";
+    params.push(Number(eventId));
+  }
+  sql += " ORDER BY r.created_at DESC";
+
+  const matches = db.prepare(sql).all(...params);
+  if (!matches || matches.length === 0) {
+    return res.json({
+      success: true,
+      found: false,
+      message: `No registration passes found matching email "${cleanEmail}".`,
+      data: []
+    });
+  }
+
+  const tickets = matches.map(r => ({
+    id: r.id,
+    registrationId: `AIF-${r.event_id}-${r.id}`,
+    teamName: r.team_name,
+    member1: r.member1 || r.name,
+    member2: r.member2,
+    email: r.email,
+    member2Email: r.member2_phone,
+    department: r.department || r.college,
+    year: r.year,
+    eventTitle: r.event_title,
+    eventDate: r.event_date,
+    venue: r.event_venue,
+    registeredAt: r.created_at,
+  }));
+
+  res.json({
+    success: true,
+    found: true,
+    count: tickets.length,
+    message: `Found ${tickets.length} registration ticket(s)!`,
+    data: tickets,
   });
 }
 
