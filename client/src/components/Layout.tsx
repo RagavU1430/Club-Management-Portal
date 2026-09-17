@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import GlobalVideoBackground from "./GlobalVideoBackground";
@@ -8,6 +9,8 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
+  const { pathname } = useLocation();
+
   return (
     <div className="relative min-h-screen flex flex-col bg-[#050811] text-slate-100 selection:bg-cyan-400 selection:text-black overflow-x-hidden">
       {/* Ambient Cyber Grid Background (Permanent across site) */}
@@ -18,7 +21,7 @@ export default function Layout({ children }: LayoutProps) {
       <div className="pointer-events-none fixed bottom-1/4 -left-20 h-[450px] w-[450px] rounded-full bg-purple-600/10 blur-[130px] z-0" />
 
       {/* Hero Video Canvas (Strictly active on home page) */}
-      <GlobalVideoBackground />
+      {pathname === "/" && <GlobalVideoBackground />}
 
       {/* Global Navbar */}
       <Navbar />

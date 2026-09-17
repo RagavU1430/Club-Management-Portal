@@ -21,9 +21,6 @@ export default function GlobalVideoBackground() {
   const targetFrameRef = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
 
-  // If not on home page, do not render canvas
-  if (!isHome) return null;
-
   // Render a specific frame onto the full-screen canvas
   const renderFrame = useCallback((frameIndex: number) => {
     const canvas = canvasRef.current;
