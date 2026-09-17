@@ -130,12 +130,9 @@ export default function RegistrationModal({
 
               {/* ── Member 1 (Lead) Details ── */}
               <div className="p-4 rounded-2xl bg-cyan-950/20 border border-cyan-500/20 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
-                    <span className="text-xs font-mono font-bold text-cyan-300">PARTICIPANT 1 (TEAM LEAD)</span>
-                  </div>
-                  <span className="text-[10px] font-mono text-slate-400">Gets Invitation SMS/WhatsApp</span>
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
+                  <span className="text-xs font-mono font-bold text-cyan-300">PARTICIPANT 1 (TEAM LEAD)</span>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
@@ -174,12 +171,9 @@ export default function RegistrationModal({
 
               {/* ── Member 2 Details ── */}
               <div className="p-4 rounded-2xl bg-purple-950/20 border border-purple-500/20 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-purple-400 animate-pulse" />
-                    <span className="text-xs font-mono font-bold text-purple-300">PARTICIPANT 2</span>
-                  </div>
-                  <span className="text-[10px] font-mono text-slate-400">Gets Invitation SMS/WhatsApp</span>
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-purple-400 animate-pulse" />
+                  <span className="text-xs font-mono font-bold text-purple-300">PARTICIPANT 2</span>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
