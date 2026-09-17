@@ -211,35 +211,51 @@ function doPost(e) {
 
     var sheet = ss.getSheetByName(sheetName);
 
+    var headers = [
+      "Registration ID",
+      "Team Name",
+      "Member 1 (Lead)",
+      "Lead Email",
+      "Member 2",
+      "Member 2 Email",
+      "Department",
+      "Year of Study",
+      "Notes / Queries",
+      "Registered At"
+    ];
+
+    function ensureHeaders(targetSheet) {
+      var lastCol = targetSheet.getLastColumn();
+      var needHeaders = false;
+      if (lastCol < headers.length) {
+        needHeaders = true;
+      } else {
+        var firstRow = targetSheet.getRange(1, 1, 1, headers.length).getValues()[0];
+        if (firstRow[1] !== "Team Name" || firstRow[4] !== "Member 2") {
+          needHeaders = true;
+        }
+      }
+
+      if (needHeaders) {
+        targetSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+        var headerRange = targetSheet.getRange(1, 1, 1, headers.length);
+        headerRange.setFontWeight("bold");
+        headerRange.setBackground("#0f172a");
+        headerRange.setFontColor("#38bdf8");
+        targetSheet.setFrozenRows(1);
+        for (var i = 1; i <= headers.length; i++) {
+          targetSheet.autoResizeColumn(i);
+        }
+      }
+    }
+
     // 1. CREATE EVENT SHEET (if doesn't exist or requested)
     if (data.action === "create_event_sheet" || !sheet) {
       if (!sheet) {
         sheet = ss.insertSheet(sheetName);
       }
-      // If sheet has no headers, set them up with cyber styling
-      if (sheet.getLastRow() === 0) {
-        var headers = [
-          "Registration ID",
-          "Team Name",
-          "Member 1 (Lead)",
-          "Lead Email",
-          "Member 2",
-          "Member 2 Email",
-          "Department",
-          "Year of Study",
-          "Notes / Queries",
-          "Registered At"
-        ];
-        sheet.appendRow(headers);
-        var headerRange = sheet.getRange(1, 1, 1, headers.length);
-        headerRange.setFontWeight("bold");
-        headerRange.setBackground("#0f172a");
-        headerRange.setFontColor("#38bdf8");
-        sheet.setFrozenRows(1);
-        for (var i = 1; i <= headers.length; i++) {
-          sheet.autoResizeColumn(i);
-        }
-      }
+      ensureHeaders(sheet);
+
       if (data.action === "create_event_sheet") {
         return ContentService.createTextOutput(JSON.stringify({
           success: true,
@@ -249,16 +265,22 @@ function doPost(e) {
       }
     }
 
+    // Always ensure current sheet has the new 10-column header layout
+    ensureHeaders(sheet);
+
     // 2. ADD PARTICIPANT REGISTRATION ROW
-    if (data.action === "add_registration" || data.name || data.email) {
+    if (data.action === "add_registration" || data.name || data.email || data.member1) {
       var regId = String(data.registrationId || "").trim();
       var leadEmail = String(data.email || "").trim().toLowerCase();
       var member2Email = String(data.member2Email || data.member2_phone || data.member2Phone || "").trim().toLowerCase();
+      var teamName = String(data.teamName || data.team_name || "").trim();
+      var member1 = String(data.member1 || data.name || "").trim();
+      var member2 = String(data.member2 || "").trim();
 
       // Duplicate protection: check if registration ID or email already exists in sheet
       var lastRow = sheet.getLastRow();
       if (lastRow > 1 && (regId || leadEmail)) {
-        var values = sheet.getRange(2, 1, lastRow - 1, 6).getValues();
+        var values = sheet.getRange(2, 1, lastRow - 1, Math.min(sheet.getLastColumn(), 6)).getValues();
         for (var r = 0; r < values.length; r++) {
           var existingRegId = String(values[r][0] || "").trim();
           var existingEmail = String(values[r][3] || "").trim().toLowerCase();
@@ -277,20 +299,20 @@ function doPost(e) {
 
       var row = [
         regIdStr,
-        data.teamName || "",
-        data.member1 || data.name || "",
+        teamName || (member1 ? member1 + "'s Team" : "Team"),
+        member1,
         leadEmail,
-        data.member2 || "",
-        member2Email,
-        data.department || data.college || "",
-        data.year || "",
-        data.notes || "",
+        member2 || "-",
+        member2Email || "-",
+        String(data.department || data.college || "").trim(),
+        String(data.year || "").trim(),
+        String(data.notes || "").trim(),
         data.timestamp || new Date().toLocaleString()
       ];
       sheet.appendRow(row);
 
       // Auto-resize columns so contents are never cut off
-      for (var col = 1; col <= 10; col++) {
+      for (var col = 1; col <= headers.length; col++) {
         sheet.autoResizeColumn(col);
       }
 
@@ -298,7 +320,9 @@ function doPost(e) {
         success: true,
         message: "Registration recorded in " + sheetName,
         sheetName: sheetName,
-        email: leadEmail
+        email: leadEmail,
+        member1: member1,
+        member2: member2
       })).setMimeType(ContentService.MimeType.JSON);
     }
 

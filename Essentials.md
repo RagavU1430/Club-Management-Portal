@@ -94,6 +94,22 @@ EMAIL_SENDER_NAME=AI Frontier Club
 
 ---
 
+### 4. Google Sheets Live Sync Setup (Team & Member 2 Fix)
+
+To have registrations automatically sync both **Member 1 (Lead)** and **Member 2** into your Google Sheet:
+
+1. Open your Google Sheet in your browser.
+2. In the top navigation menu, click **Extensions** ➔ **Apps Script**.
+3. Clear out any old script and paste the updated code from the admin console (**Admin Console ➔ Settings ➔ Google Sheets ➔ Copy Apps Script**).
+4. Click **Deploy** ➔ **Manage deployments** (or **New deployment**).
+5. Click the **Pencil (Edit)** icon, choose **New version**, and verify **"Who has access" is set to "Anyone"**.
+6. Click **Deploy**.
+7. In your Google Sheet, the script will automatically maintain the 10-column layout:
+   - `Registration ID` | `Team Name` | `Member 1 (Lead)` | `Lead Email` | `Member 2` | `Member 2 Email` | `Department` | `Year of Study` | `Notes / Queries` | `Registered At`
+8. If your sheet still has old 9-column headers from previous testing, delete the existing header row or let the updated script automatically adjust the columns upon the next registration!
+
+---
+
 ## 🚀 Part 3: Actionable Roadmap & Priority Fixes
 
 ```mermaid
