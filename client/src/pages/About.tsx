@@ -12,6 +12,7 @@ import {
   Camera,
   Calendar,
 } from "lucide-react";
+import { apiFetch } from "../utils/api";
 
 const ACHIEVEMENTS = [
   { icon: Trophy, label: "12 National Wins", desc: "Championship awards at national collegiate AI & engineering hackathons", color: "text-amber-400" },
@@ -82,14 +83,14 @@ export default function About() {
   const [clubDetails, setClubDetails] = useState<any>(null);
 
   useEffect(() => {
-    fetch("/api/activities")
+    apiFetch("/api/activities")
       .then((r) => r.json())
       .then((d) => {
         if (d.success && Array.isArray(d.data)) setActivities(d.data);
       })
       .catch(() => {});
 
-    fetch("/api/club-details")
+    apiFetch("/api/club-details")
       .then((r) => r.json())
       .then((d) => {
         if (d.success && d.data) setClubDetails(d.data);

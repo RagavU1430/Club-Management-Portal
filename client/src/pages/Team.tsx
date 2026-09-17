@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Search, Mail, Sparkles, User, Shield, Phone, ExternalLink, Copy, Check, ArrowRight } from "lucide-react";
 import { GithubIcon, LinkedinIcon } from "../components/SocialIcons";
+import { apiFetch } from "../utils/api";
 
 interface TeamMember {
   id: string | number;
@@ -21,7 +22,7 @@ export default function Team() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/team")
+    apiFetch("/api/team")
       .then((r) => r.json())
       .then((d) => {
         if (d.success && Array.isArray(d.data)) {

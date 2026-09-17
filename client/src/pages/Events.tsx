@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Calendar, MapPin, Search, ArrowRight, Sparkles, X, Loader2, CheckCircle2, User, Mail, Phone, School, Hash } from "lucide-react";
+import { apiFetch } from "../utils/api";
 
 interface EventItem {
   id: string | number;
@@ -25,7 +26,7 @@ export default function Events() {
 
   useEffect(() => {
     const params = new URLSearchParams({ scope, ...(q && { q }) });
-    fetch(`/api/events?${params}`)
+    apiFetch(`/api/events?${params}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.success && Array.isArray(d.data)) {
@@ -267,7 +268,7 @@ function RegistrationModal({
     setError("");
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/events/${event.id}/register`, {
+      const res = await apiFetch(`/api/events/${event.id}/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),

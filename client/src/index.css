@@ -1,38 +1,37 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
-
-:root {
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+@theme {
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-display: "Space Grotesk", system-ui, sans-serif;
   --color-accent: #00f0ff;
   --color-accent-hover: #38bdf8;
   --color-purple: #9333ea;
   --color-purple-light: #c084fc;
+  --color-cyber-bg: #050811;
+  --color-cyber-surface: rgba(13, 19, 33, 0.7);
+}
+
+:root {
   --color-bg: #050811;
-  --color-surface: rgba(13, 19, 33, 0.7);
   --border-glow: rgba(0, 240, 255, 0.25);
 }
 
 html {
   color-scheme: dark;
   scroll-behavior: smooth;
-  background: var(--color-bg);
+  background-color: #050811;
 }
 
 body {
   font-family: var(--font-sans);
-  background: var(--color-bg);
+  background-color: #050811;
   color: #f1f5f9;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
-  selection-background-color: #00f0ff;
-  selection-color: #050811;
 }
 
 ::selection {
-  background: #00f0ff;
+  background-color: #00f0ff;
   color: #050811;
 }
 

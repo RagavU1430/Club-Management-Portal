@@ -29,6 +29,7 @@ import {
   Camera,
 } from "lucide-react";
 import { GithubIcon, LinkedinIcon } from "../components/SocialIcons";
+import { apiFetch, BACKEND_URL } from "../utils/api";
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -56,7 +57,7 @@ export default function Admin() {
     setLoginErr("");
     setLoggingIn(true);
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await apiFetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(login),
@@ -276,7 +277,7 @@ function EventManager() {
   async function load() {
     setLoading(true);
     try {
-      const res = await fetch("/api/events?scope=all");
+      const res = await apiFetch("/api/events?scope=all");
       const d = await res.json();
       if (d.success) setEvents(d.data);
     } catch {}
@@ -286,7 +287,7 @@ function EventManager() {
   async function loadSheetConfig() {
     try {
       const token = localStorage.getItem("aif_token");
-      const res = await fetch("/api/settings/google-sheets", {
+      const res = await apiFetch("/api/settings/google-sheets", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const d = await res.json();
@@ -304,7 +305,7 @@ function EventManager() {
     setSheetMsg("");
     try {
       const token = localStorage.getItem("aif_token");
-      const res = await fetch("/api/settings/google-sheets", {
+      const res = await apiFetch("/api/settings/google-sheets", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -337,7 +338,7 @@ function EventManager() {
     setSyncingAll(true);
     try {
       const token = localStorage.getItem("aif_token");
-      const res = await fetch("/api/settings/google-sheets/sync", {
+      const res = await apiFetch("/api/settings/google-sheets/sync", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -361,7 +362,7 @@ function EventManager() {
     setSyncingEventId(eventId);
     try {
       const token = localStorage.getItem("aif_token");
-      const res = await fetch(`/api/events/${eventId}/sync-sheet`, {
+      const res = await apiFetch(`/api/events/${eventId}/sync-sheet`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -398,7 +399,7 @@ function EventManager() {
     setSaving(true);
     try {
       const token = localStorage.getItem("aif_token");
-      const res = await fetch("/api/events", {
+      const res = await apiFetch("/api/events", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -428,7 +429,7 @@ function EventManager() {
     if (!confirm("Are you sure you want to delete this event and all its registrations?")) return;
     try {
       const token = localStorage.getItem("aif_token");
-      await fetch(`/api/events/${id}`, {
+      await apiFetch(`/api/events/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -438,7 +439,7 @@ function EventManager() {
 
   function downloadExcel(eventId: string | number) {
     const token = localStorage.getItem("aif_token");
-    window.open(`/api/events/${eventId}/registrations/export.xlsx?token=${token}`, "_blank");
+    window.open(`${BACKEND_URL || ""}/api/events/${eventId}/registrations/export.xlsx?token=${token}`, "_blank");
   }
 
   return (
@@ -835,7 +836,7 @@ function ResponsesModal({ event, onClose }: { event: any; onClose: () => void })
     setLoading(true);
     try {
       const token = localStorage.getItem("aif_token");
-      const res = await fetch(`/api/events/${event.id}/registrations`, {
+      const res = await apiFetch(`/api/events/${event.id}/registrations`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const d = await res.json();
@@ -853,7 +854,7 @@ function ResponsesModal({ event, onClose }: { event: any; onClose: () => void })
     if (!confirm("Remove this attendee?")) return;
     try {
       const token = localStorage.getItem("aif_token");
-      await fetch(`/api/events/${event.id}/registrations/${_regId}`, {
+      await apiFetch(`/api/events/${event.id}/registrations/${_regId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -1210,7 +1211,7 @@ function TeamManager() {
 
   const loadCoordinators = useCallback(() => {
     setLoading(true);
-    fetch("/api/team")
+    apiFetch("/api/team")
       .then((r) => r.json())
       .then((d) => {
         if (d.success && Array.isArray(d.data)) {
@@ -1234,7 +1235,7 @@ function TeamManager() {
     setErrorMsg("");
     try {
       const token = localStorage.getItem("aif_token");
-      const res = await fetch("/api/team", {
+      const res = await apiFetch("/api/team", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1288,7 +1289,7 @@ function TeamManager() {
     setErrorMsg("");
     try {
       const token = localStorage.getItem("aif_token");
-      const res = await fetch(`/api/team/${editingMember.id}`, {
+      const res = await apiFetch(`/api/team/${editingMember.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -1314,7 +1315,7 @@ function TeamManager() {
     setErrorMsg("");
     try {
       const token = localStorage.getItem("aif_token");
-      const res = await fetch(`/api/team/${id}`, {
+      const res = await apiFetch(`/api/team/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -1335,7 +1336,7 @@ function TeamManager() {
     setErrorMsg("");
     try {
       const token = localStorage.getItem("aif_token");
-      const res = await fetch("/api/team", {
+      const res = await apiFetch("/api/team", {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -1855,7 +1856,7 @@ function ClubManager() {
   /* ── Fetch Data ── */
   const loadActivities = useCallback(() => {
     setLoadingActivities(true);
-    fetch("/api/activities")
+    apiFetch("/api/activities")
       .then((r) => r.json())
       .then((d) => {
         if (d.success && Array.isArray(d.data)) {
@@ -1870,7 +1871,7 @@ function ClubManager() {
 
   const loadClubDetails = useCallback(() => {
     setLoadingDetails(true);
-    fetch("/api/club-details")
+    apiFetch("/api/club-details")
       .then((r) => r.json())
       .then((d) => {
         if (d.success && d.data) {
@@ -1915,7 +1916,7 @@ function ClubManager() {
       const token = localStorage.getItem("aif_token");
       const formData = new FormData();
       formData.append("file", file);
-      const res = await fetch("/api/upload", {
+      const res = await apiFetch("/api/upload", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -1944,7 +1945,7 @@ function ClubManager() {
     setActivityError("");
     try {
       const token = localStorage.getItem("aif_token");
-      const res = await fetch("/api/activities", {
+      const res = await apiFetch("/api/activities", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1992,7 +1993,7 @@ function ClubManager() {
     setActivityError("");
     try {
       const token = localStorage.getItem("aif_token");
-      const res = await fetch(`/api/activities/${editingActivity.id}`, {
+      const res = await apiFetch(`/api/activities/${editingActivity.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -2019,7 +2020,7 @@ function ClubManager() {
     setActivityError("");
     try {
       const token = localStorage.getItem("aif_token");
-      const res = await fetch(`/api/activities/${id}`, {
+      const res = await apiFetch(`/api/activities/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -2040,7 +2041,7 @@ function ClubManager() {
     setDetailsError("");
     try {
       const token = localStorage.getItem("aif_token");
-      const res = await fetch("/api/club-details", {
+      const res = await apiFetch("/api/club-details", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

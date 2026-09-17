@@ -13,13 +13,16 @@ const FRAME_PATH = (i: number) =>
  */
 export default function GlobalVideoBackground() {
   const { pathname } = useLocation();
-  const isAdmin = pathname.startsWith("/admin");
+  const isHome = pathname === "/";
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imagesRef = useRef<(HTMLImageElement | null)[]>([]);
   const currentFrameRef = useRef<number>(0);
   const targetFrameRef = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
+
+  // If not on home page, do not render canvas
+  if (!isHome) return null;
 
   // Render a specific frame onto the full-screen canvas
   const renderFrame = useCallback((frameIndex: number) => {
@@ -63,7 +66,7 @@ export default function GlobalVideoBackground() {
 
   // Preload all 180 frames aggressively
   useEffect(() => {
-    if (isAdmin) return;
+    if (!isHome) return;
 
     imagesRef.current = new Array(TOTAL_FRAMES).fill(null);
 
@@ -94,11 +97,11 @@ export default function GlobalVideoBackground() {
         loadSingle(idx);
       });
     });
-  }, [renderFrame, isAdmin]);
+  }, [renderFrame, isHome]);
 
   // Window resize handler
   useEffect(() => {
-    if (isAdmin) return;
+    if (!isHome) return;
 
     const handleResize = () => {
       if (canvasRef.current) {
@@ -112,11 +115,11 @@ export default function GlobalVideoBackground() {
     handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [renderFrame, isAdmin]);
+  }, [renderFrame, isHome]);
 
   // Scroll mapping: maps full page scroll depth to video frames (0 to 179)
   useEffect(() => {
-    if (isAdmin) return;
+    if (!isHome) return;
 
     const handleScroll = () => {
       const scrollableHeight = document.documentElement.scrollHeight - window.innerHeight;
@@ -134,11 +137,11 @@ export default function GlobalVideoBackground() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [pathname, isAdmin]);
+  }, [pathname, isHome]);
 
   // Butter-smooth 60-120 FPS lerp interpolation loop
   useEffect(() => {
-    if (isAdmin) return;
+    if (!isHome) return;
 
     let active = true;
     let lastRenderedFrame = -1;
@@ -165,9 +168,9 @@ export default function GlobalVideoBackground() {
       active = false;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [renderFrame, isAdmin]);
+  }, [renderFrame, isHome]);
 
-  if (isAdmin) return null;
+  if (!isHome) return null;
 
   return (
     <div className="fixed inset-0 w-full h-full z-0 pointer-events-none overflow-hidden bg-[#050811]">

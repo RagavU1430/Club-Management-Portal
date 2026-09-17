@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Calendar, Users, Trophy, Rocket } from "lucide-react";
+import { apiFetch } from "../utils/api";
 
 export default function StatsRibbon() {
   const [stats, setStats] = useState({
@@ -10,7 +11,7 @@ export default function StatsRibbon() {
   });
 
   useEffect(() => {
-    fetch("/api/events/stats")
+    apiFetch("/api/events/stats")
       .then((r) => r.json())
       .then((d) => {
         if (d.success && d.data) {
