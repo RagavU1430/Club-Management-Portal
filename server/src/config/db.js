@@ -133,6 +133,14 @@ db.exec(`
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now'))
   );
 
+  CREATE TABLE IF NOT EXISTS subscribers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_subscribers_email ON subscribers(email);
+
   CREATE TABLE IF NOT EXISTS club_details (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     name TEXT NOT NULL,

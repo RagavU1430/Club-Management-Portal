@@ -110,7 +110,7 @@ export async function createEventSheet(event) {
 }
 
 /**
- * Appends a participant registration row to the event's tab in the Google Spreadsheet.
+ * Appends participant registration row(s) to the event's tab in the Google Spreadsheet.
  */
 export async function recordRegistration(event, reg) {
   const targetUrl = getTargetWebhookUrl(event);
@@ -176,6 +176,7 @@ export async function syncAllToGoogleSheet() {
 
 /**
  * Returns the copy-paste Google Apps Script code customized with the spreadsheet ID.
+ * Writes Member 1 (Lead) and Member 2 to Column D (Member 1 / Lead) and Column E (Lead Email / Email).
  */
 export function getGoogleAppsScriptTemplate(spreadsheetId = DEFAULT_SPREADSHEET_ID) {
   return `/**
@@ -214,11 +215,9 @@ function doPost(e) {
     var headers = [
       "Registration ID",
       "Team Name",
+      "Department",
       "Member 1 (Lead)",
       "Lead Email",
-      "Member 2",
-      "Member 2 Email",
-      "Department",
       "Year of Study",
       "Notes / Queries",
       "Registered At"
@@ -230,8 +229,8 @@ function doPost(e) {
       if (lastCol < headers.length) {
         needHeaders = true;
       } else {
-        var firstRow = targetSheet.getRange(1, 1, 1, headers.length).getValues()[0];
-        if (firstRow[1] !== "Team Name" || firstRow[4] !== "Member 2") {
+        var firstRow = targetSheet.getRange(1, 1, 1, Math.min(headers.length, lastCol)).getValues()[0];
+        if (firstRow[3] !== "Member 1 (Lead)" && firstRow[2] !== "Member 1 (Lead)") {
           needHeaders = true;
         }
       }
@@ -265,10 +264,10 @@ function doPost(e) {
       }
     }
 
-    // Always ensure current sheet has the new 10-column header layout
+    // Always ensure current sheet has the required header layout
     ensureHeaders(sheet);
 
-    // 2. ADD PARTICIPANT REGISTRATION ROW
+    // 2. ADD PARTICIPANT REGISTRATION ROW(S)
     if (data.action === "add_registration" || data.name || data.email || data.member1) {
       var regId = String(data.registrationId || "").trim();
       var leadEmail = String(data.email || "").trim().toLowerCase();
@@ -276,18 +275,23 @@ function doPost(e) {
       var teamName = String(data.teamName || data.team_name || "").trim();
       var member1 = String(data.member1 || data.name || "").trim();
       var member2 = String(data.member2 || "").trim();
+      var dept = String(data.department || data.college || "").trim();
+      var year = String(data.year || "").trim();
+      var notes = String(data.notes || "").trim();
+      var timestamp = data.timestamp || new Date().toLocaleString();
 
-      // Duplicate protection: check if registration ID or email already exists in sheet
+      var regIdStr = regId ? "'" + regId : "";
+
+      // Duplicate protection: check if registration ID already exists in sheet
       var lastRow = sheet.getLastRow();
-      if (lastRow > 1 && (regId || leadEmail)) {
-        var values = sheet.getRange(2, 1, lastRow - 1, Math.min(sheet.getLastColumn(), 6)).getValues();
+      if (lastRow > 1 && regId) {
+        var values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
         for (var r = 0; r < values.length; r++) {
           var existingRegId = String(values[r][0] || "").trim();
-          var existingEmail = String(values[r][3] || "").trim().toLowerCase();
-          if ((regId && existingRegId === regId) || (leadEmail && existingEmail === leadEmail)) {
+          if (existingRegId === regId) {
             return ContentService.createTextOutput(JSON.stringify({
               success: true,
-              message: "Already synced: " + (regId || leadEmail),
+              message: "Already synced: " + regId,
               sheetName: sheetName,
               alreadySynced: true
             })).setMimeType(ContentService.MimeType.JSON);
@@ -295,21 +299,33 @@ function doPost(e) {
         }
       }
 
-      var regIdStr = regId ? "'" + regId : "";
+      // Append Member 1 (Lead) on Row 1 (Col D = Name, Col E = Email)
+      if (member1) {
+        sheet.appendRow([
+          regIdStr,
+          teamName || (member1 + "'s Team"),
+          dept,
+          member1,
+          leadEmail,
+          year,
+          notes,
+          timestamp
+        ]);
+      }
 
-      var row = [
-        regIdStr,
-        teamName || (member1 ? member1 + "'s Team" : "Team"),
-        member1,
-        leadEmail,
-        member2 || "-",
-        member2Email || "-",
-        String(data.department || data.college || "").trim(),
-        String(data.year || "").trim(),
-        String(data.notes || "").trim(),
-        data.timestamp || new Date().toLocaleString()
-      ];
-      sheet.appendRow(row);
+      // Append Member 2 on Row 2 (Col D = Name, Col E = Email)
+      if (member2 && member2 !== "-" && member2.toLowerCase() !== "none") {
+        sheet.appendRow([
+          regIdStr,
+          teamName || (member1 + "'s Team"),
+          dept,
+          member2,
+          member2Email || leadEmail || "-",
+          year,
+          notes,
+          timestamp
+        ]);
+      }
 
       // Auto-resize columns so contents are never cut off
       for (var col = 1; col <= headers.length; col++) {

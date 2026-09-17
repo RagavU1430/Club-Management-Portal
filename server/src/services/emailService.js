@@ -271,3 +271,125 @@ export async function sendTestEmail({ toEmail }) {
     };
   }
 }
+
+/**
+ * Sends automated notification email to all newsletter subscribers when a new event is created
+ */
+export async function notifySubscribersNewEvent(event) {
+  const rows = db.prepare("SELECT email FROM subscribers ORDER BY id DESC").all();
+  if (!rows || rows.length === 0) {
+    console.log("[Email] No newsletter subscribers found to notify for new event.");
+    return { count: 0 };
+  }
+
+  const emails = [...new Set(rows.map(r => String(r.email || "").trim().toLowerCase()).filter(Boolean))];
+  if (emails.length === 0) return { count: 0 };
+
+  const { user, senderName } = getRawEmailCredentials();
+  const transporter = createTransporter();
+
+  let dateStr = "TBD";
+  let timeStr = "TBD";
+  try {
+    const d = new Date(event.date);
+    if (!isNaN(d.getTime())) {
+      dateStr = d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric" });
+      timeStr = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+    }
+  } catch {}
+
+  let clubName = "AI Frontier Club";
+  try {
+    const club = db.prepare("SELECT name FROM club_details WHERE id = 1").get();
+    if (club?.name) clubName = club.name;
+  } catch {}
+
+  const subject = `🚀 New Event Announced: ${event.title} | ${clubName}`;
+  const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+  const eventLink = `${clientUrl}/events`;
+
+  const text = `Greetings from ${clubName}! 👋\n\n` +
+`╔══════════════════════════════════════╗\n` +
+`🚀 NEW EVENT ANNOUNCED: ${event.title.toUpperCase()}\n` +
+`╚══════════════════════════════════════╝\n\n` +
+`A brand-new event has just been launched! As a subscriber to Frontier Dispatches, you get first-access details and registration availability.\n\n` +
+`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+`🎯 EVENT       : ${event.title}\n` +
+`🏷️ CATEGORY    : ${event.category || "Hackathon / Workshop"}\n` +
+`📅 DATE        : ${dateStr}\n` +
+`⏰ TIME        : ${timeStr}\n` +
+`📍 VENUE       : ${event.venue || "Campus AI Lab & Auditorium"}\n` +
+`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+(event.summary ? `Summary:\n${event.summary}\n\n` : "") +
+`🔗 Register & View Event Details:\n${eventLink}\n\n` +
+`Seats are limited. Secure your registration early!\n\n` +
+`Best regards,\n` +
+`${clubName} Team\n`;
+
+  console.log(`\n===========================================================`);
+  console.log(`📢 [NEW EVENT SUBSCRIBER DISPATCH]`);
+  console.log(`Event: ${event.title}`);
+  console.log(`Subscribers Count: ${emails.length}`);
+  console.log(`Recipients: ${emails.join(", ")}`);
+  console.log(`===========================================================\n`);
+
+  if (!transporter || !user) {
+    console.log(`[Email] Gmail not configured yet. ${emails.length} subscriber emails prepared for notification.`);
+    return { count: emails.length, sent: false };
+  }
+
+  let successCount = 0;
+  for (const recipient of emails) {
+    try {
+      await transporter.sendMail({
+        from: `"${senderName}" <${user}>`,
+        to: recipient,
+        subject,
+        text,
+      });
+      successCount++;
+    } catch (err) {
+      console.warn(`[Email] Failed to deliver event announcement to ${recipient}:`, err.message);
+    }
+  }
+
+  console.log(`[Email] Successfully delivered new event announcement to ${successCount}/${emails.length} subscribers!`);
+  return { count: emails.length, sentCount: successCount };
+}
+
+/**
+ * Sends a welcome email when a user subscribes to the newsletter
+ */
+export async function sendSubscriptionWelcomeEmail(email) {
+  const { user, senderName } = getRawEmailCredentials();
+  const transporter = createTransporter();
+
+  let clubName = "AI Frontier Club";
+  try {
+    const club = db.prepare("SELECT name FROM club_details WHERE id = 1").get();
+    if (club?.name) clubName = club.name;
+  } catch {}
+
+  const subject = `🎉 Welcome to ${clubName} Dispatches!`;
+  const text = `Hi there 👋\n\n` +
+`Thank you for subscribing to ${clubName} Frontier Dispatches!\n\n` +
+`You will now receive priority notifications directly to this email whenever a new hackathon, workshop, competition, or club event is announced.\n\n` +
+`Stay curious and keep innovating! 🚀\n\n` +
+`Best regards,\n` +
+`${clubName} Team`;
+
+  if (transporter && user) {
+    try {
+      await transporter.sendMail({
+        from: `"${senderName}" <${user}>`,
+        to: email,
+        subject,
+        text,
+      });
+      console.log(`[Email] Welcome email sent to subscriber: ${email}`);
+    } catch (err) {
+      console.warn(`[Email] Subscription welcome email delivery failed for ${email}:`, err.message);
+    }
+  }
+}
+

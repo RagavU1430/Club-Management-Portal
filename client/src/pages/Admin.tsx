@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Mail,
@@ -930,8 +931,8 @@ function ResponsesModal({
     );
   });
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
       <div className="relative w-full max-w-5xl rounded-3xl glass border border-white/15 shadow-2xl p-6 sm:p-8 max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-start justify-between pb-5 border-b border-white/10">
@@ -1067,7 +1068,8 @@ function ResponsesModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -1206,8 +1208,8 @@ function AttendanceGeneratorModal({ event, onClose }: { event: any; onClose: () 
     );
   });
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
       <div className="relative w-full max-w-6xl rounded-3xl glass border border-cyan-400/20 shadow-2xl p-5 sm:p-8 max-h-[92vh] flex flex-col bg-[#070b16]/95">
         {/* Top Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between pb-5 border-b border-white/10 gap-4">
@@ -1518,7 +1520,8 @@ function AttendanceGeneratorModal({ event, onClose }: { event: any; onClose: () 
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -1555,8 +1558,8 @@ function GoogleSheetSetupModal({
 }) {
   const currentUrl = spreadsheetInput || config?.spreadsheetUrl || "https://docs.google.com/spreadsheets/d/1MUkixf7X2_5cYzZJm1dL1atzRK2sIPxLpgKDGV7rTYk/edit?usp=sharing";
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
       <div className="relative w-full max-w-2xl rounded-3xl glass border border-white/15 shadow-2xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto flex flex-col space-y-6">
         {/* Header */}
         <div className="flex items-start justify-between pb-4 border-b border-white/10">
@@ -1709,7 +1712,8 @@ function GoogleSheetSetupModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -2192,8 +2196,8 @@ function TeamManager() {
       )}
 
       {/* ── Edit Coordinator Modal ── */}
-      {editingMember && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+      {editingMember && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
           <div className="relative w-full max-w-xl rounded-3xl glass border border-white/15 shadow-2xl p-6 sm:p-8 max-h-[92vh] overflow-y-auto">
             <button
               onClick={() => setEditingMember(null)}
@@ -2317,7 +2321,8 @@ function TeamManager() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -2341,6 +2346,9 @@ function ClubManager() {
 
   /* ── State: Club Activities ── */
   const [activities, setActivities] = useState<any[]>([]);
+  const [availableEvents, setAvailableEvents] = useState<any[]>([]);
+  const [customAddName, setCustomAddName] = useState(false);
+  const [customEditName, setCustomEditName] = useState(false);
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [activityQuery, setActivityQuery] = useState("");
@@ -2442,10 +2450,22 @@ function ClubManager() {
       .finally(() => setLoadingDetails(false));
   }, []);
 
+  const loadEvents = useCallback(() => {
+    apiFetch("/api/events?scope=all")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && Array.isArray(d.data)) {
+          setAvailableEvents(d.data);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     loadActivities();
     loadClubDetails();
-  }, [loadActivities, loadClubDetails]);
+    loadEvents();
+  }, [loadActivities, loadClubDetails, loadEvents]);
 
   /* ── Image File Upload Handler ── */
   async function handleFileUpload(file: File, isEdit = false) {
@@ -2515,6 +2535,8 @@ function ClubManager() {
   /* ── Open Edit Activity Modal ── */
   function handleOpenEditActivity(act: any) {
     setEditingActivity(act);
+    const hasMatch = availableEvents.some((e) => e.title === act.name);
+    setCustomEditName(!hasMatch);
     setEditActivityForm({
       name: act.name || "",
       photo: act.photo || "",
@@ -2802,8 +2824,8 @@ function ClubManager() {
           )}
 
           {/* ── Add Activity Modal ── */}
-          {showAddModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          {showAddModal && createPortal(
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
               <div className="relative w-full max-w-xl rounded-3xl glass border border-white/15 shadow-2xl p-6 sm:p-8 max-h-[92vh] overflow-y-auto">
                 <button
                   onClick={() => setShowAddModal(false)}
@@ -2825,18 +2847,84 @@ function ClubManager() {
                 </div>
 
                 <form onSubmit={handleAddActivity} className="space-y-4 text-left">
-                  {/* Activity Name */}
+                  {/* Activity Name Dropdown / Input */}
                   <div>
-                    <label className="block text-xs font-mono text-slate-400 mb-1">
-                      ACTIVITY NAME *
-                    </label>
-                    <input
-                      required
-                      placeholder="e.g. National Generative AI Hackathon 2026"
-                      value={addActivityForm.name}
-                      onChange={(e) => setAddActivityForm({ ...addActivityForm, name: e.target.value })}
-                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
-                    />
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-mono text-slate-400">
+                        EVENT / ACTIVITY NAME *
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = !customAddName;
+                          setCustomAddName(next);
+                          if (!next && availableEvents.length > 0 && !addActivityForm.name) {
+                            const firstEv = availableEvents[0];
+                            setAddActivityForm((prev) => ({
+                              ...prev,
+                              name: firstEv.title,
+                              category: ACTIVITY_CATEGORIES.includes(firstEv.category) ? firstEv.category : prev.category,
+                              date: firstEv.date ? firstEv.date.split("T")[0] : prev.date,
+                              description: prev.description || (firstEv.summary || ""),
+                            }));
+                          }
+                        }}
+                        className="text-[11px] font-mono text-cyan-400 hover:text-cyan-300 transition cursor-pointer"
+                      >
+                        {customAddName ? "← Pick from Events Dropdown" : "✨ Type Custom Name"}
+                      </button>
+                    </div>
+
+                    {!customAddName ? (
+                      <select
+                        required
+                        value={addActivityForm.name}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === "__custom__") {
+                            setCustomAddName(true);
+                            setAddActivityForm({ ...addActivityForm, name: "" });
+                            return;
+                          }
+                          const ev = availableEvents.find((x) => x.title === val);
+                          let cat = addActivityForm.category;
+                          let dt = addActivityForm.date;
+                          if (ev) {
+                            if (ev.category && ACTIVITY_CATEGORIES.includes(ev.category)) {
+                              cat = ev.category;
+                            }
+                            if (ev.date) {
+                              dt = ev.date.split("T")[0];
+                            }
+                          }
+                          setAddActivityForm({
+                            ...addActivityForm,
+                            name: val,
+                            category: cat,
+                            date: dt,
+                            description: addActivityForm.description || (ev?.summary || ""),
+                          });
+                        }}
+                        className="w-full rounded-xl border border-white/10 bg-[#0c1222] px-4 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
+                      >
+                        <option value="" disabled>-- Select Event / Activity --</option>
+                        {availableEvents.map((ev) => (
+                          <option key={ev.id} value={ev.title}>
+                            {ev.title} {ev.date ? `(${new Date(ev.date).toLocaleDateString()})` : ""}
+                          </option>
+                        ))}
+                        <option value="__custom__">✨ + Enter Custom Event / Activity Name...</option>
+                      </select>
+                    ) : (
+                      <input
+                        required
+                        autoFocus
+                        placeholder="e.g. National Generative AI Hackathon 2026"
+                        value={addActivityForm.name}
+                        onChange={(e) => setAddActivityForm({ ...addActivityForm, name: e.target.value })}
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
+                      />
+                    )}
                   </div>
 
                   {/* Category & Date */}
@@ -2952,12 +3040,13 @@ function ClubManager() {
                   </div>
                 </form>
               </div>
-            </div>
+            </div>,
+            document.body
           )}
 
           {/* ── Edit Activity Modal ── */}
-          {editingActivity && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          {editingActivity && createPortal(
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
               <div className="relative w-full max-w-xl rounded-3xl glass border border-white/15 shadow-2xl p-6 sm:p-8 max-h-[92vh] overflow-y-auto">
                 <button
                   onClick={() => setEditingActivity(null)}
@@ -2979,16 +3068,79 @@ function ClubManager() {
                 </div>
 
                 <form onSubmit={handleUpdateActivity} className="space-y-4 text-left">
+                  {/* Activity Name Dropdown / Input */}
                   <div>
-                    <label className="block text-xs font-mono text-slate-400 mb-1">
-                      ACTIVITY NAME *
-                    </label>
-                    <input
-                      required
-                      value={editActivityForm.name}
-                      onChange={(e) => setEditActivityForm({ ...editActivityForm, name: e.target.value })}
-                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
-                    />
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-mono text-slate-400">
+                        EVENT / ACTIVITY NAME *
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = !customEditName;
+                          setCustomEditName(next);
+                          if (!next && availableEvents.length > 0 && !editActivityForm.name) {
+                            const firstEv = availableEvents[0];
+                            setEditActivityForm((prev) => ({
+                              ...prev,
+                              name: firstEv.title,
+                              category: ACTIVITY_CATEGORIES.includes(firstEv.category) ? firstEv.category : prev.category,
+                              date: firstEv.date ? firstEv.date.split("T")[0] : prev.date,
+                            }));
+                          }
+                        }}
+                        className="text-[11px] font-mono text-cyan-400 hover:text-cyan-300 transition cursor-pointer"
+                      >
+                        {customEditName ? "← Pick from Events Dropdown" : "✨ Type Custom Name"}
+                      </button>
+                    </div>
+
+                    {!customEditName ? (
+                      <select
+                        required
+                        value={editActivityForm.name}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === "__custom__") {
+                            setCustomEditName(true);
+                            return;
+                          }
+                          const ev = availableEvents.find((x) => x.title === val);
+                          let cat = editActivityForm.category;
+                          let dt = editActivityForm.date;
+                          if (ev) {
+                            if (ev.category && ACTIVITY_CATEGORIES.includes(ev.category)) {
+                              cat = ev.category;
+                            }
+                            if (ev.date) {
+                              dt = ev.date.split("T")[0];
+                            }
+                          }
+                          setEditActivityForm({
+                            ...editActivityForm,
+                            name: val,
+                            category: cat,
+                            date: dt,
+                          });
+                        }}
+                        className="w-full rounded-xl border border-white/10 bg-[#0c1222] px-4 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
+                      >
+                        <option value="" disabled>-- Select Event / Activity --</option>
+                        {availableEvents.map((ev) => (
+                          <option key={ev.id} value={ev.title}>
+                            {ev.title} {ev.date ? `(${new Date(ev.date).toLocaleDateString()})` : ""}
+                          </option>
+                        ))}
+                        <option value="__custom__">✨ + Enter Custom Event / Activity Name...</option>
+                      </select>
+                    ) : (
+                      <input
+                        required
+                        value={editActivityForm.name}
+                        onChange={(e) => setEditActivityForm({ ...editActivityForm, name: e.target.value })}
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
+                      />
+                    )}
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">
@@ -3099,7 +3251,8 @@ function ClubManager() {
                   </div>
                 </form>
               </div>
-            </div>
+            </div>,
+            document.body
           )}
         </div>
       )}

@@ -1,20 +1,42 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Mail, ArrowRight, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { Mail, ArrowRight, ShieldCheck, CheckCircle2, Loader2 } from "lucide-react";
 import { GithubIcon, LinkedinIcon, TwitterIcon } from "./SocialIcons";
+import { apiFetch } from "../utils/api";
 
 export default function Footer() {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
+  const [statusMsg, setStatusMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const handleSubscribe = (e: React.FormEvent) => {
+  const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-    setSubscribed(true);
-    setTimeout(() => {
-      setEmail("");
-      setSubscribed(false);
-    }, 4000);
+    setSubscribing(true);
+    setStatusMsg("");
+    setErrorMsg("");
+
+    try {
+      const res = await apiFetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSubscribed(true);
+        setStatusMsg(data.message || "You're on the list! You'll be notified when new events are created.");
+        setEmail("");
+      } else {
+        setErrorMsg(data.error || "Subscription failed. Please check your email.");
+      }
+    } catch {
+      setErrorMsg("Failed to connect to the server. Please try again.");
+    } finally {
+      setSubscribing(false);
+    }
   };
 
   return (
@@ -138,8 +160,8 @@ export default function Footer() {
 
             {subscribed ? (
               <div className="mt-4 flex items-center gap-2 rounded-xl bg-cyan-500/10 border border-cyan-500/30 p-3 text-xs text-cyan-300">
-                <CheckCircle2 className="h-4 w-4 text-cyan-400" />
-                <span>You're on the list! Welcome aboard.</span>
+                <CheckCircle2 className="h-4 w-4 text-cyan-400 shrink-0" />
+                <span>{statusMsg || "You're on the list! Welcome aboard."}</span>
               </div>
             ) : (
               <form onSubmit={handleSubscribe} className="mt-4 flex flex-col gap-2">
@@ -147,18 +169,27 @@ export default function Footer() {
                   <input
                     type="email"
                     required
+                    disabled={subscribing}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@university.edu"
-                    className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 px-3.5 text-xs text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none shadow-sm"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-3.5 pr-12 text-xs text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none shadow-sm disabled:opacity-60"
                   />
                   <button
                     type="submit"
-                    className="absolute right-1.5 top-1.5 bottom-1.5 px-3 rounded-lg bg-cyan-400 text-[#050811] text-xs font-bold hover:bg-cyan-300 transition flex items-center cursor-pointer shadow-sm"
+                    disabled={subscribing}
+                    className="absolute right-1.5 top-1.5 bottom-1.5 px-3 rounded-lg bg-cyan-400 text-[#050811] text-xs font-bold hover:bg-cyan-300 transition flex items-center cursor-pointer shadow-sm disabled:opacity-50"
                   >
-                    <ArrowRight className="h-3.5 w-3.5" />
+                    {subscribing ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    )}
                   </button>
                 </div>
+                {errorMsg && (
+                  <span className="text-[10px] text-red-400">{errorMsg}</span>
+                )}
                 <span className="text-[10px] text-slate-500">No spam. Only high-signal dispatches.</span>
               </form>
             )}

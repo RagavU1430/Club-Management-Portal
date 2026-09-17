@@ -12,6 +12,7 @@ import { getClubDetails, updateClubDetails, listActivities, createActivity, upda
 import { upload } from "./middleware/upload.js";
 import { initFirebase, isFirebaseReady } from "./config/firebase.js";
 import { syncAllToFirestore } from "./services/firestoreService.js";
+import { sendSubscriptionWelcomeEmail } from "./services/emailService.js";
 
 dotenv.config();
 
@@ -140,11 +141,45 @@ app.post("/api/upload", requireAuth, upload.single("file"), (req, res) => {
   res.status(201).json({ success: true, url });
 });
 
+// ── Newsletter Subscription & Notification Management ──
+app.post("/api/subscribe", async (req, res) => {
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  if (!email || !email.includes("@") || !email.includes(".")) {
+    return res.status(400).json({ success: false, error: "Please provide a valid email address." });
+  }
+
+  try {
+    const existing = db.prepare("SELECT id FROM subscribers WHERE email = ?").get(email);
+    if (!existing) {
+      db.prepare("INSERT INTO subscribers (email) VALUES (?)").run(email);
+      // Send welcome email in background
+      sendSubscriptionWelcomeEmail(email).catch(() => {});
+    }
+
+    res.json({
+      success: true,
+      message: "Subscribed! You will be automatically notified whenever a new event is announced.",
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: "Subscription failed. Please try again." });
+  }
+});
+
+app.get("/api/subscribers", requireAuth, (_req, res) => {
+  const rows = db.prepare("SELECT * FROM subscribers ORDER BY id DESC").all();
+  res.json({ success: true, data: rows });
+});
+
+app.delete("/api/subscribers/:id", requireAuth, (req, res) => {
+  db.prepare("DELETE FROM subscribers WHERE id = ?").run(Number(req.params.id));
+  res.json({ success: true, message: "Subscriber removed." });
+});
+
 app.get("/api/health", (_req, res) => res.json({ success: true, uptime: process.uptime() }));
 
 app.use(notFound);
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`[server] listening on :${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`[server] listening on http://127.0.0.1:${PORT}`);
 });

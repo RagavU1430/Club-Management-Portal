@@ -1,7 +1,7 @@
 import { db, rowToJSON } from "../config/db.js";
 import { ApiError } from "../utils/http.js";
 import { createEventSheet, recordRegistration } from "../services/googleSheets.js";
-import { sendRegistrationEmail } from "../services/emailService.js";
+import { sendRegistrationEmail, notifySubscribersNewEvent } from "../services/emailService.js";
 import { saveEventToFirestore, deleteEventFromFirestore, saveRegistrationToFirestore } from "../services/firestoreService.js";
 import XLSX from "xlsx";
 
@@ -153,6 +153,8 @@ export async function create(req, res) {
   saveEventToFirestore(row, row.id).catch(err => console.warn("[Firestore] save event failed:", err.message));
   // Automatically create a new tab in the connected Google Sheet
   createEventSheet(row).catch(err => console.warn("[googleSheets] create tab failed:", err.message));
+  // Automatically notify all newsletter subscribers about the newly created event!
+  notifySubscribersNewEvent(row).catch(err => console.warn("[emailService] notify subscribers failed:", err.message));
   res.status(201).json({ success: true, data: decorate(row) });
 }
 
@@ -650,102 +652,78 @@ export async function exportAttendanceExcel(req, res) {
 
   const registrations = db.prepare("SELECT * FROM event_registrations WHERE event_id = ? ORDER BY id ASC").all(eventId);
 
-  const formattedRows = registrations.map((r, idx) => {
-    let checkInStr = "-";
-    if (r.attended === 1 && r.checked_in_at) {
+  const data = registrations.map((r, index) => {
+    let formattedCheckIn = "";
+    if (r.checked_in_at) {
       try {
-        checkInStr = new Date(r.checked_in_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+        formattedCheckIn = new Date(r.checked_in_at).toLocaleString("en-IN", {
+          dateStyle: "medium",
+          timeStyle: "short",
+        });
       } catch {
-        checkInStr = r.checked_in_at;
+        formattedCheckIn = r.checked_in_at;
       }
     }
 
     return {
-      "S.No": idx + 1,
-      "Ticket Code": `AIF-${eventId}-${r.id}`,
-      "Team Name": r.team_name || "-",
-      "Member 1 (Lead)": r.member1 || r.name || "",
-      "Lead Email": r.email || "",
-      "Member 2": r.member2 || "-",
-      "Member 2 Email": r.member2_phone || "-",
+      "S.No": index + 1,
+      "Registration ID": `AIF-${eventId}-${r.id}`,
+      "Team Name": r.team_name || "",
+      "Participant Name": r.member1 || r.name || "",
+      "Email": r.email || "",
       "Department": r.department || r.college || "",
-      "Year of Study": r.year || "",
-      "Attendance Status": r.attended === 1 ? "PRESENT" : "ABSENT",
-      "Check-in Time": checkInStr,
-      "Attendee Signature": ""
+      "Year": r.year || "",
+      "Attendance Status": r.attended === 1 ? "Present" : "Absent",
+      "Check-In Time": formattedCheckIn
     };
   });
 
-  const worksheet = XLSX.utils.json_to_sheet(formattedRows);
-  worksheet["!cols"] = [
-    { wch: 6 },
-    { wch: 16 },
-    { wch: 22 },
-    { wch: 24 },
-    { wch: 28 },
-    { wch: 24 },
-    { wch: 28 },
-    { wch: 34 },
-    { wch: 16 },
-    { wch: 20 },
-    { wch: 16 },
-    { wch: 24 }
-  ];
-
+  const worksheet = XLSX.utils.json_to_sheet(data);
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance Sheet");
+  const safeSheetName = "Attendance";
+  XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName);
 
   const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
   const safeTitle = event.title.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 30);
-  const filename = `${safeTitle}_Official_Attendance_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const filename = `${safeTitle}_Attendance_${new Date().toISOString().slice(0, 10)}.xlsx`;
 
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
   res.send(buffer);
 }
 
-// ── GET /api/events/:id/attendance/export-od.xlsx (On-Duty Academic List Generator) ──
+// ── GET /api/events/:id/attendance/export-od.xlsx (Official On-Duty List Generator) ──
 export async function exportODListExcel(req, res) {
   const eventId = Number(req.params.id);
   const event = db.prepare("SELECT id, title, date, venue FROM events WHERE id = ?").get(eventId);
   if (!event) throw new ApiError(404, "Event not found.");
 
-  const presentRegistrations = db.prepare("SELECT * FROM event_registrations WHERE event_id = ? AND attended = 1 ORDER BY department ASC, id ASC").all(eventId);
+  const registrations = db.prepare("SELECT * FROM event_registrations WHERE event_id = ? AND attended = 1 ORDER BY id ASC").all(eventId);
 
-  const formattedRows = presentRegistrations.map((r, idx) => ({
-    "S.No": idx + 1,
-    "Ticket Code": `AIF-${eventId}-${r.id}`,
-    "Participant Name": r.member1 || r.name || "",
-    "Email ID": r.email || "",
-    "Team Name": r.team_name || "-",
-    "Department": r.department || r.college || "",
-    "Year of Study": r.year || "",
-    "OD Status": "PRESENT / ELIGIBLE",
-    "Faculty In-charge Sign": ""
-  }));
+  const data = registrations.map((r, index) => {
+    return {
+      "S.No": index + 1,
+      "Registration ID": `AIF-${eventId}-${r.id}`,
+      "Participant Name": r.member1 || r.name || "",
+      "Email": r.email || "",
+      "Team Name": r.team_name || "",
+      "Department": r.department || r.college || "",
+      "Year": r.year || "",
+      "Event Title": event.title || "",
+      "Event Date": event.date || ""
+    };
+  });
 
-  const worksheet = XLSX.utils.json_to_sheet(formattedRows);
-  worksheet["!cols"] = [
-    { wch: 6 },
-    { wch: 18 },
-    { wch: 26 },
-    { wch: 30 },
-    { wch: 22 },
-    { wch: 36 },
-    { wch: 14 },
-    { wch: 22 },
-    { wch: 24 }
-  ];
-
+  const worksheet = XLSX.utils.json_to_sheet(data);
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "OD Approval List");
+  const safeSheetName = "OD_List";
+  XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName);
 
   const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
   const safeTitle = event.title.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 30);
-  const filename = `${safeTitle}_OD_Approval_List_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const filename = `${safeTitle}_OD_List_${new Date().toISOString().slice(0, 10)}.xlsx`;
 
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
   res.send(buffer);
 }
-
