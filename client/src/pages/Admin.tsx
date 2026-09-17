@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Mail,
@@ -28,6 +28,12 @@ import {
   Info,
   Camera,
   Send,
+  UserCheck,
+  Printer,
+  CheckCircle2,
+  XCircle,
+  Award,
+  QrCode,
 } from "lucide-react";
 import { GithubIcon, LinkedinIcon } from "../components/SocialIcons";
 import { apiFetch, BACKEND_URL } from "../utils/api";
@@ -234,6 +240,7 @@ function EventManager() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedEventResponses, setSelectedEventResponses] = useState<any | null>(null);
+  const [selectedAttendanceEvent, setSelectedAttendanceEvent] = useState<any | null>(null);
 
   const [sheetConfig, setSheetConfig] = useState<any>(null);
   const [showSheetModal, setShowSheetModal] = useState(false);
@@ -742,7 +749,7 @@ function EventManager() {
                   {/* View Responses Button */}
                   <button
                     onClick={() => setSelectedEventResponses(ev)}
-                    className="flex items-center gap-1.5 rounded-xl glass px-3.5 py-2 text-xs font-mono text-white hover:border-cyan-400/40 hover:bg-white/10 transition"
+                    className="flex items-center gap-1.5 rounded-xl glass px-3.5 py-2 text-xs font-mono text-white hover:border-cyan-400/40 hover:bg-white/10 transition cursor-pointer"
                     title="View all registered participants"
                   >
                     <Users className="h-3.5 w-3.5 text-cyan-400" />
@@ -750,6 +757,16 @@ function EventManager() {
                     <span className="ml-1 rounded-md bg-cyan-400/20 text-cyan-300 px-1.5 py-0.2 text-[10px] font-bold">
                       {regCount}
                     </span>
+                  </button>
+
+                  {/* Attendance & OD Generator Button */}
+                  <button
+                    onClick={() => setSelectedAttendanceEvent(ev)}
+                    className="flex items-center gap-1.5 rounded-xl bg-cyan-500/15 border border-cyan-400/30 px-3.5 py-2 text-xs font-mono text-cyan-300 hover:bg-cyan-500/25 transition cursor-pointer"
+                    title="Track live attendee check-ins and generate official Attendance & OD sheets"
+                  >
+                    <UserCheck className="h-3.5 w-3.5 text-cyan-400" />
+                    <span>Attendance</span>
                   </button>
 
                   {/* Live Google Sheet Actions */}
@@ -775,7 +792,7 @@ function EventManager() {
                     <span>{syncingEventId === ev.id ? "Syncing..." : "Sync"}</span>
                   </button>
 
-                  {/* Direct Excel (.csv) Download */}
+                  {/* Direct Excel (.xlsx) Download */}
                   <button
                     onClick={() => downloadExcel(ev.id)}
                     className="flex items-center gap-1.5 rounded-xl bg-emerald-500/15 border border-emerald-400/30 px-3.5 py-2 text-xs font-mono text-emerald-300 hover:bg-emerald-500/25 transition"
@@ -806,6 +823,21 @@ function EventManager() {
           event={selectedEventResponses}
           onClose={() => {
             setSelectedEventResponses(null);
+            load();
+          }}
+          onOpenAttendance={(ev) => {
+            setSelectedEventResponses(null);
+            setSelectedAttendanceEvent(ev);
+          }}
+        />
+      )}
+
+      {/* Attendance & OD Generator Modal */}
+      {selectedAttendanceEvent && (
+        <AttendanceGeneratorModal
+          event={selectedAttendanceEvent}
+          onClose={() => {
+            setSelectedAttendanceEvent(null);
             load();
           }}
         />
@@ -839,7 +871,15 @@ function EventManager() {
 }
 
 /* ── 2. Modal: View Registered Attendee Responses & Search ── */
-function ResponsesModal({ event, onClose }: { event: any; onClose: () => void }) {
+function ResponsesModal({
+  event,
+  onClose,
+  onOpenAttendance,
+}: {
+  event: any;
+  onClose: () => void;
+  onOpenAttendance?: (ev: any) => void;
+}) {
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -906,12 +946,24 @@ function ResponsesModal({ event, onClose }: { event: any; onClose: () => void })
             </p>
           </div>
 
-          <button
-            onClick={onClose}
-            className="rounded-xl p-2 text-slate-400 hover:text-white hover:bg-white/10 transition"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {onOpenAttendance && (
+              <button
+                onClick={() => onOpenAttendance(event)}
+                className="flex items-center gap-1.5 rounded-xl bg-cyan-500/20 border border-cyan-400/40 px-3 py-2 text-xs font-mono text-cyan-300 hover:bg-cyan-500/30 transition cursor-pointer"
+                title="Switch to Attendance Generator"
+              >
+                <UserCheck className="h-3.5 w-3.5" />
+                <span>Attendance Mode</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="rounded-xl p-2 text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {/* Action Controls & Search */}
@@ -931,7 +983,7 @@ function ResponsesModal({ event, onClose }: { event: any; onClose: () => void })
               const token = localStorage.getItem("aif_token");
               window.open(`/api/events/${event.id}/registrations/export.xlsx?token=${token}`, "_blank");
             }}
-            className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-mono font-bold text-black hover:bg-emerald-400 transition shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+            className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-mono font-bold text-black hover:bg-emerald-400 transition shadow-[0_0_15px_rgba(16,185,129,0.3)] cursor-pointer"
           >
             <FileSpreadsheet className="h-4 w-4" />
             <span>Download Excel (.xlsx)</span>
@@ -1002,7 +1054,7 @@ function ResponsesModal({ event, onClose }: { event: any; onClose: () => void })
                     <td className="p-3 text-right">
                       <button
                         onClick={() => handleDeleteReg(r.id)}
-                        className="text-slate-500 hover:text-red-400 transition"
+                        className="text-slate-500 hover:text-red-400 transition cursor-pointer"
                         title="Remove attendee"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -1019,7 +1071,459 @@ function ResponsesModal({ event, onClose }: { event: any; onClose: () => void })
   );
 }
 
-/* ── 3. Modal: Google Sheets Live Sync Setup ── */
+/* ── 3. Modal: Attendance Generator & Live Check-in Tracker ── */
+function AttendanceGeneratorModal({ event, onClose }: { event: any; onClose: () => void }) {
+  const [data, setData] = useState<any[]>([]);
+  const [stats, setStats] = useState({ total: 0, present: 0, absent: 0, percentage: 0 });
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<"all" | "present" | "absent">("all");
+  const [quickInput, setQuickInput] = useState("");
+  const [quickMsg, setQuickMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const fetchAttendance = useCallback(async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("aif_token");
+      const res = await apiFetch(`/api/events/${event.id}/attendance`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const d = await res.json();
+      if (d.success) {
+        setData(d.data || []);
+        if (d.stats) setStats(d.stats);
+      }
+    } catch {}
+    setLoading(false);
+  }, [event.id]);
+
+  useEffect(() => {
+    fetchAttendance();
+  }, [event.id, fetchAttendance]);
+
+  async function handleToggle(regId: number, currentAttended: boolean) {
+    try {
+      const token = localStorage.getItem("aif_token");
+      const res = await apiFetch(`/api/events/${event.id}/attendance/${regId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ attended: !currentAttended }),
+      });
+      const d = await res.json();
+      if (d.success) {
+        setData((prev) =>
+          prev.map((item) =>
+            item.id === regId
+              ? { ...item, attended: !currentAttended, checked_in_at: d.data.checked_in_at }
+              : item
+          )
+        );
+        setStats((prev) => {
+          const newPresent = !currentAttended ? prev.present + 1 : Math.max(0, prev.present - 1);
+          const newAbsent = prev.total - newPresent;
+          const pct = prev.total > 0 ? Math.round((newPresent / prev.total) * 100) : 0;
+          return { ...prev, present: newPresent, absent: newAbsent, percentage: pct };
+        });
+      }
+    } catch {}
+  }
+
+  async function handleQuickCheckIn(e: React.FormEvent) {
+    e.preventDefault();
+    if (!quickInput.trim()) return;
+    setQuickMsg(null);
+    try {
+      const token = localStorage.getItem("aif_token");
+      const res = await apiFetch(`/api/events/${event.id}/attendance/quick-checkin`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ query: quickInput.trim() }),
+      });
+      const d = await res.json();
+      if (d.success && d.data) {
+        setQuickMsg({ type: "success", text: d.message });
+        setQuickInput("");
+        fetchAttendance();
+        if (inputRef.current) inputRef.current.focus();
+      } else {
+        setQuickMsg({ type: "error", text: d.message || "Attendee not found." });
+      }
+    } catch (err: any) {
+      setQuickMsg({ type: "error", text: err.message || "Attendee not found for this event." });
+    }
+  }
+
+  async function handleBulk(action: "mark_all_present" | "mark_all_absent") {
+    if (!confirm(action === "mark_all_present" ? "Mark all attendees as PRESENT?" : "Reset all attendance to ABSENT?")) return;
+    setActionLoading(true);
+    try {
+      const token = localStorage.getItem("aif_token");
+      await apiFetch(`/api/events/${event.id}/attendance/bulk`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action }),
+      });
+      await fetchAttendance();
+    } catch {}
+    setActionLoading(false);
+  }
+
+  function downloadAttendanceExcel() {
+    const token = localStorage.getItem("aif_token");
+    window.open(`/api/events/${event.id}/attendance/export.xlsx?token=${token}`, "_blank");
+  }
+
+  function downloadODExcel() {
+    const token = localStorage.getItem("aif_token");
+    window.open(`/api/events/${event.id}/attendance/export-od.xlsx?token=${token}`, "_blank");
+  }
+
+  const filtered = data.filter((r) => {
+    if (filter === "present" && !r.attended) return false;
+    if (filter === "absent" && r.attended) return false;
+    if (!query) return true;
+    const q = query.toLowerCase();
+    return (
+      r.registrationCode?.toLowerCase().includes(q) ||
+      r.name?.toLowerCase().includes(q) ||
+      r.team_name?.toLowerCase().includes(q) ||
+      r.member1?.toLowerCase().includes(q) ||
+      r.member2?.toLowerCase().includes(q) ||
+      r.email?.toLowerCase().includes(q) ||
+      r.department?.toLowerCase().includes(q) ||
+      r.year?.toLowerCase().includes(q)
+    );
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
+      <div className="relative w-full max-w-6xl rounded-3xl glass border border-cyan-400/20 shadow-2xl p-5 sm:p-8 max-h-[92vh] flex flex-col bg-[#070b16]/95">
+        {/* Top Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between pb-5 border-b border-white/10 gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="h-2 w-2 rounded-full bg-cyan-400 animate-ping" />
+              <span className="text-xs font-mono text-cyan-300 font-bold uppercase tracking-wider">ATTENDANCE GENERATOR & LIVE CHECK-IN</span>
+            </div>
+            <h3 className="text-2xl font-bold text-white font-display flex items-center gap-2">
+              {event.title}
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Live check-in tracking & automated college attendance sheets
+            </p>
+          </div>
+
+          {/* Export & Action Buttons */}
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {/* Download Official Attendance Excel */}
+            <button
+              onClick={downloadAttendanceExcel}
+              className="flex items-center gap-1.5 rounded-xl bg-emerald-500/20 border border-emerald-400/40 px-3.5 py-2 text-xs font-mono font-bold text-emerald-300 hover:bg-emerald-500/30 transition cursor-pointer shadow-md shadow-emerald-500/10"
+              title="Download Full Attendance Sheet with Status and Signature lines"
+            >
+              <FileSpreadsheet className="h-4 w-4 text-emerald-400" />
+              <span>Attendance Sheet (.xlsx)</span>
+              <Download className="h-3.5 w-3.5" />
+            </button>
+
+            {/* Download OD Approval List */}
+            <button
+              onClick={downloadODExcel}
+              className="flex items-center gap-1.5 rounded-xl bg-purple-500/20 border border-purple-400/40 px-3.5 py-2 text-xs font-mono font-bold text-purple-300 hover:bg-purple-500/30 transition cursor-pointer shadow-md shadow-purple-500/10"
+              title="Download On-Duty (OD) approval list filtered to PRESENT attendees for college administration"
+            >
+              <Award className="h-4 w-4 text-purple-400" />
+              <span>OD List (.xlsx)</span>
+              <Download className="h-3.5 w-3.5" />
+            </button>
+
+            {/* Print Sheet */}
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-1.5 rounded-xl glass border border-white/10 px-3 py-2 text-xs font-mono text-slate-300 hover:text-white hover:border-white/20 transition cursor-pointer"
+              title="Print attendance hardcopy"
+            >
+              <Printer className="h-3.5 w-3.5" />
+              <span>Print</span>
+            </button>
+
+            {/* Close */}
+            <button
+              onClick={onClose}
+              className="rounded-xl p-2 text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Live Attendance Statistics Ribbon */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
+          <div className="glass rounded-2xl p-3.5 border border-white/10 flex flex-col justify-between">
+            <span className="text-[11px] font-mono text-slate-400 uppercase">Total Registrations</span>
+            <span className="text-2xl font-black text-white mt-1 font-display">{stats.total}</span>
+          </div>
+
+          <div className="glass rounded-2xl p-3.5 border border-emerald-500/30 bg-emerald-950/20 flex flex-col justify-between">
+            <span className="text-[11px] font-mono text-emerald-400 uppercase flex items-center gap-1">
+              <CheckCircle2 className="h-3 w-3" /> Present / Checked In
+            </span>
+            <span className="text-2xl font-black text-emerald-300 mt-1 font-display">{stats.present}</span>
+          </div>
+
+          <div className="glass rounded-2xl p-3.5 border border-rose-500/30 bg-rose-950/20 flex flex-col justify-between">
+            <span className="text-[11px] font-mono text-rose-400 uppercase flex items-center gap-1">
+              <XCircle className="h-3 w-3" /> Absent
+            </span>
+            <span className="text-2xl font-black text-rose-300 mt-1 font-display">{stats.absent}</span>
+          </div>
+
+          <div className="glass rounded-2xl p-3.5 border border-cyan-500/30 bg-cyan-950/20 flex flex-col justify-between">
+            <span className="text-[11px] font-mono text-cyan-300 uppercase">Turnout Rate</span>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-2xl font-black text-cyan-300 font-display">{stats.percentage}%</span>
+              <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-500"
+                  style={{ width: `${stats.percentage}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Check-In Bar & Scanner Input */}
+        <form onSubmit={handleQuickCheckIn} className="mb-4 glass rounded-2xl p-3 border border-cyan-400/30 bg-cyan-950/10">
+          <div className="flex flex-col sm:flex-row items-center gap-2">
+            <div className="relative flex-1 w-full">
+              <QrCode className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-cyan-400" />
+              <input
+                ref={inputRef}
+                placeholder="Scan or type Ticket ID (e.g. AIF-4-9), Email, or Name for instant check-in..."
+                value={quickInput}
+                onChange={(e) => setQuickInput(e.target.value)}
+                className="w-full rounded-xl border border-cyan-400/20 bg-black/50 py-2.5 pl-10 pr-4 text-xs font-mono text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full sm:w-auto rounded-xl bg-cyan-400 px-5 py-2.5 text-xs font-mono font-bold text-black hover:bg-cyan-300 transition shadow-[0_0_15px_rgba(0,240,255,0.3)] shrink-0 cursor-pointer"
+            >
+              Instant Check-In
+            </button>
+          </div>
+
+          {quickMsg && (
+            <div
+              className={`mt-2 rounded-xl p-2.5 text-xs font-mono flex items-center justify-between animate-fadeIn ${
+                quickMsg.type === "success"
+                  ? "bg-emerald-950/60 border border-emerald-500/40 text-emerald-300"
+                  : "bg-rose-950/60 border border-rose-500/40 text-rose-300"
+              }`}
+            >
+              <span>{quickMsg.text}</span>
+              <button
+                type="button"
+                onClick={() => setQuickMsg(null)}
+                className="text-slate-400 hover:text-white ml-2 text-xs cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+        </form>
+
+        {/* Filter Tabs & Search Controls */}
+        <div className="mb-3 flex flex-col md:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 w-full md:w-auto">
+            <button
+              type="button"
+              onClick={() => setFilter("all")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono transition cursor-pointer ${
+                filter === "all"
+                  ? "bg-white/15 text-white font-bold border border-white/20"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              All ({stats.total})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilter("present")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono transition cursor-pointer flex items-center gap-1 ${
+                filter === "present"
+                  ? "bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30"
+                  : "text-slate-400 hover:text-emerald-300"
+              }`}
+            >
+              <CheckCircle2 className="h-3 w-3" /> Present ({stats.present})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilter("absent")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono transition cursor-pointer flex items-center gap-1 ${
+                filter === "absent"
+                  ? "bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30"
+                  : "text-slate-400 hover:text-rose-300"
+              }`}
+            >
+              <XCircle className="h-3 w-3" /> Absent ({stats.absent})
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+            <div className="relative flex-1 md:w-64">
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+              <input
+                placeholder="Filter attendees..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white/5 py-1.5 pl-9 pr-4 text-xs text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => handleBulk("mark_all_present")}
+              disabled={actionLoading || data.length === 0}
+              className="text-[11px] font-mono px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25 transition cursor-pointer disabled:opacity-50"
+            >
+              Mark All Present
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleBulk("mark_all_absent")}
+              disabled={actionLoading || data.length === 0}
+              className="text-[11px] font-mono px-3 py-1.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 hover:bg-rose-500/25 transition cursor-pointer disabled:opacity-50"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+
+        {/* Attendance Table */}
+        <div className="flex-1 overflow-auto rounded-2xl border border-white/10 bg-black/40">
+          {loading ? (
+            <div className="p-12 text-center text-slate-400 text-xs font-mono">
+              <Loader2 className="mx-auto h-6 w-6 animate-spin text-cyan-400 mb-2" />
+              Loading attendance records...
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="p-12 text-center text-slate-500 text-xs font-mono">
+              No attendees found matching current filter.
+            </div>
+          ) : (
+            <table className="w-full text-left text-xs">
+              <thead className="bg-white/5 text-slate-400 font-mono border-b border-white/10 uppercase tracking-wider sticky top-0 backdrop-blur-md">
+                <tr>
+                  <th className="p-3 w-12 text-center">#</th>
+                  <th className="p-3">Ticket ID</th>
+                  <th className="p-3">Team & Participants</th>
+                  <th className="p-3">Department & Year</th>
+                  <th className="p-3">Check-In Time</th>
+                  <th className="p-3 text-center">Status</th>
+                  <th className="p-3 text-right">Attendance Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 text-slate-200">
+                {filtered.map((r, idx) => {
+                  let checkInStr = "—";
+                  if (r.attended && r.checked_in_at) {
+                    try {
+                      checkInStr = new Date(r.checked_in_at).toLocaleTimeString("en-IN", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                      });
+                    } catch {
+                      checkInStr = r.checked_in_at;
+                    }
+                  }
+
+                  return (
+                    <tr
+                      key={r.id}
+                      className={`hover:bg-white/5 transition ${
+                        r.attended ? "bg-emerald-950/10" : ""
+                      }`}
+                    >
+                      <td className="p-3 text-center font-mono text-slate-500 text-[11px]">{idx + 1}</td>
+                      <td className="p-3 font-mono text-cyan-400 font-bold">{r.registrationCode || `AIF-${event.id}-${r.id}`}</td>
+                      <td className="p-3">
+                        {r.team_name && (
+                          <span className="inline-block rounded bg-cyan-400/10 border border-cyan-400/20 px-2 py-0.5 text-[10px] font-mono text-cyan-300 font-bold mb-0.5">
+                            {r.team_name}
+                          </span>
+                        )}
+                        <div className="font-semibold text-white">
+                          <span className="text-slate-400 font-normal text-[11px]">M1: </span>
+                          {r.member1 || r.name}
+                        </div>
+                        {r.member2 && (
+                          <div className="text-[11px] text-purple-300">
+                            <span className="text-slate-400 font-normal">M2: </span>
+                            {r.member2}
+                          </div>
+                        )}
+                        <div className="text-[10px] text-slate-400 font-mono mt-0.5">{r.email}</div>
+                      </td>
+                      <td className="p-3">
+                        <div className="text-white font-medium">{r.department || r.college || "—"}</div>
+                        <div className="text-[11px] text-slate-400">{r.year || "—"}</div>
+                      </td>
+                      <td className="p-3 font-mono text-[11px] text-slate-300">
+                        {checkInStr}
+                      </td>
+                      <td className="p-3 text-center">
+                        {r.attended ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 px-2.5 py-1 text-[10px] font-mono font-bold text-emerald-300 shadow-sm shadow-emerald-500/20">
+                            <CheckCircle2 className="h-3 w-3" /> PRESENT
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-white/5 border border-white/10 px-2.5 py-1 text-[10px] font-mono text-slate-400">
+                            <XCircle className="h-3 w-3 text-slate-500" /> ABSENT
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleToggle(r.id, r.attended)}
+                          className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold transition cursor-pointer ${
+                            r.attended
+                              ? "bg-rose-500/15 border border-rose-500/30 text-rose-300 hover:bg-rose-500/30"
+                              : "bg-emerald-500 border border-emerald-400 text-black hover:bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                          }`}
+                        >
+                          {r.attended ? "Mark Absent" : "Check In"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── 4. Modal: Google Sheets Live Sync Setup ── */
+
 function GoogleSheetSetupModal({
   config,
   onClose,

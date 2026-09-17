@@ -519,3 +519,233 @@ export async function deleteEventRegistration(req, res) {
   db.prepare("DELETE FROM event_registrations WHERE id = ? AND event_id = ?").run(regId, eventId);
   res.json({ success: true, message: "Registration deleted." });
 }
+
+// ── GET /api/events/:id/attendance (Attendance Overview & List) ──
+export async function getAttendance(req, res) {
+  const eventId = Number(req.params.id);
+  const event = db.prepare("SELECT id, title, date, venue, capacity FROM events WHERE id = ?").get(eventId);
+  if (!event) throw new ApiError(404, "Event not found.");
+
+  const list = db.prepare("SELECT * FROM event_registrations WHERE event_id = ? ORDER BY id ASC").all(eventId);
+  const total = list.length;
+  const present = list.filter(r => r.attended === 1).length;
+  const absent = total - present;
+  const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+
+  res.json({
+    success: true,
+    event,
+    stats: { total, present, absent, percentage },
+    data: list.map(r => ({
+      ...rowToJSON(r),
+      registrationCode: `AIF-${eventId}-${r.id}`,
+      attended: Boolean(r.attended),
+      checked_in_at: r.checked_in_at || ""
+    }))
+  });
+}
+
+// ── PATCH /api/events/:id/attendance/:regId (Toggle / Set Attendance) ──
+export async function toggleAttendance(req, res) {
+  const eventId = Number(req.params.id);
+  const regId = Number(req.params.regId);
+  const reg = db.prepare("SELECT * FROM event_registrations WHERE id = ? AND event_id = ?").get(regId, eventId);
+  if (!reg) throw new ApiError(404, "Registration record not found.");
+
+  const newStatus = req.body && req.body.attended !== undefined ? (req.body.attended ? 1 : 0) : (reg.attended === 1 ? 0 : 1);
+  const checkInTime = newStatus === 1 ? new Date().toISOString() : "";
+
+  db.prepare("UPDATE event_registrations SET attended = ?, checked_in_at = ? WHERE id = ? AND event_id = ?")
+    .run(newStatus, checkInTime, regId, eventId);
+
+  const updated = db.prepare("SELECT * FROM event_registrations WHERE id = ?").get(regId);
+  res.json({
+    success: true,
+    message: newStatus === 1 ? "Attendee marked PRESENT." : "Attendee marked ABSENT.",
+    data: {
+      ...rowToJSON(updated),
+      registrationCode: `AIF-${eventId}-${regId}`,
+      attended: Boolean(newStatus),
+      checked_in_at: checkInTime
+    }
+  });
+}
+
+// ── POST /api/events/:id/attendance/quick-checkin (Quick Check-In by Ticket Code / Email / Name) ──
+export async function quickCheckIn(req, res) {
+  const eventId = Number(req.params.id);
+  const { query = "" } = req.body || {};
+  const q = String(query).trim();
+  if (!q) throw new ApiError(400, "Please provide a ticket code, email, or attendee name.");
+
+  let regId = null;
+  const codeMatch = q.match(/AIF-(\d+)-(\d+)/i);
+  if (codeMatch && Number(codeMatch[1]) === eventId) {
+    regId = Number(codeMatch[2]);
+  } else if (/^\d+$/.test(q)) {
+    regId = Number(q);
+  }
+
+  let record = null;
+  if (regId) {
+    record = db.prepare("SELECT * FROM event_registrations WHERE id = ? AND event_id = ?").get(regId, eventId);
+  }
+
+  if (!record) {
+    record = db.prepare(`
+      SELECT * FROM event_registrations 
+      WHERE event_id = ? AND (
+        LOWER(email) = LOWER(?) OR 
+        LOWER(name) = LOWER(?) OR 
+        LOWER(member1) = LOWER(?) OR 
+        LOWER(member2) = LOWER(?) OR
+        LOWER(team_name) = LOWER(?)
+      ) LIMIT 1
+    `).get(eventId, q, q, q, q, q);
+  }
+
+  if (!record) {
+    throw new ApiError(404, `No registration found matching "${q}" for this event.`);
+  }
+
+  const checkInTime = new Date().toISOString();
+  db.prepare("UPDATE event_registrations SET attended = 1, checked_in_at = ? WHERE id = ?")
+    .run(checkInTime, record.id);
+
+  const updated = db.prepare("SELECT * FROM event_registrations WHERE id = ?").get(record.id);
+  res.json({
+    success: true,
+    message: `Check-in confirmed for ${updated.member1 || updated.name}!`,
+    data: {
+      ...rowToJSON(updated),
+      registrationCode: `AIF-${eventId}-${updated.id}`,
+      attended: true,
+      checked_in_at: checkInTime
+    }
+  });
+}
+
+// ── POST /api/events/:id/attendance/bulk (Bulk Attendance Actions) ──
+export async function bulkAttendance(req, res) {
+  const eventId = Number(req.params.id);
+  const { action = "mark_all_present" } = req.body || {};
+
+  if (action === "mark_all_present") {
+    const now = new Date().toISOString();
+    db.prepare("UPDATE event_registrations SET attended = 1, checked_in_at = ? WHERE event_id = ?").run(now, eventId);
+  } else if (action === "mark_all_absent") {
+    db.prepare("UPDATE event_registrations SET attended = 0, checked_in_at = '' WHERE event_id = ?").run(eventId);
+  } else {
+    throw new ApiError(400, "Invalid bulk action.");
+  }
+
+  res.json({ success: true, message: `Bulk action "${action}" applied successfully.` });
+}
+
+// ── GET /api/events/:id/attendance/export.xlsx (Official Attendance Generator) ──
+export async function exportAttendanceExcel(req, res) {
+  const eventId = Number(req.params.id);
+  const event = db.prepare("SELECT id, title, date, venue FROM events WHERE id = ?").get(eventId);
+  if (!event) throw new ApiError(404, "Event not found.");
+
+  const registrations = db.prepare("SELECT * FROM event_registrations WHERE event_id = ? ORDER BY id ASC").all(eventId);
+
+  const formattedRows = registrations.map((r, idx) => {
+    let checkInStr = "-";
+    if (r.attended === 1 && r.checked_in_at) {
+      try {
+        checkInStr = new Date(r.checked_in_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+      } catch {
+        checkInStr = r.checked_in_at;
+      }
+    }
+
+    return {
+      "S.No": idx + 1,
+      "Ticket Code": `AIF-${eventId}-${r.id}`,
+      "Team Name": r.team_name || "-",
+      "Member 1 (Lead)": r.member1 || r.name || "",
+      "Lead Email": r.email || "",
+      "Member 2": r.member2 || "-",
+      "Member 2 Email": r.member2_phone || "-",
+      "Department": r.department || r.college || "",
+      "Year of Study": r.year || "",
+      "Attendance Status": r.attended === 1 ? "PRESENT" : "ABSENT",
+      "Check-in Time": checkInStr,
+      "Attendee Signature": ""
+    };
+  });
+
+  const worksheet = XLSX.utils.json_to_sheet(formattedRows);
+  worksheet["!cols"] = [
+    { wch: 6 },
+    { wch: 16 },
+    { wch: 22 },
+    { wch: 24 },
+    { wch: 28 },
+    { wch: 24 },
+    { wch: 28 },
+    { wch: 34 },
+    { wch: 16 },
+    { wch: 20 },
+    { wch: 16 },
+    { wch: 24 }
+  ];
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance Sheet");
+
+  const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+  const safeTitle = event.title.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 30);
+  const filename = `${safeTitle}_Official_Attendance_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.send(buffer);
+}
+
+// ── GET /api/events/:id/attendance/export-od.xlsx (On-Duty Academic List Generator) ──
+export async function exportODListExcel(req, res) {
+  const eventId = Number(req.params.id);
+  const event = db.prepare("SELECT id, title, date, venue FROM events WHERE id = ?").get(eventId);
+  if (!event) throw new ApiError(404, "Event not found.");
+
+  const presentRegistrations = db.prepare("SELECT * FROM event_registrations WHERE event_id = ? AND attended = 1 ORDER BY department ASC, id ASC").all(eventId);
+
+  const formattedRows = presentRegistrations.map((r, idx) => ({
+    "S.No": idx + 1,
+    "Ticket Code": `AIF-${eventId}-${r.id}`,
+    "Participant Name": r.member1 || r.name || "",
+    "Email ID": r.email || "",
+    "Team Name": r.team_name || "-",
+    "Department": r.department || r.college || "",
+    "Year of Study": r.year || "",
+    "OD Status": "PRESENT / ELIGIBLE",
+    "Faculty In-charge Sign": ""
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(formattedRows);
+  worksheet["!cols"] = [
+    { wch: 6 },
+    { wch: 18 },
+    { wch: 26 },
+    { wch: 30 },
+    { wch: 22 },
+    { wch: 36 },
+    { wch: 14 },
+    { wch: 22 },
+    { wch: 24 }
+  ];
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "OD Approval List");
+
+  const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+  const safeTitle = event.title.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 30);
+  const filename = `${safeTitle}_OD_Approval_List_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.send(buffer);
+}
+

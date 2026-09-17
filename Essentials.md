@@ -110,6 +110,21 @@ To have registrations automatically sync both **Member 1 (Lead)** and **Member 2
 
 ---
 
+### 5. Attendance Generator & College OD Approval Sheets
+
+The portal includes an **Attendance Generator & Live Check-in Console** for event organizers and faculty advisors:
+
+1. **Instant QR Ticket / Barcode Check-in**:
+   - Organizers can scan the participant's digital pass barcode or type their Ticket ID (e.g. `AIF-4-9`), email, or name to mark them `PRESENT` with a real-time timestamp.
+2. **Official Attendance Sheet (`.xlsx`)**:
+   - Generates a full attendance sheet including Ticket ID, Team Name, Member 1, Member 2, Department, Year, Attendance Status (`PRESENT` / `ABSENT`), Check-in Time, and a physical signature column for college record keeping.
+3. **College On-Duty (OD) Approval List (`.xlsx`)**:
+   - Generates an academic On-Duty approval list filtered strictly to attendees marked `PRESENT`, grouped by department and ready for HOD / Principal sign-off.
+4. **Print Hardcopy**:
+   - Instant print layout formatted with official letterhead styling for on-venue physical coordination.
+
+---
+
 ## 🚀 Part 3: Actionable Roadmap & Priority Fixes
 
 ```mermaid

@@ -5,7 +5,7 @@ import rateLimit from "express-rate-limit";
 import { db, seed } from "./config/db.js";
 import { errorHandler, notFound } from "./middleware/error.js";
 import { login, me, changePassword, logout, requireAuth } from "./controllers/auth.js";
-import { list as eventsList, stats, getOne, create, update, remove, exportCSV, registerForEvent, getEventRegistrations, exportEventRegistrationsCSV, exportEventRegistrationsExcel, deleteEventRegistration, lookupTicket } from "./controllers/events.js";
+import { list as eventsList, stats, getOne, create, update, remove, exportCSV, registerForEvent, getEventRegistrations, exportEventRegistrationsCSV, exportEventRegistrationsExcel, deleteEventRegistration, lookupTicket, getAttendance, toggleAttendance, quickCheckIn, bulkAttendance, exportAttendanceExcel, exportODListExcel } from "./controllers/events.js";
 import { list as teamList, roles, create as createTeam, update as updateTeam, remove as removeTeam, clearAll as clearAllTeam } from "./controllers/team.js";
 import { getGoogleSheetSettings, updateGoogleSheetSettings, syncAllSheets, syncSingleEventSheet, getEmailSettings, updateEmailSettings, sendTestEmailController } from "./controllers/settings.js";
 import { getClubDetails, updateClubDetails, listActivities, createActivity, updateActivity, deleteActivity } from "./controllers/club.js";
@@ -85,6 +85,14 @@ app.get("/api/events/:id/registrations", requireAuth, getEventRegistrations);
 app.get("/api/events/:id/registrations/export.csv", requireAuth, exportEventRegistrationsCSV);
 app.get("/api/events/:id/registrations/export.xlsx", requireAuth, exportEventRegistrationsExcel);
 app.delete("/api/events/:id/registrations/:regId", requireAuth, deleteEventRegistration);
+
+// Event Attendance Tracking & OD Generator
+app.get("/api/events/:id/attendance", requireAuth, getAttendance);
+app.patch("/api/events/:id/attendance/:regId", requireAuth, toggleAttendance);
+app.post("/api/events/:id/attendance/quick-checkin", requireAuth, quickCheckIn);
+app.post("/api/events/:id/attendance/bulk", requireAuth, bulkAttendance);
+app.get("/api/events/:id/attendance/export.xlsx", requireAuth, exportAttendanceExcel);
+app.get("/api/events/:id/attendance/export-od.xlsx", requireAuth, exportODListExcel);
 
 // Google Sheets Live Sync & Configuration
 app.get("/api/settings/google-sheets", requireAuth, getGoogleSheetSettings);
