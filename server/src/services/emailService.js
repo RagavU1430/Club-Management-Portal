@@ -59,54 +59,94 @@ function getRawEmailCredentials() {
 
 export function generateEmailContent({ event, registration }) {
   const eventTitle = event.title || "AI Frontier Club Event";
-  let formattedDate = event.date;
+
+  let dateOnly = "TBD";
+  let timeOnly = "TBD";
   try {
-    formattedDate = new Date(event.date).toLocaleString("en-US", {
-      weekday: "long",
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    const d = new Date(event.date);
+    if (!isNaN(d.getTime())) {
+      dateOnly = d.toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+      timeOnly = d.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+    }
   } catch {}
 
-  const teamName = registration.teamName || registration.team_name || "Team";
-  const member1 = registration.member1 || registration.name || "Member 1";
-  const member2 = registration.member2 || "Member 2";
-  const email1 = registration.email || "—";
-  const email2 = registration.member2_phone || registration.member2Email || registration.member2email || "—"; // stored in member2_phone col
+  const teamName = registration.teamName || registration.team_name || "";
+  const member1 = registration.member1 || registration.name || "Participant";
+  const member2 = registration.member2 || "";
   const venue = event.venue || "Campus AI Lab & Auditorium";
   const regCode = registration.registrationCode || `AIF-${event.id}-${registration.id || ""}`;
   const department = registration.department || registration.college || "Artificial Intelligence and Data Science";
   const year = registration.year || "3rd Year";
 
-  const subject = `Registration Confirmed: ${eventTitle} - Team ${teamName} (${regCode})`;
+  let clubName = "AI Frontier Club";
+  let clubDept = "Department of Artificial Intelligence & Data Science";
+  let clubEmail = "aifrontierclub@gmail.com";
+  let clubPhone = "+91 98765 43210";
+  let clubSocial = "https://aifrontierclub.edu • @aifrontierclub";
 
-  const text = `AI FRONTIER CLUB - OFFICIAL EVENT CONFIRMATION\n` +
-    `Dept. of Artificial Intelligence & Data Science\n\n` +
-    `Hello ${member1} and ${member2},\n\n` +
-    `Your team registration for "${eventTitle}" has been confirmed.\n\n` +
-    `Registration details:\n` +
-    `Registration ID: ${regCode}\n` +
-    `Team Name: ${teamName}\n` +
-    `Participant 1 (Team Lead): ${member1}\n` +
-    `Participant 1 Email: ${email1}\n` +
-    `Participant 2: ${member2}\n` +
-    `${email2 && email2 !== "—" ? `Participant 2 Email: ${email2}\n` : ""}` +
-    `Department: ${department}\n` +
-    `Year of Study: ${year}\n` +
-    `Event Date and Schedule: ${formattedDate}\n` +
-    `Venue: ${venue}\n\n` +
-    `Instructions for attendees:\n` +
-    `1. Please report at least 15 minutes before the event begins.\n` +
-    `2. Bring your valid Identity Card and charged laptops with necessary dev environments.\n` +
-    `3. Present this confirmation email (or Registration ID ${regCode}) at the check-in reception desk.\n\n` +
-    `We look forward to seeing your team build and innovate.\n\n` +
-    `Warm regards,\n` +
-    `Event Organizing Team\n` +
-    `AI Frontier Club\n` +
-    `contact@aifrontierclub.org`;
+  try {
+    const club = db.prepare("SELECT * FROM club_details WHERE id = 1").get();
+    if (club) {
+      if (club.name) clubName = club.name;
+      if (club.department) clubDept = club.department;
+      if (club.email) clubEmail = club.email;
+      if (club.phone) clubPhone = club.phone;
+    }
+  } catch {}
+
+  const participantGreeting = member2 ? `${member1} & ${member2}` : member1;
+  const fullNameField = member2 ? `${member1} (Lead) & ${member2}` : member1;
+  const categoryField = `${event.category || "Hackathon / Competition"}${teamName ? ` • Team: ${teamName}` : ""} • ${department} (${year})`;
+
+  const subject = `🎉 Participation Confirmed: ${eventTitle} (${regCode})`;
+
+  const text = `Hi ${participantGreeting} 👋\n\n` +
+`╔══════════════════════════════════════╗\n` +
+`🎉 PARTICIPATION CONFIRMED 🎉\n` +
+`[${eventTitle.toUpperCase()}]\n` +
+`╚══════════════════════════════════════╝\n\n` +
+`We’re excited to officially confirm your participation in **${eventTitle}**, organized by **${clubName}**! 🚀\n\n` +
+`Your spot is reserved. Get ready to learn, compete, connect, and make the most of the experience.\n\n` +
+`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+`📅  DATE        : ${dateOnly}\n` +
+`⏰  TIME        : ${timeOnly}\n` +
+`📍  VENUE       : ${venue}\n` +
+`🎯  EVENT       : ${eventTitle}\n` +
+`🏛️  ORGANIZED BY: ${clubName}\n` +
+`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+`    🎫 YOUR PARTICIPATION DETAILS\n\n` +
+`Participant Name\n` +
+`**${fullNameField}**\n\n` +
+`Registration ID\n` +
+`**${regCode}**\n\n` +
+`Event Category\n` +
+`**${categoryField}**\n\n` +
+`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+`✨ WHAT’S NEXT?\n\n` +
+`• Be present at the venue before the reporting time.\n` +
+`• Carry your college/valid ID card if required.\n` +
+`• Keep your Registration ID handy during check-in.\n` +
+`• Follow the event guidelines shared by the organizing team.\n\n` +
+`🔥 **The countdown begins now!**\n\n` +
+`We’re looking forward to having you with us and making **${eventTitle}** an unforgettable experience.\n\n` +
+`See you there! 🚀\n\n` +
+`**${clubName}**\n` +
+`${clubDept}\n\n` +
+`📧 ${clubEmail}\n` +
+`📱 ${clubPhone}\n` +
+`🌐 ${clubSocial}\n\n` +
+`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+`**CREATE • CONNECT • COMPETE**\n` +
+`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
   return { subject, text };
 }
