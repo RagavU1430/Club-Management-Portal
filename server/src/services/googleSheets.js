@@ -140,8 +140,7 @@ export async function recordRegistration(event, reg) {
     member2: String(reg.member2 || "").trim(),
     name: String(reg.member1 || reg.name || "").trim(),
     email: String(reg.email || "").trim().toLowerCase(),
-    phone: String(reg.phone || "").trim(),
-    member2Phone: String(reg.member2_phone || reg.member2Phone || "").trim(),
+    member2Email: String(reg.member2_phone || reg.member2Phone || reg.member2Email || "").trim().toLowerCase(),
     college: String(reg.college || "").trim(),
     rollNumber: String(reg.rollNumber || reg.roll_number || "").trim(),
     year: String(reg.year || "").trim(),
@@ -224,10 +223,9 @@ function doPost(e) {
           "Registration ID",
           "Team Name",
           "Member 1 (Lead)",
-          "Member 1 Phone",
+          "Lead Email",
           "Member 2",
-          "Member 2 Phone",
-          "Email Address",
+          "Member 2 Email",
           "College / Institution",
           "Roll Number",
           "Year / Department",
@@ -256,19 +254,20 @@ function doPost(e) {
     // 2. ADD PARTICIPANT REGISTRATION ROW
     if (data.action === "add_registration" || data.name || data.email) {
       var regId = String(data.registrationId || "").trim();
-      var email = String(data.email || "").trim().toLowerCase();
+      var leadEmail = String(data.email || "").trim().toLowerCase();
+      var member2Email = String(data.member2Email || data.member2_phone || data.member2Phone || "").trim().toLowerCase();
 
       // Duplicate protection: check if registration ID or email already exists in sheet
       var lastRow = sheet.getLastRow();
-      if (lastRow > 1 && (regId || email)) {
-        var values = sheet.getRange(2, 1, lastRow - 1, 7).getValues();
+      if (lastRow > 1 && (regId || leadEmail)) {
+        var values = sheet.getRange(2, 1, lastRow - 1, 6).getValues();
         for (var r = 0; r < values.length; r++) {
           var existingRegId = String(values[r][0] || "").trim();
-          var existingEmail = String(values[r][6] || values[r][4] || values[r][2] || "").trim().toLowerCase();
-          if ((regId && existingRegId === regId) || (email && existingEmail === email)) {
+          var existingEmail = String(values[r][3] || "").trim().toLowerCase();
+          if ((regId && existingRegId === regId) || (leadEmail && existingEmail === leadEmail)) {
             return ContentService.createTextOutput(JSON.stringify({
               success: true,
-              message: "Already synced: " + (regId || email),
+              message: "Already synced: " + (regId || leadEmail),
               sheetName: sheetName,
               alreadySynced: true
             })).setMimeType(ContentService.MimeType.JSON);
@@ -276,8 +275,6 @@ function doPost(e) {
         }
       }
 
-      var phone1Str = data.phone ? "'" + String(data.phone).trim() : "";
-      var phone2Str = data.member2Phone ? "'" + String(data.member2Phone).trim() : "";
       var rollStr = data.rollNumber ? "'" + String(data.rollNumber).trim() : "";
       var regIdStr = regId ? "'" + regId : "";
 
@@ -285,10 +282,9 @@ function doPost(e) {
         regIdStr,
         data.teamName || "",
         data.member1 || data.name || "",
-        phone1Str,
+        leadEmail,
         data.member2 || "",
-        phone2Str,
-        email,
+        member2Email,
         data.college || "",
         rollStr,
         data.year || "",
@@ -298,7 +294,7 @@ function doPost(e) {
       sheet.appendRow(row);
 
       // Auto-resize columns so contents are never cut off
-      for (var col = 1; col <= 12; col++) {
+      for (var col = 1; col <= 11; col++) {
         sheet.autoResizeColumn(col);
       }
 
@@ -306,7 +302,7 @@ function doPost(e) {
         success: true,
         message: "Registration recorded in " + sheetName,
         sheetName: sheetName,
-        email: email
+        email: leadEmail
       })).setMimeType(ContentService.MimeType.JSON);
     }
 

@@ -265,8 +265,11 @@ export async function registerForEvent(req, res) {
   // Automatically save registration to Firebase Cloud Firestore
   saveRegistrationToFirestore(regRecord).catch(err => console.warn("[Firestore] record registration failed:", err.message));
 
-  // Automatically record response row into connected Google Sheet
-  recordRegistration(event, regRecord).catch(err => console.warn("[googleSheets] record row failed:", err.message));
+  // Wait for the connected Google Sheet to record the registration before responding.
+  const sheetResult = await recordRegistration(event, regRecord);
+  if (!sheetResult?.success) {
+    console.warn("[googleSheets] record row failed:", sheetResult?.error || sheetResult?.reason || "Unknown sheet sync error");
+  }
 
   // Automatically dispatch official registration confirmation email via Gmail
   const emailResult = await sendRegistrationEmail({ event, registration: regRecord });
@@ -288,6 +291,7 @@ export async function registerForEvent(req, res) {
       eventDate: event.date,
       venue: event.venue,
       emailResult,
+      sheetResult,
       emailSent: emailResult.sent,
       emailSubject: emailResult.subject,
       emailText: emailResult.previewText,
@@ -336,10 +340,9 @@ export async function exportEventRegistrationsExcel(req, res) {
       "Registration ID": `AIF-${eventId}-${r.id}`,
       "Team Name": r.team_name || "",
       "Member 1 (Lead)": r.member1 || r.name || "",
-      "Member 1 Phone": r.phone ? String(r.phone).trim() : "",
+      "Lead Email": r.email || "",
       "Member 2": r.member2 || "",
-      "Member 2 Phone": r.member2_phone ? String(r.member2_phone).trim() : "",
-      "Email Address": r.email || "",
+      "Member 2 Email": r.member2_phone || r.member2Phone || "",
       "Institution / College": r.college || "",
       "Roll Number": r.roll_number ? String(r.roll_number).trim() : "",
       "Year / Department": r.year || "",
@@ -355,10 +358,9 @@ export async function exportEventRegistrationsExcel(req, res) {
     { wch: 18 }, // Registration ID
     { wch: 22 }, // Team Name
     { wch: 24 }, // Member 1
-    { wch: 20 }, // Member 1 Phone
+    { wch: 30 }, // Lead Email
     { wch: 24 }, // Member 2
-    { wch: 20 }, // Member 2 Phone
-    { wch: 30 }, // Email Address
+    { wch: 30 }, // Member 2 Email
     { wch: 28 }, // College
     { wch: 18 }, // Roll Number
     { wch: 20 }, // Year
@@ -391,10 +393,9 @@ export async function exportEventRegistrationsCSV(req, res) {
     "Registration ID",
     "Team Name",
     "Member 1 (Lead)",
-    "Member 1 Phone",
+    "Lead Email",
     "Member 2",
-    "Member 2 Phone",
-    "Email Address",
+    "Member 2 Email",
     "Institution / College",
     "Roll Number",
     "Year / Department",
@@ -417,10 +418,9 @@ export async function exportEventRegistrationsCSV(req, res) {
       `AIF-${eventId}-${r.id}`,
       r.team_name || "",
       r.member1 || r.name || "",
-      r.phone || "",
+      r.email || "",
       r.member2 || "",
       r.member2_phone || "",
-      r.email,
       r.college || "",
       r.roll_number || "",
       r.year || "",

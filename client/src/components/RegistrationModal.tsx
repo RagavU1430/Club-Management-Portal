@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Loader2, User, Mail, School, Hash, Shield, Users, MailCheck, Send, ExternalLink, Copy, Check } from "lucide-react";
+import { X, Loader2, User, Mail, School, Hash, Shield, Users, MailCheck } from "lucide-react";
 import { apiFetch } from "../utils/api";
 
 export interface EventItem {
@@ -43,7 +43,6 @@ export default function RegistrationModal({
   const [submitting, setSubmitting] = useState(false);
   const [successData, setSuccessData] = useState<any | null>(null);
   const [error, setError] = useState("");
-  const [copiedMsg, setCopiedMsg] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -77,22 +76,13 @@ export default function RegistrationModal({
     }
   }
 
-  function copyInvitation() {
-    const textToCopy = successData?.emailText || successData?.invitationMessage;
-    if (textToCopy) {
-      navigator.clipboard.writeText(textToCopy);
-      setCopiedMsg(true);
-      setTimeout(() => setCopiedMsg(false), 2000);
-    }
-  }
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
       <div className="relative w-full max-w-xl rounded-3xl bg-[#070b16] border border-white/15 shadow-2xl p-6 sm:p-8 max-h-[92vh] overflow-y-auto">
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+          className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/5 border border-white/10 text-slate-300 hover:text-white hover:bg-white/10 hover:border-white/20 transition cursor-pointer"
         >
           <X className="h-5 w-5" />
         </button>
@@ -107,7 +97,7 @@ export default function RegistrationModal({
                 {event.title}
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                Register your 2-member team. An official confirmation pass will be delivered directly to your team email via Gmail.
+                Register your 2-member team. Your registration will be confirmed instantly.
               </p>
             </div>
 
@@ -291,16 +281,16 @@ export default function RegistrationModal({
               >
                 {submitting ? (
                   <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Recording & Sending Confirmation Email...
+                    <Loader2 className="h-4 w-4 animate-spin" /> Confirming Registration...
                   </span>
                 ) : (
-                  "Confirm Registration & Dispatch Email Pass"
+                  "Confirm Registration"
                 )}
               </button>
             </form>
           </div>
         ) : (
-          /* Confirmation Ticket Card with Gmail Notification Status */
+          /* Confirmation Ticket Card */
           <div className="py-4 text-center space-y-4">
             <div className="h-16 w-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto shadow-md">
               <MailCheck className="h-9 w-9" />
@@ -311,15 +301,8 @@ export default function RegistrationModal({
                 Registration Confirmed!
               </h3>
               <p className="text-xs text-slate-300 max-w-md mx-auto mt-1">
-                Your team registration has been officially recorded. A confirmation email with your digital pass has been dispatched to{" "}
-                <strong className="text-cyan-300">{successData.email}</strong>.
+                Your team registration has been confirmed.
               </p>
-            </div>
-
-            {/* Notification Badge */}
-            <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-4 py-1.5 text-xs text-emerald-300 font-mono">
-              <Send className="h-3.5 w-3.5 text-emerald-400" />
-              <span>Official Event Pass Dispatched to {successData.email}</span>
             </div>
 
             {/* Ticket Info Box */}
@@ -357,41 +340,6 @@ export default function RegistrationModal({
                 <span className="text-emerald-400 font-semibold">Seat Confirmed ✓</span>
               </div>
             </div>
-
-            {/* Open in Gmail CTA Button */}
-            <div className="max-w-md mx-auto space-y-2">
-              <a
-                href={successData.gmailUrl || `https://mail.google.com/mail/u/0/#search/${encodeURIComponent(event.title)}`}
-                target="_blank"
-                rel="noreferrer"
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-500/20 via-rose-500/20 to-red-500/20 border border-red-500/40 hover:bg-red-500/30 py-3 px-4 text-xs font-mono font-bold text-white shadow-lg transition cursor-pointer"
-              >
-                <Mail className="h-4 w-4 text-red-400" />
-                <span>Open Confirmation in Gmail</span>
-                <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
-              </a>
-            </div>
-
-            {/* Email Text Preview Box */}
-            {(successData.emailText || successData.invitationMessage) && (
-              <div className="max-w-md mx-auto text-left rounded-xl bg-black/40 border border-white/10 p-3.5 space-y-2">
-                <div className="flex items-center justify-between text-xs font-mono text-slate-400">
-                  <span className="flex items-center gap-1.5 text-cyan-300">
-                    <Mail className="h-3.5 w-3.5" /> Confirmation Email Preview
-                  </span>
-                  <button
-                    onClick={copyInvitation}
-                    className="flex items-center gap-1 text-[11px] text-slate-300 hover:text-white transition cursor-pointer"
-                  >
-                    {copiedMsg ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-                    <span>{copiedMsg ? "Copied" : "Copy Email"}</span>
-                  </button>
-                </div>
-                <div className="text-[11px] text-slate-300 font-mono whitespace-pre-line bg-black/50 p-2.5 rounded-lg border border-white/5 max-h-36 overflow-y-auto leading-relaxed">
-                  {successData.emailText || successData.invitationMessage}
-                </div>
-              </div>
-            )}
 
             <button
               onClick={onClose}
