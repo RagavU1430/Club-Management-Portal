@@ -7,7 +7,7 @@ import { errorHandler, notFound } from "./middleware/error.js";
 import { login, me, changePassword, logout, requireAuth } from "./controllers/auth.js";
 import { list as eventsList, stats, getOne, create, update, remove, exportCSV, registerForEvent, getEventRegistrations, exportEventRegistrationsCSV, exportEventRegistrationsExcel, deleteEventRegistration } from "./controllers/events.js";
 import { list as teamList, roles, create as createTeam, update as updateTeam, remove as removeTeam, clearAll as clearAllTeam } from "./controllers/team.js";
-import { getGoogleSheetSettings, updateGoogleSheetSettings, syncAllSheets, syncSingleEventSheet } from "./controllers/settings.js";
+import { getGoogleSheetSettings, updateGoogleSheetSettings, syncAllSheets, syncSingleEventSheet, getMessengerSettings, updateMessengerSettings, sendTestSmsController } from "./controllers/settings.js";
 import { getClubDetails, updateClubDetails, listActivities, createActivity, updateActivity, deleteActivity } from "./controllers/club.js";
 import { upload } from "./middleware/upload.js";
 
@@ -61,6 +61,11 @@ app.get("/api/settings/google-sheets", requireAuth, getGoogleSheetSettings);
 app.post("/api/settings/google-sheets", requireAuth, updateGoogleSheetSettings);
 app.post("/api/settings/google-sheets/sync", requireAuth, syncAllSheets);
 app.post("/api/events/:id/sync-sheet", requireAuth, syncSingleEventSheet);
+
+// SMS & WhatsApp Gateway Configuration & Real SMS Testing
+app.get("/api/settings/messenger", requireAuth, getMessengerSettings);
+app.post("/api/settings/messenger", requireAuth, updateMessengerSettings);
+app.post("/api/settings/messenger/test", requireAuth, sendTestSmsController);
 
 app.get("/api/team", teamList);
 app.get("/api/team/roles", roles);

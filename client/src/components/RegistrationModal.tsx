@@ -326,9 +326,18 @@ export default function RegistrationModal({
             </div>
 
             {/* Notification Badge */}
-            <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3.5 py-1 text-xs text-emerald-300 font-mono">
-              <Send className="h-3.5 w-3.5 animate-pulse" />
-              <span>Automated Mobile Invitation Dispatched to Both Numbers</span>
+            <div className="space-y-1">
+              {successData.gatewayResult?.dispatched ? (
+                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-4 py-1 text-xs text-emerald-300 font-mono">
+                  <Send className="h-3.5 w-3.5 text-emerald-400" />
+                  <span>Real SMS Dispatched to Mobile Phones via {successData.gatewayResult.provider?.toUpperCase()}!</span>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-2 rounded-full bg-cyan-500/10 border border-cyan-500/30 px-4 py-1 text-xs text-cyan-300 font-mono">
+                  <Smartphone className="h-3.5 w-3.5 text-cyan-400" />
+                  <span>Send Real Confirmation via WhatsApp or Native Device SMS</span>
+                </div>
+              )}
             </div>
 
             {/* Ticket Info Box */}
@@ -363,40 +372,75 @@ export default function RegistrationModal({
               </div>
             </div>
 
-            {/* WhatsApp / SMS Direct Pass Buttons */}
-            <div className="max-w-md mx-auto space-y-2">
-              <p className="text-[11px] font-mono text-slate-400 text-left">
-                DIRECT MOBILE INVITATION PASS LINKS:
-              </p>
-              
-              {successData.member1WhatsappUrl && (
-                <a
-                  href={successData.member1WhatsappUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-full flex items-center justify-between gap-2 rounded-xl bg-emerald-600/20 border border-emerald-500/40 hover:bg-emerald-600/30 px-4 py-2.5 text-xs text-emerald-300 font-mono transition"
-                >
-                  <span className="flex items-center gap-2">
-                    <Smartphone className="h-4 w-4 text-emerald-400" />
-                    <span>Open Pass on WhatsApp (Lead: {successData.phone})</span>
-                  </span>
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </a>
-              )}
+            {/* Real Message Direct Action Launchers */}
+            <div className="max-w-md mx-auto space-y-3 text-left">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono font-bold text-slate-300">
+                  REAL MESSAGE DELIVERY TO PARTICIPANTS:
+                </span>
+                <span className="text-[10px] font-mono text-cyan-400">1-Tap Direct Send</span>
+              </div>
 
-              {successData.member2WhatsappUrl && (
-                <a
-                  href={successData.member2WhatsappUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-full flex items-center justify-between gap-2 rounded-xl bg-purple-600/20 border border-purple-500/40 hover:bg-purple-600/30 px-4 py-2.5 text-xs text-purple-300 font-mono transition"
-                >
-                  <span className="flex items-center gap-2">
-                    <Smartphone className="h-4 w-4 text-purple-400" />
-                    <span>Open Pass on WhatsApp (Member 2: {successData.member2Phone})</span>
-                  </span>
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </a>
+              {/* Participant 1 Actions */}
+              <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-3 space-y-2">
+                <div className="text-[11px] font-mono text-cyan-300 font-semibold">
+                  Participant 1: {successData.member1 || successData.name} ({successData.phone})
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {successData.member1WhatsappUrl && (
+                    <a
+                      href={successData.member1WhatsappUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 hover:bg-emerald-500/30 py-2 px-3 text-xs text-emerald-300 font-mono transition text-center"
+                    >
+                      <Smartphone className="h-3.5 w-3.5 text-emerald-400" />
+                      <span>WhatsApp</span>
+                      <ExternalLink className="h-3 w-3 opacity-70" />
+                    </a>
+                  )}
+                  {successData.member1SmsUrl && (
+                    <a
+                      href={successData.member1SmsUrl}
+                      className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-500/20 border border-blue-500/40 hover:bg-blue-500/30 py-2 px-3 text-xs text-blue-300 font-mono transition text-center"
+                    >
+                      <MessageSquare className="h-3.5 w-3.5 text-blue-400" />
+                      <span>Device SMS</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* Participant 2 Actions */}
+              {successData.member2 && successData.member2Phone && (
+                <div className="rounded-xl border border-purple-500/20 bg-purple-950/20 p-3 space-y-2">
+                  <div className="text-[11px] font-mono text-purple-300 font-semibold">
+                    Participant 2: {successData.member2} ({successData.member2Phone})
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {successData.member2WhatsappUrl && (
+                      <a
+                        href={successData.member2WhatsappUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 hover:bg-emerald-500/30 py-2 px-3 text-xs text-emerald-300 font-mono transition text-center"
+                      >
+                        <Smartphone className="h-3.5 w-3.5 text-emerald-400" />
+                        <span>WhatsApp</span>
+                        <ExternalLink className="h-3 w-3 opacity-70" />
+                      </a>
+                    )}
+                    {successData.member2SmsUrl && (
+                      <a
+                        href={successData.member2SmsUrl}
+                        className="flex items-center justify-center gap-1.5 rounded-lg bg-purple-500/20 border border-purple-500/40 hover:bg-purple-500/30 py-2 px-3 text-xs text-purple-300 font-mono transition text-center"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5 text-purple-400" />
+                        <span>Device SMS</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
 

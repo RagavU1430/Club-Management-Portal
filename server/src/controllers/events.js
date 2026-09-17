@@ -278,9 +278,13 @@ export async function registerForEvent(req, res) {
       eventTitle: event.title,
       eventDate: event.date,
       venue: event.venue,
-      invitationMessage: msgResult.message,
+      invitationMessage: msgResult.invitationMessage,
+      shortSms: msgResult.shortSms,
       member1WhatsappUrl: msgResult.member1WhatsappUrl,
-      member2WhatsappUrl: msgResult.member2WhatsappUrl
+      member2WhatsappUrl: msgResult.member2WhatsappUrl,
+      member1SmsUrl: msgResult.member1SmsUrl,
+      member2SmsUrl: msgResult.member2SmsUrl,
+      gatewayResult: msgResult.gatewayResult,
     }
   });
 }

@@ -27,6 +27,8 @@ import {
   Save,
   Info,
   Camera,
+  Smartphone,
+  Send,
 } from "lucide-react";
 import { GithubIcon, LinkedinIcon } from "../components/SocialIcons";
 import { apiFetch, BACKEND_URL } from "../utils/api";
@@ -240,6 +242,21 @@ function EventManager() {
   const [copiedScript, setCopiedScript] = useState(false);
   const [sheetMsg, setSheetMsg] = useState("");
 
+  // SMS & WhatsApp Gateway State
+  const [showMessengerModal, setShowMessengerModal] = useState(false);
+  const [messengerConfig, setMessengerConfig] = useState<any>(null);
+  const [smsProvider, setSmsProvider] = useState("fast2sms");
+  const [fast2smsApiKey, setFast2smsApiKey] = useState("");
+  const [twilioSid, setTwilioSid] = useState("");
+  const [twilioToken, setTwilioToken] = useState("");
+  const [twilioFrom, setTwilioFrom] = useState("");
+  const [smsWebhookUrl, setSmsWebhookUrl] = useState("");
+  const [savingMessenger, setSavingMessenger] = useState(false);
+  const [messengerMsg, setMessengerMsg] = useState("");
+  const [testPhone, setTestPhone] = useState("");
+  const [sendingTestSms, setSendingTestSms] = useState(false);
+  const [testSmsResult, setTestSmsResult] = useState<{ success: boolean; message: string } | null>(null);
+
   const [showCreate, setShowCreate] = useState<boolean>(() => {
     try {
       return localStorage.getItem(SHOW_CREATE_KEY) === "true";
@@ -272,6 +289,7 @@ function EventManager() {
   useEffect(() => {
     load();
     loadSheetConfig();
+    loadMessengerConfig();
   }, []);
 
   async function load() {
@@ -328,6 +346,88 @@ function EventManager() {
       alert(e.message || "Failed to save settings");
     }
     setSavingConfig(false);
+  }
+
+  async function loadMessengerConfig() {
+    try {
+      const token = localStorage.getItem("aif_token");
+      const res = await apiFetch("/api/settings/messenger", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const d = await res.json();
+      if (d.success && d.data) {
+        setMessengerConfig(d.data);
+        setSmsProvider(d.data.provider || "fast2sms");
+        setFast2smsApiKey(d.data.fast2smsApiKey || "");
+        setTwilioSid(d.data.twilioSid || "");
+        setTwilioFrom(d.data.twilioFrom || "");
+        setSmsWebhookUrl(d.data.smsWebhookUrl || "");
+      }
+    } catch {}
+  }
+
+  async function handleSaveMessengerConfig(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingMessenger(true);
+    setMessengerMsg("");
+    try {
+      const token = localStorage.getItem("aif_token");
+      const res = await apiFetch("/api/settings/messenger", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          provider: smsProvider,
+          fast2smsApiKey,
+          twilioSid,
+          twilioToken,
+          twilioFrom,
+          smsWebhookUrl,
+        }),
+      });
+      const d = await res.json();
+      if (d.success) {
+        setMessengerConfig(d.data);
+        setMessengerMsg("SMS & WhatsApp Gateway settings saved successfully!");
+        setTimeout(() => setMessengerMsg(""), 3500);
+      } else {
+        alert(d.message || "Failed to save SMS settings");
+      }
+    } catch (e: any) {
+      alert(e.message || "Failed to save SMS settings");
+    }
+    setSavingMessenger(false);
+  }
+
+  async function handleSendTestSms(e: React.FormEvent) {
+    e.preventDefault();
+    if (!testPhone.trim()) return;
+    setSendingTestSms(true);
+    setTestSmsResult(null);
+    try {
+      const token = localStorage.getItem("aif_token");
+      const res = await apiFetch("/api/settings/messenger/test", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          phone: testPhone.trim(),
+        }),
+      });
+      const d = await res.json();
+      if (d.success) {
+        setTestSmsResult({ success: true, message: d.message || "Test SMS sent successfully! Check your phone." });
+      } else {
+        setTestSmsResult({ success: false, message: d.error || d.message || "Failed to send test SMS." });
+      }
+    } catch (err: any) {
+      setTestSmsResult({ success: false, message: err.message || "Network error while sending test SMS." });
+    }
+    setSendingTestSms(false);
   }
 
   async function handleSyncAll() {
@@ -527,6 +627,49 @@ function EventManager() {
           >
             <RefreshCw className={`h-3.5 w-3.5 ${syncingAll ? "animate-spin" : ""}`} />
             <span>{syncingAll ? "Re-syncing..." : "Re-Sync All"}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Real SMS & WhatsApp Gateway Banner */}
+      <div className="glass rounded-2xl p-4 sm:p-5 border border-blue-500/20 bg-gradient-to-r from-blue-950/25 via-slate-900/40 to-cyan-950/25 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="h-11 w-11 rounded-xl bg-blue-500/10 border border-blue-400/30 flex items-center justify-center shrink-0">
+            <Smartphone className="h-5 w-5 text-cyan-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h4 className="text-sm font-bold text-white font-display">Real SMS & Mobile Invitations</h4>
+              <span
+                className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 ${
+                  messengerConfig?.isConfigured
+                    ? "bg-emerald-500/15 text-emerald-300 border-emerald-400/30"
+                    : "bg-amber-500/15 text-amber-300 border-amber-400/30"
+                }`}
+              >
+                {messengerConfig?.isConfigured ? (
+                  <>
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>TELECOM SMS ACTIVE ({messengerConfig?.provider?.toUpperCase()})</span>
+                  </>
+                ) : (
+                  "○ SETUP FAST2SMS / TWILIO FOR DIRECT SMS"
+                )}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Send automated confirmation SMS directly to both participant mobile numbers upon event registration.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5 flex-wrap w-full lg:w-auto justify-end">
+          <button
+            onClick={() => setShowMessengerModal(true)}
+            className="flex items-center gap-1.5 rounded-xl bg-cyan-400/15 border border-cyan-400/30 px-3.5 py-2 text-xs font-mono font-bold text-cyan-300 hover:bg-cyan-400/25 hover:text-white transition cursor-pointer"
+          >
+            <Smartphone className="h-3.5 w-3.5" />
+            <span>Configure SMS Gateway & Test</span>
           </button>
         </div>
       </div>
@@ -820,6 +963,37 @@ function EventManager() {
           onCopyScript={handleCopyScript}
           onSyncAll={handleSyncAll}
           syncingAll={syncingAll}
+        />
+      )}
+
+      {/* SMS & WhatsApp Gateway Setup Modal */}
+      {showMessengerModal && (
+        <SmsGatewayModal
+          config={messengerConfig}
+          onClose={() => {
+            setShowMessengerModal(false);
+            loadMessengerConfig();
+          }}
+          onSave={handleSaveMessengerConfig}
+          provider={smsProvider}
+          setProvider={setSmsProvider}
+          fast2smsApiKey={fast2smsApiKey}
+          setFast2smsApiKey={setFast2smsApiKey}
+          twilioSid={twilioSid}
+          setTwilioSid={setTwilioSid}
+          twilioToken={twilioToken}
+          setTwilioToken={setTwilioToken}
+          twilioFrom={twilioFrom}
+          setTwilioFrom={setTwilioFrom}
+          smsWebhookUrl={smsWebhookUrl}
+          setSmsWebhookUrl={setSmsWebhookUrl}
+          savingConfig={savingMessenger}
+          messengerMsg={messengerMsg}
+          testPhone={testPhone}
+          setTestPhone={setTestPhone}
+          onSendTestSms={handleSendTestSms}
+          sendingTestSms={sendingTestSms}
+          testResult={testSmsResult}
         />
       )}
     </div>
@@ -1195,6 +1369,283 @@ function GoogleSheetSetupModal({
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+/* ── 4. Modal: SMS & WhatsApp Gateway Configuration & Testing ── */
+function SmsGatewayModal({
+  config,
+  onClose,
+  onSave,
+  provider,
+  setProvider,
+  fast2smsApiKey,
+  setFast2smsApiKey,
+  twilioSid,
+  setTwilioSid,
+  twilioToken,
+  setTwilioToken,
+  twilioFrom,
+  setTwilioFrom,
+  smsWebhookUrl,
+  setSmsWebhookUrl,
+  savingConfig,
+  messengerMsg,
+  testPhone,
+  setTestPhone,
+  onSendTestSms,
+  sendingTestSms,
+  testResult,
+}: {
+  config: any;
+  onClose: () => void;
+  onSave: (e: React.FormEvent) => void;
+  provider: string;
+  setProvider: (v: string) => void;
+  fast2smsApiKey: string;
+  setFast2smsApiKey: (v: string) => void;
+  twilioSid: string;
+  setTwilioSid: (v: string) => void;
+  twilioToken: string;
+  setTwilioToken: (v: string) => void;
+  twilioFrom: string;
+  setTwilioFrom: (v: string) => void;
+  smsWebhookUrl: string;
+  setSmsWebhookUrl: (v: string) => void;
+  savingConfig: boolean;
+  messengerMsg: string;
+  testPhone: string;
+  setTestPhone: (v: string) => void;
+  onSendTestSms: (e: React.FormEvent) => void;
+  sendingTestSms: boolean;
+  testResult: { success: boolean; message: string } | null;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
+      <div className="relative w-full max-w-2xl rounded-3xl glass border border-white/15 shadow-2xl p-6 sm:p-8 max-h-[92vh] overflow-y-auto flex flex-col space-y-6">
+        {/* Header */}
+        <div className="flex items-start justify-between pb-4 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-cyan-500/10 border border-cyan-400/30 flex items-center justify-center shrink-0">
+              <Smartphone className="h-5 w-5 text-cyan-400" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-white font-display">Real SMS & WhatsApp Gateway</h3>
+              <p className="text-xs text-slate-400">
+                Send official registration confirmation texts directly to participants' mobile numbers.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="rounded-xl p-2 text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Provider Selector Tabs */}
+        <div>
+          <label className="block text-xs font-mono text-slate-400 mb-2">SELECT TELECOM / SMS PROVIDER</label>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => setProvider("fast2sms")}
+              className={`py-2 px-3 rounded-xl border text-xs font-mono transition cursor-pointer ${
+                provider === "fast2sms"
+                  ? "bg-cyan-500/20 border-cyan-400 text-cyan-300 font-bold"
+                  : "bg-white/5 border-white/10 text-slate-400 hover:text-white"
+              }`}
+            >
+              Fast2SMS (India +91)
+            </button>
+            <button
+              type="button"
+              onClick={() => setProvider("twilio")}
+              className={`py-2 px-3 rounded-xl border text-xs font-mono transition cursor-pointer ${
+                provider === "twilio"
+                  ? "bg-purple-500/20 border-purple-400 text-purple-300 font-bold"
+                  : "bg-white/5 border-white/10 text-slate-400 hover:text-white"
+              }`}
+            >
+              Twilio (Global)
+            </button>
+            <button
+              type="button"
+              onClick={() => setProvider("webhook")}
+              className={`py-2 px-3 rounded-xl border text-xs font-mono transition cursor-pointer ${
+                provider === "webhook"
+                  ? "bg-emerald-500/20 border-emerald-400 text-emerald-300 font-bold"
+                  : "bg-white/5 border-white/10 text-slate-400 hover:text-white"
+              }`}
+            >
+              Custom Webhook
+            </button>
+          </div>
+        </div>
+
+        {/* Instructions */}
+        {provider === "fast2sms" && (
+          <div className="p-4 rounded-2xl bg-cyan-950/25 border border-cyan-400/20 text-xs space-y-2">
+            <div className="flex items-center gap-2 font-mono text-cyan-300 font-bold">
+              <Sparkles className="h-4 w-4" />
+              <span>Instant Setup with Fast2SMS (Free / Low-Cost)</span>
+            </div>
+            <p className="text-slate-300 leading-relaxed">
+              Fast2SMS delivers instant SMS directly to Indian mobile numbers (+91) over telecom networks.
+            </p>
+            <ol className="list-decimal list-inside space-y-1 text-slate-400 text-[11px] font-mono">
+              <li>Open <a href="https://www.fast2sms.com" target="_blank" rel="noreferrer" className="text-cyan-400 underline">fast2sms.com</a> and sign up for a free account.</li>
+              <li>Go to the <strong className="text-white">Dev API</strong> section in your Fast2SMS dashboard.</li>
+              <li>Copy your <strong className="text-cyan-300">Authorization Key</strong> and paste it below.</li>
+            </ol>
+          </div>
+        )}
+
+        {provider === "twilio" && (
+          <div className="p-4 rounded-2xl bg-purple-950/25 border border-purple-400/20 text-xs space-y-2">
+            <div className="flex items-center gap-2 font-mono text-purple-300 font-bold">
+              <Sparkles className="h-4 w-4" />
+              <span>Twilio Global SMS & WhatsApp API</span>
+            </div>
+            <p className="text-slate-300 leading-relaxed">
+              Use Twilio for international SMS and official WhatsApp Business delivery.
+            </p>
+          </div>
+        )}
+
+        {/* Credentials Form */}
+        <form onSubmit={onSave} className="space-y-4">
+          {provider === "fast2sms" && (
+            <div>
+              <label className="block text-xs font-mono text-slate-400 mb-1">
+                FAST2SMS DEV API AUTHORIZATION KEY *
+              </label>
+              <input
+                required
+                type="password"
+                placeholder={config?.hasFast2smsKey ? "Key configured (enter to replace)" : "Paste Fast2SMS API Key here"}
+                value={fast2smsApiKey}
+                onChange={(e) => setFast2smsApiKey(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none font-mono"
+              />
+              {config?.hasFast2smsKey && (
+                <span className="text-[10px] font-mono text-emerald-400 mt-1 inline-block">
+                  ✓ Active Key: {config.fast2smsApiKey}
+                </span>
+              )}
+            </div>
+          )}
+
+          {provider === "twilio" && (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-mono text-slate-400 mb-1">TWILIO ACCOUNT SID *</label>
+                <input
+                  required
+                  placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                  value={twilioSid}
+                  onChange={(e) => setTwilioSid(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs text-white focus:border-purple-400 focus:outline-none font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono text-slate-400 mb-1">TWILIO AUTH TOKEN *</label>
+                <input
+                  required
+                  type="password"
+                  placeholder="Auth Token"
+                  value={twilioToken}
+                  onChange={(e) => setTwilioToken(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs text-white focus:border-purple-400 focus:outline-none font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono text-slate-400 mb-1">TWILIO SENDER NUMBER *</label>
+                <input
+                  required
+                  placeholder="+1234567890"
+                  value={twilioFrom}
+                  onChange={(e) => setTwilioFrom(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs text-white focus:border-purple-400 focus:outline-none font-mono"
+                />
+              </div>
+            </div>
+          )}
+
+          {provider === "webhook" && (
+            <div>
+              <label className="block text-xs font-mono text-slate-400 mb-1">CUSTOM SMS WEBHOOK URL *</label>
+              <input
+                required
+                placeholder="https://api.your-sms-provider.com/send"
+                value={smsWebhookUrl}
+                onChange={(e) => setSmsWebhookUrl(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs text-white focus:border-emerald-400 focus:outline-none font-mono"
+              />
+            </div>
+          )}
+
+          {messengerMsg && (
+            <div className="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-xs text-emerald-300 font-mono text-center">
+              {messengerMsg}
+            </div>
+          )}
+
+          <div className="flex justify-end pt-1">
+            <button
+              type="submit"
+              disabled={savingConfig}
+              className="rounded-xl bg-cyan-400 px-6 py-2.5 text-xs font-mono font-bold text-black hover:bg-cyan-300 transition shadow-[0_0_15px_rgba(0,240,255,0.4)] disabled:opacity-50 cursor-pointer"
+            >
+              {savingConfig ? "Saving Gateway..." : "Save Gateway Settings"}
+            </button>
+          </div>
+        </form>
+
+        {/* Live Test SMS Section */}
+        <div className="pt-4 border-t border-white/10 space-y-3">
+          <div className="flex items-center gap-2">
+            <Send className="h-4 w-4 text-cyan-400" />
+            <span className="text-xs font-mono font-bold text-white">TEST REAL SMS DISPATCH</span>
+          </div>
+          <p className="text-[11px] text-slate-400">
+            Send a live test confirmation text to your own mobile phone to physically verify delivery.
+          </p>
+
+          <form onSubmit={onSendTestSms} className="flex gap-2">
+            <input
+              required
+              placeholder="Enter mobile number (e.g. 9876543210)"
+              value={testPhone}
+              onChange={(e) => setTestPhone(e.target.value)}
+              className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none font-mono"
+            />
+            <button
+              type="submit"
+              disabled={sendingTestSms}
+              className="flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2.5 text-xs font-mono font-bold text-black hover:bg-emerald-400 transition shadow-[0_0_15px_rgba(16,185,129,0.3)] disabled:opacity-50 cursor-pointer shrink-0"
+            >
+              <Send className={`h-3.5 w-3.5 ${sendingTestSms ? "animate-pulse" : ""}`} />
+              <span>{sendingTestSms ? "Sending..." : "Send Test SMS"}</span>
+            </button>
+          </form>
+
+          {testResult && (
+            <div
+              className={`p-3 rounded-xl border text-xs font-mono ${
+                testResult.success
+                  ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300"
+                  : "bg-red-950/40 border-red-500/40 text-red-300"
+              }`}
+            >
+              {testResult.message}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
