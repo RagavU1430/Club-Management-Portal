@@ -872,6 +872,7 @@ function ResponsesModal({ event, onClose }: { event: any; onClose: () => void })
       r.email?.toLowerCase().includes(q) ||
       r.college?.toLowerCase().includes(q) ||
       r.phone?.toLowerCase().includes(q) ||
+      r.member2_phone?.toLowerCase().includes(q) ||
       r.roll_number?.toLowerCase().includes(q)
     );
   });
@@ -972,7 +973,14 @@ function ResponsesModal({ event, onClose }: { event: any; onClose: () => void })
                     </td>
                     <td className="p-3">
                       <div className="text-slate-300 font-mono text-[11px]">{r.email}</div>
-                      <div className="text-[10px] text-slate-400 font-mono">{r.phone || "—"}</div>
+                      <div className="text-[10px] text-cyan-300 font-mono">
+                        <span className="text-slate-500">M1: </span>{r.phone || "—"}
+                      </div>
+                      {r.member2_phone && (
+                        <div className="text-[10px] text-purple-300 font-mono">
+                          <span className="text-slate-500">M2: </span>{r.member2_phone}
+                        </div>
+                      )}
                     </td>
                     <td className="p-3">
                       <div className="text-white">{r.college || "—"}</div>

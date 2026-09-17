@@ -1,6 +1,7 @@
 import { db, rowToJSON } from "../config/db.js";
 import { ApiError } from "../utils/http.js";
 import { createEventSheet, recordRegistration } from "../services/googleSheets.js";
+import { sendAutomatedMobileInvitation } from "../services/messenger.js";
 import XLSX from "xlsx";
 
 function pickBody(body = {}) {
@@ -201,6 +202,8 @@ export async function registerForEvent(req, res) {
     name = "",
     email,
     phone = "",
+    member2Phone = "",
+    member2_phone = "",
     college = "",
     rollNumber = "",
     year = "",
@@ -211,6 +214,8 @@ export async function registerForEvent(req, res) {
   const m1 = leadName;
   const m2 = (member2 || "").trim();
   const tName = (teamName || "").trim();
+  const p1 = String(phone || "").trim();
+  const p2 = String(member2Phone || member2_phone || "").trim();
 
   if (!leadName) throw new ApiError(400, "Member 1 (or Full Name) is required.");
   if (!email || !email.trim() || !email.includes("@")) throw new ApiError(400, "Valid Email address is required.");
@@ -225,17 +230,16 @@ export async function registerForEvent(req, res) {
     });
   }
 
-  // Insert registration response
+  // Insert registration response with both phone numbers
   const result = db.prepare(`
-    INSERT INTO event_registrations (event_id, team_name, member1, member2, name, email, phone, college, roll_number, year, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(eventId, tName, m1, m2, leadName, email.trim().toLowerCase(), phone.trim(), college.trim(), rollNumber.trim(), year.trim(), notes.trim());
+    INSERT INTO event_registrations (event_id, team_name, member1, member2, name, email, phone, member2_phone, college, roll_number, year, notes)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(eventId, tName, m1, m2, leadName, email.trim().toLowerCase(), p1, p2, college.trim(), rollNumber.trim(), year.trim(), notes.trim());
 
   const regId = result.lastInsertRowid;
   const registrationCode = `AIF-${eventId}-${regId}`;
 
-  // Automatically record response row into the connected Google Sheet
-  recordRegistration(event, {
+  const regRecord = {
     id: regId,
     registrationCode,
     teamName: tName,
@@ -243,17 +247,24 @@ export async function registerForEvent(req, res) {
     member2: m2,
     name: leadName,
     email: email.trim().toLowerCase(),
-    phone: phone.trim(),
+    phone: p1,
+    member2_phone: p2,
     college: college.trim(),
     rollNumber: rollNumber.trim(),
     year: year.trim(),
     notes: notes.trim(),
     created_at: new Date().toISOString()
-  }).catch(err => console.warn("[googleSheets] record row failed:", err.message));
+  };
+
+  // Automatically record response row into connected Google Sheet
+  recordRegistration(event, regRecord).catch(err => console.warn("[googleSheets] record row failed:", err.message));
+
+  // Automatically dispatch mobile invitation & confirmation message to both participants
+  const msgResult = await sendAutomatedMobileInvitation({ event, registration: regRecord });
 
   res.status(201).json({
     success: true,
-    message: "Registration successful!",
+    message: "Registration successful! Automated mobile invitation dispatched.",
     data: {
       id: regId,
       registrationId: registrationCode,
@@ -262,9 +273,14 @@ export async function registerForEvent(req, res) {
       member2: m2,
       name: leadName,
       email: email.trim().toLowerCase(),
+      phone: p1,
+      member2Phone: p2,
       eventTitle: event.title,
       eventDate: event.date,
-      venue: event.venue
+      venue: event.venue,
+      invitationMessage: msgResult.message,
+      member1WhatsappUrl: msgResult.member1WhatsappUrl,
+      member2WhatsappUrl: msgResult.member2WhatsappUrl
     }
   });
 }
@@ -309,9 +325,10 @@ export async function exportEventRegistrationsExcel(req, res) {
       "Registration ID": `AIF-${eventId}-${r.id}`,
       "Team Name": r.team_name || "",
       "Member 1 (Lead)": r.member1 || r.name || "",
+      "Member 1 Phone": r.phone ? String(r.phone).trim() : "",
       "Member 2": r.member2 || "",
+      "Member 2 Phone": r.member2_phone ? String(r.member2_phone).trim() : "",
       "Email Address": r.email || "",
-      "Phone / WhatsApp": r.phone ? String(r.phone).trim() : "",
       "Institution / College": r.college || "",
       "Roll Number": r.roll_number ? String(r.roll_number).trim() : "",
       "Year / Department": r.year || "",
@@ -327,9 +344,10 @@ export async function exportEventRegistrationsExcel(req, res) {
     { wch: 18 }, // Registration ID
     { wch: 22 }, // Team Name
     { wch: 24 }, // Member 1
+    { wch: 20 }, // Member 1 Phone
     { wch: 24 }, // Member 2
+    { wch: 20 }, // Member 2 Phone
     { wch: 30 }, // Email Address
-    { wch: 20 }, // Phone
     { wch: 28 }, // College
     { wch: 18 }, // Roll Number
     { wch: 20 }, // Year
@@ -362,9 +380,10 @@ export async function exportEventRegistrationsCSV(req, res) {
     "Registration ID",
     "Team Name",
     "Member 1 (Lead)",
+    "Member 1 Phone",
     "Member 2",
+    "Member 2 Phone",
     "Email Address",
-    "Phone / WhatsApp",
     "Institution / College",
     "Roll Number",
     "Year / Department",
@@ -387,9 +406,10 @@ export async function exportEventRegistrationsCSV(req, res) {
       `AIF-${eventId}-${r.id}`,
       r.team_name || "",
       r.member1 || r.name || "",
-      r.member2 || "",
-      r.email,
       r.phone || "",
+      r.member2 || "",
+      r.member2_phone || "",
+      r.email,
       r.college || "",
       r.roll_number || "",
       r.year || "",

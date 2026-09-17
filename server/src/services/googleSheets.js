@@ -141,6 +141,7 @@ export async function recordRegistration(event, reg) {
     name: String(reg.member1 || reg.name || "").trim(),
     email: String(reg.email || "").trim().toLowerCase(),
     phone: String(reg.phone || "").trim(),
+    member2Phone: String(reg.member2_phone || reg.member2Phone || "").trim(),
     college: String(reg.college || "").trim(),
     rollNumber: String(reg.rollNumber || reg.roll_number || "").trim(),
     year: String(reg.year || "").trim(),
@@ -223,9 +224,10 @@ function doPost(e) {
           "Registration ID",
           "Team Name",
           "Member 1 (Lead)",
+          "Member 1 Phone",
           "Member 2",
+          "Member 2 Phone",
           "Email Address",
-          "Phone / WhatsApp",
           "College / Institution",
           "Roll Number",
           "Year / Department",
@@ -259,10 +261,10 @@ function doPost(e) {
       // Duplicate protection: check if registration ID or email already exists in sheet
       var lastRow = sheet.getLastRow();
       if (lastRow > 1 && (regId || email)) {
-        var values = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
+        var values = sheet.getRange(2, 1, lastRow - 1, 7).getValues();
         for (var r = 0; r < values.length; r++) {
           var existingRegId = String(values[r][0] || "").trim();
-          var existingEmail = String(values[r][4] || values[r][2] || "").trim().toLowerCase();
+          var existingEmail = String(values[r][6] || values[r][4] || values[r][2] || "").trim().toLowerCase();
           if ((regId && existingRegId === regId) || (email && existingEmail === email)) {
             return ContentService.createTextOutput(JSON.stringify({
               success: true,
@@ -274,7 +276,8 @@ function doPost(e) {
         }
       }
 
-      var phoneStr = data.phone ? "'" + String(data.phone).trim() : "";
+      var phone1Str = data.phone ? "'" + String(data.phone).trim() : "";
+      var phone2Str = data.member2Phone ? "'" + String(data.member2Phone).trim() : "";
       var rollStr = data.rollNumber ? "'" + String(data.rollNumber).trim() : "";
       var regIdStr = regId ? "'" + regId : "";
 
@@ -282,9 +285,10 @@ function doPost(e) {
         regIdStr,
         data.teamName || "",
         data.member1 || data.name || "",
+        phone1Str,
         data.member2 || "",
+        phone2Str,
         email,
-        phoneStr,
         data.college || "",
         rollStr,
         data.year || "",
@@ -294,7 +298,7 @@ function doPost(e) {
       sheet.appendRow(row);
 
       // Auto-resize columns so contents are never cut off
-      for (var col = 1; col <= 11; col++) {
+      for (var col = 1; col <= 12; col++) {
         sheet.autoResizeColumn(col);
       }
 

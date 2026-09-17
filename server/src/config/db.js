@@ -103,6 +103,7 @@ db.exec(`
     name TEXT NOT NULL,
     email TEXT NOT NULL,
     phone TEXT NOT NULL DEFAULT '',
+    member2_phone TEXT NOT NULL DEFAULT '',
     college TEXT NOT NULL DEFAULT '',
     roll_number TEXT NOT NULL DEFAULT '',
     year TEXT NOT NULL DEFAULT '',
@@ -119,6 +120,7 @@ try { db.exec("ALTER TABLE events ADD COLUMN webhook_url TEXT DEFAULT ''"); } ca
 try { db.exec("ALTER TABLE event_registrations ADD COLUMN team_name TEXT DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE event_registrations ADD COLUMN member1 TEXT DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE event_registrations ADD COLUMN member2 TEXT DEFAULT ''"); } catch {}
+try { db.exec("ALTER TABLE event_registrations ADD COLUMN member2_phone TEXT DEFAULT ''"); } catch {}
 
 // Settings table for global configs (e.g. Google Sheets webhook)
 db.exec(`
