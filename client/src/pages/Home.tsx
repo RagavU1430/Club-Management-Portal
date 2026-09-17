@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import VideoScrollHero from "../components/VideoScrollHero";
 import StatsRibbon from "../components/StatsRibbon";
+import NextUpcomingEvent from "../components/NextUpcomingEvent";
 
 const TRACKS = [
   {
@@ -54,6 +55,9 @@ export default function Home() {
       <div className="relative z-10 -mt-8">
         <StatsRibbon />
       </div>
+
+      {/* ── 2.5. Featured Next Upcoming Event (Single Earliest Event) ── */}
+      <NextUpcomingEvent />
 
       {/* ── 3. Innovation Tracks / Pillars ── */}
       <section className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20">

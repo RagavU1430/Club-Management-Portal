@@ -72,10 +72,18 @@ function csvCell(value) {
   return /[",\n\r]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
 }
 
+function isUpcoming(e) {
+  const end = e.end_date ? new Date(e.end_date) : new Date(e.date);
+  if (typeof e.date === "string" && !e.date.includes("T") && !e.date.includes(":") && !e.end_date) {
+    end.setHours(23, 59, 59, 999);
+  }
+  return (e.status === "published" || !e.status) && end.getTime() >= Date.now();
+}
+
 function decorate(event) {
   const json = rowToJSON(event);
   json.id = json.id;
-  json.computedStatus = new Date(json.date) >= new Date() ? "upcoming" : "past";
+  json.computedStatus = isUpcoming(json) ? "upcoming" : "past";
   json.webhookUrl = json.webhook_url || "";
   json.registrationLink = json.registration_link || "";
   json.endDate = json.end_date || null;
@@ -94,8 +102,11 @@ export async function list(req, res) {
   const lim = Math.min(Number(limit), 100);
   const pg = Math.max(Number(page), 1);
   let all = db.prepare("SELECT * FROM events ORDER BY date DESC").all();
-  if (scope === "upcoming") all = all.filter(e => e.status === "published" && new Date(e.date) >= new Date());
-  else if (scope === "past") all = all.filter(e => e.status === "published" && new Date(e.date) < new Date());
+  if (scope === "upcoming") {
+    all = all.filter(isUpcoming).sort((a, b) => new Date(a.date) - new Date(b.date));
+  } else if (scope === "past") {
+    all = all.filter(e => e.status === "published" && !isUpcoming(e));
+  }
   if (tag) all = all.filter(e => JSON.stringify(e.tags || []).includes(tag));
   if (q) { const rx = q.toLowerCase(); all = all.filter(e => `${e.title} ${e.description} ${e.venue}`.toLowerCase().includes(rx)); }
   const total = all.length;
@@ -105,11 +116,11 @@ export async function list(req, res) {
 
 // ── GET /api/events/stats ──
 export async function stats(req, res) {
-  const now = new Date().toISOString();
   const all = db.prepare("SELECT * FROM events").all();
-  const upcoming = all.filter(e => e.status === "published" && new Date(e.date) >= new Date()).length;
-  const past = all.filter(e => e.status === "published" && new Date(e.date) < new Date()).length;
-  const next = all.filter(e => e.status === "published" && new Date(e.date) >= new Date()).sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+  const upcomingEvents = all.filter(isUpcoming).sort((a, b) => new Date(a.date) - new Date(b.date));
+  const upcoming = upcomingEvents.length;
+  const past = all.filter(e => e.status === "published" && !isUpcoming(e)).length;
+  const next = upcomingEvents[0];
   res.json({ success: true, data: { upcoming, past, total: all.length, nextEvent: next ? { title: next.title, date: next.date, slug: next.slug } : null } });
 }
 
