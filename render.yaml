@@ -1,0 +1,38 @@
+services:
+  # 1. Backend Web Service (Node.js + Express)
+  - type: web
+    name: aifrontier-api
+    env: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GMAIL_USER
+        sync: false
+      - key: GMAIL_APP_PASSWORD
+        sync: false
+      - key: EMAIL_SENDER_NAME
+        value: AI Frontier Club
+
+  # 2. Frontend Static Site (React + Vite)
+  - type: web
+    name: aifrontier-portal
+    env: static
+    rootDir: client
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: aifrontier-api
+          property: host
