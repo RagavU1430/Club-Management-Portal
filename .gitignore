@@ -1,0 +1,38 @@
+# Node dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Build artifacts
+dist/
+client/dist/
+*.tsbuildinfo
+client/*.tsbuildinfo
+
+# Environment variables
+.env
+server/.env
+*.env.local
+
+# Database & Runtime Data
+server/data/*.db
+server/data/*.sqlite
+server/data/*.sqlite-journal
+server/data/*.sqlite3
+
+# Uploaded Files
+server/uploads/*
+!server/uploads/.gitkeep
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor & OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
