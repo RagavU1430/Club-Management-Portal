@@ -15,10 +15,8 @@ server/.env
 *.env.local
 
 # Database & Runtime Data
-server/data/*.db
-server/data/*.sqlite
-server/data/*.sqlite-journal
-server/data/*.sqlite3
+server/data/*
+!server/data/.gitkeep
 
 # Uploaded Files
 server/uploads/*
