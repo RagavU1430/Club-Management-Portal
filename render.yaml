@@ -18,6 +18,8 @@ services:
         sync: false
       - key: EMAIL_SENDER_NAME
         value: AI Frontier Club
+      - key: CLIENT_URL
+        value: https://ai-frontier-club.vercel.app
 
   # 2. Frontend Static Site (React + Vite)
   - type: web
