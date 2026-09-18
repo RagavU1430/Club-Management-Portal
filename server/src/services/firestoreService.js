@@ -178,24 +178,87 @@ export async function syncAllToFirestore() {
     return { synced: false, reason: "Firebase credentials pending" };
   }
 
-  console.log(`[Firestore Sync] Synchronizing all local collections to Firebase Cloud Firestore... 🔥`);
+  console.log(`[Firestore Sync] Synchronizing all collections with Firebase Cloud Firestore... 🔥`);
   try {
     // 1. Events
     const events = db.prepare("SELECT * FROM events").all();
-    for (const e of events) {
-      await fs.collection("events").doc(String(e.id)).set(rowToJSON(e), { merge: true });
+    if (events.length > 0) {
+      for (const e of events) {
+        await fs.collection("events").doc(String(e.id)).set(rowToJSON(e), { merge: true });
+      }
+    } else {
+      // Restore from Cloud Firestore if local DB is empty
+      const cloudSnap = await fs.collection("events").get();
+      if (!cloudSnap.empty) {
+        console.log(`[Firestore Sync] Restoring ${cloudSnap.size} events from Cloud Firestore...`);
+        const insertEvent = db.prepare(`
+          INSERT OR REPLACE INTO events (id, title, slug, date, end_date, venue, description, summary, image, registration_link, tags, status, featured, capacity, created_at, updated_at)
+          VALUES (@id, @title, @slug, @date, @end_date, @venue, @description, @summary, @image, @registration_link, @tags, @status, @featured, @capacity, @created_at, @updated_at)
+        `);
+        for (const doc of cloudSnap.docs) {
+          const d = doc.data();
+          insertEvent.run({
+            id: Number(doc.id) || d.id,
+            title: d.title || "",
+            slug: d.slug || ("event-" + doc.id),
+            date: d.date || new Date().toISOString(),
+            end_date: d.endDate || d.end_date || null,
+            venue: d.venue || "",
+            description: d.description || "",
+            summary: d.summary || "",
+            image: d.image || "",
+            registration_link: d.registrationLink || d.registration_link || "",
+            tags: typeof d.tags === "object" ? JSON.stringify(d.tags) : (d.tags || "[]"),
+            status: d.status || "published",
+            featured: d.featured ? 1 : 0,
+            capacity: Number(d.capacity) || 0,
+            created_at: d.createdAt || d.created_at || new Date().toISOString(),
+            updated_at: d.updatedAt || d.updated_at || new Date().toISOString(),
+          });
+        }
+      }
     }
 
-    // 2. Registrations
-    const regs = db.prepare("SELECT * FROM event_registrations").all();
-    for (const r of regs) {
-      await fs.collection("event_registrations").doc(String(r.id)).set(rowToJSON(r), { merge: true });
-    }
-
-    // 3. Team
+    // 2. Team Members
     const team = db.prepare("SELECT * FROM team_members").all();
-    for (const m of team) {
-      await fs.collection("team").doc(String(m.id)).set(rowToJSON(m), { merge: true });
+    if (team.length > 0) {
+      for (const m of team) {
+        await fs.collection("team").doc(String(m.id)).set(rowToJSON(m), { merge: true });
+      }
+    } else {
+      const cloudTeam = await fs.collection("team").get();
+      if (!cloudTeam.empty) {
+        console.log(`[Firestore Sync] Restoring ${cloudTeam.size} coordinators from Cloud Firestore...`);
+        const insertMember = db.prepare(`
+          INSERT OR REPLACE INTO team_members (id, name, role, department, photo, email, phone, linkedin, github, bio, "order", active)
+          VALUES (@id, @name, @role, @department, @photo, @email, @phone, @linkedin, @github, @bio, @order, @active)
+        `);
+        for (const doc of cloudTeam.docs) {
+          const d = doc.data();
+          insertMember.run({
+            id: Number(doc.id) || d.id,
+            name: d.name || "",
+            role: d.role || "Coordinator",
+            department: d.department || "",
+            photo: d.photo || "",
+            email: d.email || "",
+            phone: d.phone || "",
+            linkedin: d.linkedin || "",
+            github: d.github || "",
+            bio: d.bio || "",
+            order: Number(d.order) || 0,
+            active: d.active ? 1 : 0,
+          });
+        }
+      }
+    }
+
+    // 3. Registrations
+    const regs = db.prepare("SELECT * FROM event_registrations").all();
+    if (regs.length > 0) {
+      for (const r of regs) {
+        await fs.collection("event_registrations").doc(String(r.id)).set(rowToJSON(r), { merge: true });
+      }
     }
 
     // 4. Club details
@@ -216,8 +279,10 @@ export async function syncAllToFirestore() {
       await fs.collection("subscribers").doc(String(s.id)).set(rowToJSON(s), { merge: true });
     }
 
-    console.log(`[Firestore Sync] Successfully synced ${events.length} events, ${regs.length} registrations, ${team.length} team members, and ${subscribers.length} subscribers to Cloud Firestore! 🔥`);
-    return { synced: true, events: events.length, registrations: regs.length, team: team.length, subscribers: subscribers.length };
+    const currentEvents = db.prepare("SELECT COUNT(*) as count FROM events").get().count;
+    const currentTeam = db.prepare("SELECT COUNT(*) as count FROM team_members").get().count;
+    console.log(`[Firestore Sync] Complete! Live state: ${currentEvents} events, ${currentTeam} coordinators in sync.`);
+    return { synced: true, events: currentEvents, team: currentTeam };
   } catch (err) {
     console.error(`[Firestore Sync] Error during sync:`, err.message);
     return { synced: false, error: err.message };
