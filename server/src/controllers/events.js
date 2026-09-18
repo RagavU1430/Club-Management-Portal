@@ -291,8 +291,8 @@ export async function registerForEvent(req, res) {
   saveRegistrationToFirestore(regRecord).catch(err => console.warn("[Firestore] async sync error:", err.message));
   recordRegistration(event, regRecord).catch(err => console.warn("[googleSheets] async sync error:", err.message));
 
-  // 6. Automatically dispatch official registration confirmation email via Gmail
-  const emailResult = await sendRegistrationEmail({ event, registration: regRecord });
+  // 6. Automatically dispatch official registration confirmation email via Gmail (background async)
+  sendRegistrationEmail({ event, registration: regRecord }).catch(err => console.warn("[Email] async delivery error:", err.message));
 
   res.status(201).json({
     success: true,

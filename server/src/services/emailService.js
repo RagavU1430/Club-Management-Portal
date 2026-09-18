@@ -164,6 +164,9 @@ function createTransporter() {
         user,
         pass,
       },
+      connectionTimeout: 7000,
+      greetingTimeout: 5000,
+      socketTimeout: 10000,
     });
   }
 

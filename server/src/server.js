@@ -206,4 +206,15 @@ app.use(errorHandler);
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`[server] listening on http://127.0.0.1:${PORT}`);
+
+  // ── Keep-Alive Ping (Prevents Render Free-Tier from going to sleep) ──
+  const keepAliveTarget = process.env.RENDER_EXTERNAL_URL || (process.env.NODE_ENV === "production" ? "https://aifrontier-api.onrender.com" : null);
+  if (keepAliveTarget) {
+    const PING_INTERVAL = 14 * 60 * 1000; // Ping every 14 minutes
+    setInterval(() => {
+      fetch(`${keepAliveTarget.replace(/\/$/, "")}/api/health`)
+        .then(() => console.log("[keep-alive] Pinged health endpoint to maintain warm container."))
+        .catch(err => console.warn("[keep-alive] Ping error:", err.message));
+    }, PING_INTERVAL);
+  }
 });
