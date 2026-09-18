@@ -302,10 +302,16 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
 
       if (pathname === "/api/settings/email" && method === "POST") {
         const body = init?.body ? JSON.parse(init.body as string) : {};
+        let prevSettings: any = {};
+        try {
+          prevSettings = JSON.parse(localStorage.getItem("aif_email_settings") || "{}");
+        } catch {}
+
         const newSettings = {
-          gmailUser: body.gmailUser || "ragavkrr14@gmail.com",
-          hasAppPassword: Boolean(body.gmailAppPassword || true),
-          senderName: body.senderName || "AI Frontier Club",
+          gmailUser: body.gmailUser || prevSettings.gmailUser || "ragavkrr14@gmail.com",
+          gmailAppPassword: body.gmailAppPassword || prevSettings.gmailAppPassword || "qzkuhlklzhijrlob",
+          hasAppPassword: true,
+          senderName: body.senderName || prevSettings.senderName || "AI Frontier Club",
           isConfigured: true,
         };
         try {
@@ -321,6 +327,11 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
       if (pathname === "/api/settings/email/test" && method === "POST") {
         const body = init?.body ? JSON.parse(init.body as string) : {};
         const toEmail = body.toEmail || body.email;
+        let savedSettings: any = {};
+        try {
+          savedSettings = JSON.parse(localStorage.getItem("aif_email_settings") || "{}");
+        } catch {}
+
         try {
           const testRes = await fetch("/api/send-confirmation", {
             method: "POST",
@@ -332,6 +343,8 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
               venue: "Campus AI Lab",
               registrationCode: "TEST-LIVE",
               member1: "Club Member",
+              gmailUser: savedSettings.gmailUser || "ragavkrr14@gmail.com",
+              gmailAppPassword: savedSettings.gmailAppPassword || "qzkuhlklzhijrlob",
             }),
           });
           const testData = await testRes.json();

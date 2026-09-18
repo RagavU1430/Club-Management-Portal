@@ -246,6 +246,20 @@ export async function registerForEvent(eventId: number, input: RegistrationInput
     }
   }
 
+  function getStoredEmailCredentials() {
+    try {
+      const raw = localStorage.getItem("aif_email_settings");
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return {
+        gmailUser: parsed.gmailUser || undefined,
+        gmailAppPassword: parsed.gmailAppPassword || undefined,
+      };
+    } catch {
+      return {};
+    }
+  }
+
   // 2. Duplicate check
   const cleanEmail = input.email.trim().toLowerCase();
   const { data: existing } = await supabase
@@ -278,6 +292,7 @@ export async function registerForEvent(eventId: number, input: RegistrationInput
           member2: existing.member2,
           department: existing.department,
           year: existing.year,
+          ...getStoredEmailCredentials(),
         }),
       }).catch((err) => console.warn("[Email Dispatch]", err.message));
     }
@@ -347,6 +362,7 @@ export async function registerForEvent(eventId: number, input: RegistrationInput
       member2: payload.member2,
       department: payload.department,
       year: payload.year,
+      ...getStoredEmailCredentials(),
     }),
   }).catch((err) => console.warn("[Email Dispatch]", err.message));
 

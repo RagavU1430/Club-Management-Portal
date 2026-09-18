@@ -1,4 +1,16 @@
 import nodemailer from "nodemailer";
+import dotenv from "dotenv";
+import fs from "fs";
+
+try {
+  if (fs.existsSync("./server/.env")) {
+    dotenv.config({ path: "./server/.env" });
+  } else if (fs.existsSync(".env")) {
+    dotenv.config({ path: ".env" });
+  } else {
+    dotenv.config();
+  }
+} catch {}
 
 /**
  * Vercel Serverless Function: /api/send-confirmation
@@ -191,11 +203,15 @@ export default async function handler(req, res) {
 `3. Keep your Registration ID (${registrationCode}) handy for desk verification.\n\n` +
 `See you there!\n${senderName}\nEmail: ragavkrr14@gmail.com\n`;
 
-  const gmailUser = process.env.GMAIL_USER || "ragavkrr14@gmail.com";
+  const customUser = req.body?.gmailUser;
+  const customPass = req.body?.gmailAppPassword;
+
+  const gmailUser = (customUser || process.env.GMAIL_USER || "ragavkrr14@gmail.com").trim();
   const gmailPass = (
+    customPass ||
     process.env.GMAIL_APP_PASSWORD ||
     process.env.GMAIL_PASSWORD ||
-    ""
+    "qzkuhlklzhijrlob"
   )
     .replace(/\s+/g, "")
     .trim();

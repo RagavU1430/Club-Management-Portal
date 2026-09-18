@@ -11,8 +11,8 @@ export function getEmailConfig() {
   const passRow = db.prepare("SELECT value FROM settings WHERE key = 'gmail_app_password'").get();
   const senderNameRow = db.prepare("SELECT value FROM settings WHERE key = 'email_sender_name'").get();
 
-  const user = userRow?.value || process.env.GMAIL_USER || "";
-  const pass = passRow?.value || process.env.GMAIL_APP_PASSWORD || "";
+  const user = userRow?.value || process.env.GMAIL_USER || "ragavkrr14@gmail.com";
+  const pass = passRow?.value || process.env.GMAIL_APP_PASSWORD || "qzkuhlklzhijrlob";
   const senderName = senderNameRow?.value || process.env.EMAIL_SENDER_NAME || "AI Frontier Club";
 
   const isConfigured = Boolean(user && pass);
@@ -51,8 +51,8 @@ function getRawEmailCredentials() {
   const senderNameRow = db.prepare("SELECT value FROM settings WHERE key = 'email_sender_name'").get();
 
   return {
-    user: (userRow?.value || process.env.GMAIL_USER || "").trim(),
-    pass: (passRow?.value || process.env.GMAIL_APP_PASSWORD || "").replace(/\s+/g, "").trim(),
+    user: (userRow?.value || process.env.GMAIL_USER || "ragavkrr14@gmail.com").trim(),
+    pass: (passRow?.value || process.env.GMAIL_APP_PASSWORD || "qzkuhlklzhijrlob").replace(/\s+/g, "").trim(),
     senderName: (senderNameRow?.value || process.env.EMAIL_SENDER_NAME || "AI Frontier Club").trim(),
   };
 }
