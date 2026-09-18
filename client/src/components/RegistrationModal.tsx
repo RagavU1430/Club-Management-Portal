@@ -494,10 +494,12 @@ export default function RegistrationModal({
 
             <div>
               <h3 className="text-2xl font-black text-white font-display">
-                Registration Confirmed!
+                {successData.alreadyRegistered ? "Ticket Pass Retrieved!" : "Registration Confirmed!"}
               </h3>
               <p className="text-xs text-slate-300 max-w-md mx-auto mt-1">
-                Your team registration has been confirmed.
+                {successData.alreadyRegistered
+                  ? "You are already registered for this event. Your pass details are shown below and sent to your email."
+                  : "Your team registration has been confirmed and pass has been emailed to you."}
               </p>
             </div>
 
@@ -507,25 +509,31 @@ export default function RegistrationModal({
                 <span className="text-slate-400 font-mono">REGISTRATION ID</span>
                 <span className="font-mono font-bold text-cyan-300">{successData.registrationId}</span>
               </div>
-              {successData.teamName && (
+              {(successData.teamName || form.teamName) && (
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-400 font-mono">TEAM NAME</span>
-                  <span className="text-white font-bold">{successData.teamName}</span>
+                  <span className="text-white font-bold">{successData.teamName || form.teamName}</span>
                 </div>
               )}
               <div className="flex justify-between items-center text-xs">
                 <span className="text-slate-400 font-mono">TEAM LEAD (M1)</span>
-                <span className="text-cyan-300 font-medium">{successData.member1 || successData.name}</span>
+                <span className="text-cyan-300 font-medium">
+                  {successData.member1 || successData.name || form.member1 || "Participant"}
+                </span>
               </div>
-              {successData.member2 && (
+              {Boolean(successData.member2 || form.member2) && (
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-400 font-mono">MEMBER 2</span>
-                  <span className="text-purple-300 font-medium">{successData.member2}</span>
+                  <span className="text-purple-300 font-medium">
+                    {successData.member2 || form.member2}
+                  </span>
                 </div>
               )}
               <div className="flex justify-between items-center text-xs">
                 <span className="text-slate-400 font-mono">EMAIL</span>
-                <span className="text-white font-medium truncate max-w-[200px]">{successData.email}</span>
+                <span className="text-white font-medium truncate max-w-[200px]">
+                  {successData.email || form.email}
+                </span>
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-slate-400 font-mono">EVENT</span>

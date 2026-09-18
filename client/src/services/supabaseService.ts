@@ -250,17 +250,55 @@ export async function registerForEvent(eventId: number, input: RegistrationInput
   const cleanEmail = input.email.trim().toLowerCase();
   const { data: existing } = await supabase
     .from("event_registrations")
-    .select("id")
+    .select("*")
     .eq("event_id", eventId)
     .ilike("email", cleanEmail)
     .maybeSingle();
 
   if (existing) {
+    const regCode = `AIF-${eventId}-${existing.id}`;
+
+    // Re-dispatch confirmation pass to participant
+    const recipientEmails = [existing.email, existing.member2_phone].filter(
+      (e) => e && e.includes("@")
+    );
+    if (recipientEmails.length > 0) {
+      fetch("/api/send-confirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: recipientEmails,
+          eventTitle: event.title,
+          eventDate: event.date,
+          venue: event.venue,
+          registrationCode: regCode,
+          name: existing.name || existing.member1,
+          teamName: existing.team_name,
+          member1: existing.member1,
+          member2: existing.member2,
+          department: existing.department,
+          year: existing.year,
+        }),
+      }).catch((err) => console.warn("[Email Dispatch]", err.message));
+    }
+
     return {
       success: true,
-      message: "You are already registered for this event!",
+      message: "You are already registered for this event! Ticket pass retrieved.",
       data: {
-        registrationId: `AIF-${eventId}-${existing.id}`,
+        id: existing.id,
+        registrationId: regCode,
+        teamName: existing.team_name,
+        member1: existing.member1,
+        member2: existing.member2,
+        name: existing.name || existing.member1,
+        email: existing.email,
+        phone: existing.phone,
+        department: existing.department,
+        year: existing.year,
+        eventTitle: event.title,
+        eventDate: event.date,
+        venue: event.venue,
         alreadyRegistered: true,
       },
     };
