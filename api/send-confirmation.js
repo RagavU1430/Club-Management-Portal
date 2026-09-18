@@ -91,7 +91,7 @@ export default async function handler(req, res) {
 `**${senderName}**\n` +
 `📧 ${gmailUser}\n`;
 
-  // 1. Try Resend HTTP API if configured
+  // 1. Try Resend HTTP API (Fastest, zero port blocking)
   const resendKey = process.env.RESEND_API_KEY;
   if (resendKey) {
     try {
@@ -102,7 +102,8 @@ export default async function handler(req, res) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: `${senderName} <${gmailUser}>`,
+          from: "AI Frontier Club <onboarding@resend.dev>",
+          reply_to: "aifrontierclub@gmail.com",
           to: recipients,
           subject,
           text: textContent,
@@ -111,6 +112,8 @@ export default async function handler(req, res) {
       const data = await resp.json();
       if (resp.ok) {
         return res.json({ success: true, provider: "resend", id: data.id });
+      } else {
+        console.warn("[Email] Resend API error response:", data);
       }
     } catch (e) {
       console.warn("[Email] Resend attempt failed:", e.message);
