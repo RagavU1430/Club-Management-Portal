@@ -2,7 +2,6 @@ import { db, rowToJSON } from "../config/db.js";
 import { ApiError } from "../utils/http.js";
 import { createEventSheet, recordRegistration } from "../services/googleSheets.js";
 import { sendRegistrationEmail, notifySubscribersNewEvent } from "../services/emailService.js";
-import { saveEventToFirestore, deleteEventFromFirestore, saveRegistrationToFirestore, deleteRegistrationFromFirestore, updateAttendanceInFirestore } from "../services/firestoreService.js";
 import XLSX from "xlsx";
 
 function pickBody(body = {}) {
@@ -149,8 +148,6 @@ export async function create(req, res) {
   const colNames = cols.join(", ");
   const result = db.prepare(`INSERT INTO events (${colNames}) VALUES (${placeholders})`).run(...vals);
   const row = db.prepare("SELECT * FROM events WHERE id = ?").get(result.lastInsertRowid);
-  // Persist to Firebase Cloud Firestore
-  saveEventToFirestore(row, row.id).catch(err => console.warn("[Firestore] save event failed:", err.message));
   // Automatically create a new tab in the connected Google Sheet
   createEventSheet(row).catch(err => console.warn("[googleSheets] create tab failed:", err.message));
   // Automatically notify all newsletter subscribers about the newly created event!
@@ -176,7 +173,6 @@ export async function update(req, res) {
   vals.push(id);
   db.prepare(`UPDATE events SET ${set} WHERE id = ?`).run(...vals);
   const updatedRow = db.prepare("SELECT * FROM events WHERE id = ?").get(id);
-  saveEventToFirestore(updatedRow, id).catch(err => console.warn("[Firestore] update event failed:", err.message));
   res.json({ success: true, data: decorate(updatedRow) });
 }
 
@@ -185,7 +181,6 @@ export async function remove(req, res) {
   const id = Number(req.params.id);
   if (!db.prepare("SELECT id FROM events WHERE id = ?").get(id)) throw new ApiError(404, "That event doesn't exist.");
   db.prepare("DELETE FROM events WHERE id = ?").run(id);
-  deleteEventFromFirestore(id).catch(err => console.warn("[Firestore] delete event failed:", err.message));
   res.json({ success: true, data: { id, deleted: true } });
 }
 
@@ -288,7 +283,6 @@ export async function registerForEvent(req, res) {
   };
 
   // 5. Asynchronous Integrations (Never block user response if external cloud is slow)
-  saveRegistrationToFirestore(regRecord).catch(err => console.warn("[Firestore] async sync error:", err.message));
   recordRegistration(event, regRecord).catch(err => console.warn("[googleSheets] async sync error:", err.message));
 
   // 6. Automatically dispatch official registration confirmation email via Gmail (background async)
@@ -517,7 +511,6 @@ export async function deleteEventRegistration(req, res) {
   const eventId = Number(req.params.id);
   const regId = Number(req.params.regId);
   db.prepare("DELETE FROM event_registrations WHERE id = ? AND event_id = ?").run(regId, eventId);
-  deleteRegistrationFromFirestore(regId).catch(err => console.warn("[Firestore] delete registration failed:", err.message));
   res.json({ success: true, message: "Registration deleted." });
 }
 
@@ -558,8 +551,6 @@ export async function toggleAttendance(req, res) {
 
   db.prepare("UPDATE event_registrations SET attended = ?, checked_in_at = ? WHERE id = ? AND event_id = ?")
     .run(newStatus, checkInTime, regId, eventId);
-
-  updateAttendanceInFirestore(regId, newStatus === 1, checkInTime).catch(err => console.warn("[Firestore] toggle attendance sync failed:", err.message));
 
   const updated = db.prepare("SELECT * FROM event_registrations WHERE id = ?").get(regId);
   res.json({
@@ -615,8 +606,6 @@ export async function quickCheckIn(req, res) {
   db.prepare("UPDATE event_registrations SET attended = 1, checked_in_at = ? WHERE id = ?")
     .run(checkInTime, record.id);
 
-  updateAttendanceInFirestore(record.id, true, checkInTime).catch(err => console.warn("[Firestore] quick checkin sync failed:", err.message));
-
   const updated = db.prepare("SELECT * FROM event_registrations WHERE id = ?").get(record.id);
   res.json({
     success: true,
@@ -638,16 +627,8 @@ export async function bulkAttendance(req, res) {
   if (action === "mark_all_present") {
     const now = new Date().toISOString();
     db.prepare("UPDATE event_registrations SET attended = 1, checked_in_at = ? WHERE event_id = ?").run(now, eventId);
-    const regs = db.prepare("SELECT id FROM event_registrations WHERE event_id = ?").all(eventId);
-    for (const r of regs) {
-      updateAttendanceInFirestore(r.id, true, now).catch(() => {});
-    }
   } else if (action === "mark_all_absent") {
     db.prepare("UPDATE event_registrations SET attended = 0, checked_in_at = '' WHERE event_id = ?").run(eventId);
-    const regs = db.prepare("SELECT id FROM event_registrations WHERE event_id = ?").all(eventId);
-    for (const r of regs) {
-      updateAttendanceInFirestore(r.id, false, null).catch(() => {});
-    }
   } else {
     throw new ApiError(400, "Invalid bulk action.");
   }

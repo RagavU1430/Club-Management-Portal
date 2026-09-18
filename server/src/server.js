@@ -10,8 +10,6 @@ import { list as teamList, roles, create as createTeam, update as updateTeam, re
 import { getGoogleSheetSettings, updateGoogleSheetSettings, syncAllSheets, syncSingleEventSheet, getEmailSettings, updateEmailSettings, sendTestEmailController } from "./controllers/settings.js";
 import { getClubDetails, updateClubDetails, listActivities, createActivity, updateActivity, deleteActivity } from "./controllers/club.js";
 import { upload } from "./middleware/upload.js";
-import { initFirebase, isFirebaseReady } from "./config/firebase.js";
-import { syncAllToFirestore, saveSubscriberToFirestore, deleteSubscriberFromFirestore, recordUploadInFirestore } from "./services/firestoreService.js";
 import { sendSubscriptionWelcomeEmail } from "./services/emailService.js";
 import sendConfirmationHandler from "../../api/send-confirmation.js";
 
@@ -74,10 +72,8 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(process.env.UPLOAD_DIR || "uploads"));
 
-// ── database & firebase init ──
+// ── database init ──
 seed();
-initFirebase();
-syncAllToFirestore().catch(err => console.warn("[Firebase] Initial sync error:", err.message));
 
 // ── routes ──
 // Auth (public with rate limiting)
@@ -122,18 +118,6 @@ app.get("/api/settings/email", requireAuth, getEmailSettings);
 app.post("/api/settings/email", requireAuth, updateEmailSettings);
 app.post("/api/settings/email/test", requireAuth, sendTestEmailController);
 
-// Firebase Cloud Firestore Status
-app.get("/api/settings/firebase", requireAuth, (_req, res) => {
-  res.json({
-    success: true,
-    data: {
-      isConfigured: isFirebaseReady(),
-      provider: "Cloud Firestore (Firebase Admin SDK)",
-      projectId: process.env.FIREBASE_PROJECT_ID || "aifrontier-firebase",
-    },
-  });
-});
-
 app.get("/api/team", teamList);
 app.get("/api/team/roles", roles);
 app.post("/api/team", requireAuth, createTeam);
@@ -154,13 +138,6 @@ app.delete("/api/activities/:id", requireAuth, deleteActivity);
 app.post("/api/upload", requireAuth, upload.single("file"), (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, error: "No file was uploaded." });
   const url = `/uploads/${req.file.filename}`;
-  recordUploadInFirestore({
-    filename: req.file.filename,
-    originalname: req.file.originalname,
-    mimetype: req.file.mimetype,
-    size: req.file.size,
-    url,
-  }).catch(err => console.warn("[Firestore] record upload failed:", err.message));
   res.status(201).json({ success: true, url });
 });
 
@@ -174,8 +151,7 @@ app.post("/api/subscribe", async (req, res) => {
   try {
     const existing = db.prepare("SELECT id FROM subscribers WHERE email = ?").get(email);
     if (!existing) {
-      const info = db.prepare("INSERT INTO subscribers (email) VALUES (?)").run(email);
-      saveSubscriberToFirestore({ id: info.lastInsertRowid, email }).catch(err => console.warn("[Firestore] save subscriber failed:", err.message));
+      db.prepare("INSERT INTO subscribers (email) VALUES (?)").run(email);
       // Send welcome email in background
       sendSubscriptionWelcomeEmail(email).catch(() => {});
     }
