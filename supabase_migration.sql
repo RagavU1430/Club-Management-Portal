@@ -109,41 +109,57 @@ ALTER TABLE club_activities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscribers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 
--- 3. RLS Policies
--- Public read access
-CREATE POLICY "Public read events" ON events FOR SELECT USING (true);
-CREATE POLICY "Public read team_members" ON team_members FOR SELECT USING (true);
-CREATE POLICY "Public read club_details" ON club_details FOR SELECT USING (true);
-CREATE POLICY "Public read club_activities" ON club_activities FOR SELECT USING (true);
+-- 3. RLS Policies (Drop existing if re-running to avoid duplicate policy error)
+DO $$
+BEGIN
+  -- Events
+  DROP POLICY IF EXISTS "Public read events" ON events;
+  DROP POLICY IF EXISTS "Anon full access events" ON events;
+  CREATE POLICY "Public read events" ON events FOR SELECT USING (true);
+  CREATE POLICY "Anon full access events" ON events FOR ALL TO anon USING (true) WITH CHECK (true);
 
--- Public insert access (Registrations and Newsletter)
-CREATE POLICY "Public register events" ON event_registrations FOR INSERT WITH CHECK (true);
-CREATE POLICY "Public lookup ticket" ON event_registrations FOR SELECT USING (true);
-CREATE POLICY "Public subscribe newsletter" ON subscribers FOR INSERT WITH CHECK (true);
+  -- Team members
+  DROP POLICY IF EXISTS "Public read team_members" ON team_members;
+  DROP POLICY IF EXISTS "Anon full access team_members" ON team_members;
+  CREATE POLICY "Public read team_members" ON team_members FOR SELECT USING (true);
+  CREATE POLICY "Anon full access team_members" ON team_members FOR ALL TO anon USING (true) WITH CHECK (true);
 
--- Authenticated Admin full access (Supabase Auth)
-CREATE POLICY "Admin full access events" ON events FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Admin full access team_members" ON team_members FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Admin full access registrations" ON event_registrations FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Admin full access club_details" ON club_details FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Admin full access club_activities" ON club_activities FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Admin full access subscribers" ON subscribers FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Admin full access settings" ON settings FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  -- Club details
+  DROP POLICY IF EXISTS "Public read club_details" ON club_details;
+  DROP POLICY IF EXISTS "Anon full access club_details" ON club_details;
+  CREATE POLICY "Public read club_details" ON club_details FOR SELECT USING (true);
+  CREATE POLICY "Anon full access club_details" ON club_details FOR ALL TO anon USING (true) WITH CHECK (true);
 
--- Also allow Anon users full CRUD temporarily during transition if anon key is used
-CREATE POLICY "Anon full access events" ON events FOR ALL TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "Anon full access team_members" ON team_members FOR ALL TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "Anon full access registrations" ON event_registrations FOR ALL TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "Anon full access club_details" ON club_details FOR ALL TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "Anon full access club_activities" ON club_activities FOR ALL TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "Anon full access subscribers" ON subscribers FOR ALL TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "Anon full access settings" ON settings FOR ALL TO anon USING (true) WITH CHECK (true);
+  -- Club activities
+  DROP POLICY IF EXISTS "Public read club_activities" ON club_activities;
+  DROP POLICY IF EXISTS "Anon full access club_activities" ON club_activities;
+  CREATE POLICY "Public read club_activities" ON club_activities FOR SELECT USING (true);
+  CREATE POLICY "Anon full access club_activities" ON club_activities FOR ALL TO anon USING (true) WITH CHECK (true);
 
--- 4. Initial Seed Data (Exported from current database)
+  -- Event registrations
+  DROP POLICY IF EXISTS "Public register events" ON event_registrations;
+  DROP POLICY IF EXISTS "Public lookup ticket" ON event_registrations;
+  DROP POLICY IF EXISTS "Anon full access registrations" ON event_registrations;
+  CREATE POLICY "Public register events" ON event_registrations FOR INSERT WITH CHECK (true);
+  CREATE POLICY "Public lookup ticket" ON event_registrations FOR SELECT USING (true);
+  CREATE POLICY "Anon full access registrations" ON event_registrations FOR ALL TO anon USING (true) WITH CHECK (true);
+
+  -- Subscribers
+  DROP POLICY IF EXISTS "Public subscribe newsletter" ON subscribers;
+  DROP POLICY IF EXISTS "Anon full access subscribers" ON subscribers;
+  CREATE POLICY "Public subscribe newsletter" ON subscribers FOR INSERT WITH CHECK (true);
+  CREATE POLICY "Anon full access subscribers" ON subscribers FOR ALL TO anon USING (true) WITH CHECK (true);
+
+  -- Settings
+  DROP POLICY IF EXISTS "Anon full access settings" ON settings;
+  CREATE POLICY "Anon full access settings" ON settings FOR ALL TO anon USING (true) WITH CHECK (true);
+END $$;
+
+-- 4. Initial Seed Data
 
 -- Events Seed
 INSERT INTO events (id, title, slug, date, end_date, venue, description, summary, image, registration_link, tags, status, featured, capacity, webhook_url)
-VALUES (4, 'AI Frontiers Club', 'ai-frontiers-club', '2026-09-26T08:30:00.000Z', NULL, 'LAB 5', 'test dah', '', '', '', '["AI","Hackathon","Coding"]'::jsonb, 'published', 0, 60, '')
+VALUES (4, 'AI Frontiers Club', 'ai-frontiers-club', '2026-09-26T08:30:00.000Z'::timestamptz, NULL, 'LAB 5', 'test dah', '', '', '', '["AI","Hackathon","Coding"]'::jsonb, 'published', 0, 60, '')
 ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title;
 
 -- Team Members Seed
@@ -187,16 +203,25 @@ ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 
 -- Event Registrations Seed
 INSERT INTO event_registrations (id, event_id, team_name, member1, member2, name, email, phone, member2_phone, department, college, roll_number, year, notes, attended, checked_in_at)
-VALUES (9, 4, 'TEST TEAM', 'TEST NAME 1', 'TEST NAME 2', 'TEST NAME 1', 'ragavkrr14@gmail.com', '', 'kalpanaragav091@gmail.com', 'Artificial Intelligence and Data Science', 'Artificial Intelligence and Data Science', '', '2nd Year', '', 1, '2026-09-18T04:58:27.130Z')
+VALUES (9, 4, 'TEST TEAM', 'TEST NAME 1', 'TEST NAME 2', 'TEST NAME 1', 'ragavkrr14@gmail.com', '', 'kalpanaragav091@gmail.com', 'Artificial Intelligence and Data Science', 'Artificial Intelligence and Data Science', '', '2nd Year', '', 1, '2026-09-18T04:58:27.130Z'::timestamptz)
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO event_registrations (id, event_id, team_name, member1, member2, name, email, phone, member2_phone, department, college, roll_number, year, notes, attended, checked_in_at)
-VALUES (10, 4, 'Neural Knights', 'Sabesh E', 'Ram Pradeep RP', 'Sabesh E', 'sabeshsabesh082007@gmail.com', '', 'rampradeep4858@gmail.com', 'Artificial Intelligence and Data Science', 'Artificial Intelligence and Data Science', '', '3rd Year', '', 1, '2026-09-18T04:58:34.889Z')
+VALUES (10, 4, 'Neural Knights', 'Sabesh E', 'Ram Pradeep RP', 'Sabesh E', 'sabeshsabesh082007@gmail.com', '', 'rampradeep4858@gmail.com', 'Artificial Intelligence and Data Science', 'Artificial Intelligence and Data Science', '', '3rd Year', '', 1, '2026-09-18T04:58:34.889Z'::timestamptz)
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO event_registrations (id, event_id, team_name, member1, member2, name, email, phone, member2_phone, department, college, roll_number, year, notes, attended, checked_in_at)
-VALUES (11, 4, 'Debug Team', 'Test User', '', 'Test User', 'test@example.com', '1234567890', '', 'AI', 'AI', '', '3rd', '', 0, '')
+VALUES (11, 4, 'Debug Team', 'Test User', '', 'Test User', 'test@example.com', '1234567890', '', 'AI', 'AI', '', '3rd', '', 0, NULL)
 ON CONFLICT (id) DO NOTHING;
 
--- Reset Sequences
-SELECT setval('events_id_seq', (SELECT COALESCE(MAX(id), 1) FROM events));
-SELECT setval('team_members_id_seq', (SELECT COALESCE(MAX(id), 1) FROM team_members));
-SELECT setval('event_registrations_id_seq', (SELECT COALESCE(MAX(id), 1) FROM event_registrations));
+-- 5. Auto-Increment Sequences
+DO $$
+BEGIN
+  IF pg_get_serial_sequence('events', 'id') IS NOT NULL THEN
+    PERFORM setval(pg_get_serial_sequence('events', 'id'), (SELECT COALESCE(MAX(id), 1) FROM events));
+  END IF;
+  IF pg_get_serial_sequence('team_members', 'id') IS NOT NULL THEN
+    PERFORM setval(pg_get_serial_sequence('team_members', 'id'), (SELECT COALESCE(MAX(id), 1) FROM team_members));
+  END IF;
+  IF pg_get_serial_sequence('event_registrations', 'id') IS NOT NULL THEN
+    PERFORM setval(pg_get_serial_sequence('event_registrations', 'id'), (SELECT COALESCE(MAX(id), 1) FROM event_registrations));
+  END IF;
+END $$;
