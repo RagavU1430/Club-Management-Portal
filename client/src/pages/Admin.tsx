@@ -37,7 +37,13 @@ import {
   QrCode,
 } from "lucide-react";
 import { GithubIcon, LinkedinIcon } from "../components/SocialIcons";
-import { apiFetch, BACKEND_URL } from "../utils/api";
+import { apiFetch } from "../utils/api";
+import {
+  exportRegistrationsToExcel,
+  fetchAndExportRegistrations,
+  exportAttendanceToExcel,
+  exportODListToExcel,
+} from "../utils/exportUtils";
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -454,8 +460,8 @@ function EventManager() {
   }
 
   function downloadExcel(eventId: string | number) {
-    const token = localStorage.getItem("aif_token");
-    window.open(`${BACKEND_URL || ""}/api/events/${eventId}/registrations/export.xlsx?token=${token}`, "_blank");
+    const ev = events.find((e: any) => String(e.id) === String(eventId));
+    fetchAndExportRegistrations(ev || { id: eventId, title: `Event_${eventId}` });
   }
 
   return (
@@ -980,10 +986,7 @@ function ResponsesModal({
           </div>
 
           <button
-            onClick={() => {
-              const token = localStorage.getItem("aif_token");
-              window.open(`/api/events/${event.id}/registrations/export.xlsx?token=${token}`, "_blank");
-            }}
+            onClick={() => exportRegistrationsToExcel(event, registrations)}
             className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-mono font-bold text-black hover:bg-emerald-400 transition shadow-[0_0_15px_rgba(16,185,129,0.3)] cursor-pointer"
           >
             <FileSpreadsheet className="h-4 w-4" />
@@ -1182,13 +1185,11 @@ function AttendanceGeneratorModal({ event, onClose }: { event: any; onClose: () 
   }
 
   function downloadAttendanceExcel() {
-    const token = localStorage.getItem("aif_token");
-    window.open(`/api/events/${event.id}/attendance/export.xlsx?token=${token}`, "_blank");
+    exportAttendanceToExcel(event, data);
   }
 
   function downloadODExcel() {
-    const token = localStorage.getItem("aif_token");
-    window.open(`/api/events/${event.id}/attendance/export-od.xlsx?token=${token}`, "_blank");
+    exportODListToExcel(event, data);
   }
 
   const filtered = data.filter((r) => {
