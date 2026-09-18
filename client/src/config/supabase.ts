@@ -1,7 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+// Production Supabase project defaults (guarded by Row Level Security)
+const DEFAULT_SUPABASE_URL = "https://bmgngdolzoiaopyxtcgl.supabase.co";
+const DEFAULT_SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJtZ25nZG9sem9pYW9weXh0Y2dsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3MzU1MDksImV4cCI6MjEwNTMxMTUwOX0.cfKzBxStTo4eOwnvBY23ctkI0O7s7-RBwP8C-jtlkSg";
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = Boolean(
   supabaseUrl && 
@@ -10,21 +15,10 @@ export const isSupabaseConfigured = Boolean(
   !supabaseUrl.includes("placeholder")
 );
 
-if (!isSupabaseConfigured) {
-  console.warn(
-    "[Supabase] VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is missing. Add them to client/.env.local or your Vercel project settings."
-  );
-}
-
-// Resilient fallback client to prevent runtime exceptions if credentials aren't yet populated
-export const supabase = createClient(
-  isSupabaseConfigured ? supabaseUrl : "https://placeholder.supabase.co",
-  isSupabaseConfigured ? supabaseAnonKey : "placeholder-anon-key",
-  {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-    },
-  }
-);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+});
