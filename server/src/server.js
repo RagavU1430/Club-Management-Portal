@@ -41,20 +41,34 @@ const registrationLimiter = rateLimit({
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:3000",
+  "https://ai-frontier-club.vercel.app",
   process.env.CLIENT_URL,
 ].filter(Boolean);
 
-app.use(cors({
+const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps, curl, server-to-server)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.some(o => origin === o || origin.endsWith(o.replace(/^https?:\/\//, "")))) {
+
+    // Explicitly allow ai-frontier-club.vercel.app and preview domains
+    if (
+      origin === "https://ai-frontier-club.vercel.app" ||
+      origin.endsWith(".vercel.app") ||
+      allowedOrigins.some(o => origin === o || origin.endsWith(o.replace(/^https?:\/\//, "")))
+    ) {
       return callback(null, true);
     }
-    return callback(null, true); // Permissive CORS for public endpoints while allowing credentials
+    return callback(null, true); // Fallback permissive for public API access
   },
   credentials: true,
-}));
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+  optionsSuccessStatus: 200,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(process.env.UPLOAD_DIR || "uploads"));
