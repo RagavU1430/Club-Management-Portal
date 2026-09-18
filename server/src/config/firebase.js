@@ -28,6 +28,9 @@ export function initFirebase() {
     path.join(__dirname, "../../", configuredPath),
     path.join(__dirname, "../../serviceAccountKey.json"),
     path.join(process.cwd(), "serviceAccountKey.json"),
+    path.join(process.cwd(), "server/serviceAccountKey.json"),
+    "/etc/secrets/server/serviceAccountKey.json",
+    "/etc/secrets/serviceAccountKey.json",
   ];
 
   let serviceAccount = null;
