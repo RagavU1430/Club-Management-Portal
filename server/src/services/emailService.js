@@ -179,6 +179,73 @@ function createTransporter() {
 }
 
 /**
+ * Dispatches emails via REST API (port 443 HTTPS).
+ * Cloud hosts like Render Free Tier block outbound SMTP ports (25, 465, 587),
+ * but HTTP APIs are never blocked.
+ */
+async function sendViaHttpApi({ to, subject, text, senderName, user }) {
+  const brevoKey = (process.env.BREVO_API_KEY || "").trim() || db.prepare("SELECT value FROM settings WHERE key = 'brevo_api_key'").get()?.value;
+  const resendKey = (process.env.RESEND_API_KEY || "").trim() || db.prepare("SELECT value FROM settings WHERE key = 'resend_api_key'").get()?.value;
+
+  if (brevoKey) {
+    try {
+      const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "api-key": brevoKey,
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({
+          sender: { name: senderName || "AI Frontier Club", email: user || "contact@aifrontierclub.org" },
+          to: to.map(e => ({ email: e })),
+          subject,
+          textContent: text
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        console.log(`[Email] Delivered via Brevo HTTP API! Message ID: ${data.messageId}`);
+        return { success: true, sent: true, provider: "brevo", messageId: data.messageId, subject, previewText: text, recipientEmail: to };
+      } else {
+        console.warn(`[Email] Brevo API rejected:`, data.message || JSON.stringify(data));
+      }
+    } catch (err) {
+      console.warn(`[Email] Brevo HTTP request failed:`, err.message);
+    }
+  }
+
+  if (resendKey) {
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${resendKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          from: `${senderName || "AI Frontier Club"} <onboarding@resend.dev>`,
+          to,
+          subject,
+          text
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        console.log(`[Email] Delivered via Resend HTTP API! ID: ${data.id}`);
+        return { success: true, sent: true, provider: "resend", messageId: data.id, subject, previewText: text, recipientEmail: to };
+      } else {
+        console.warn(`[Email] Resend API rejected:`, data.message || JSON.stringify(data));
+      }
+    } catch (err) {
+      console.warn(`[Email] Resend HTTP request failed:`, err.message);
+    }
+  }
+
+  return null;
+}
+
+/**
  * Sends automated confirmation email upon participant registration
  */
 export async function sendRegistrationEmail({ event, registration }) {
@@ -189,12 +256,23 @@ export async function sendRegistrationEmail({ event, registration }) {
   const content = generateEmailContent({ event, registration });
 
   console.log(`\n===========================================================`);
-  console.log(`📧 [AUTOMATED GMAIL CONFIRMATION DISPATCH]`);
+  console.log(`📧 [AUTOMATED CONFIRMATION DISPATCH]`);
   console.log(`To: ${recipients.join(", ")}`);
   console.log(`Subject: ${content.subject}`);
   console.log(`Sender: ${user || "Dev Mock / Pending Credentials"} (${senderName})`);
   console.log(`===========================================================\n`);
 
+  // 1. Try HTTP API (Brevo / Resend) first — completely immune to cloud SMTP blocking
+  const httpResult = await sendViaHttpApi({
+    to: recipients,
+    subject: content.subject,
+    text: content.text,
+    senderName,
+    user
+  });
+  if (httpResult) return httpResult;
+
+  // 2. Fallback to Gmail SMTP
   const transporter = createTransporter();
 
   if (transporter && user) {
@@ -248,6 +326,25 @@ export async function sendRegistrationEmail({ event, registration }) {
  */
 export async function sendTestEmail({ toEmail }) {
   const { user, senderName } = getRawEmailCredentials();
+  const subject = `🚀 Test Email Notification from AI Frontier Club`;
+  const text = `Congratulations!\n\nYour notification service is connected and functioning properly!\nEvent registrations will now automatically receive their official confirmation pass at their email address.\n\n- AI Frontier Club`;
+
+  // Try HTTP API first (Brevo / Resend)
+  const httpResult = await sendViaHttpApi({
+    to: [toEmail],
+    subject,
+    text,
+    senderName,
+    user
+  });
+  if (httpResult) {
+    return {
+      success: true,
+      messageId: httpResult.messageId,
+      message: `Test email successfully delivered to ${toEmail} via ${httpResult.provider.toUpperCase()} API! Check your inbox.`,
+    };
+  }
+
   if (!user) {
     return { success: false, error: "Please configure your Gmail address in settings first." };
   }
@@ -256,9 +353,6 @@ export async function sendTestEmail({ toEmail }) {
   if (!transporter) {
     return { success: false, error: "Please enter your 16-character Google App Password in settings." };
   }
-
-  const subject = `🚀 Test Email Notification from AI Frontier Club`;
-  const text = `Congratulations!\n\nYour Gmail notification service is connected and functioning properly!\nEvent registrations will now automatically receive their official confirmation pass at their email address.\n\n- AI Frontier Club`;
 
   try {
     const info = await transporter.sendMail({
