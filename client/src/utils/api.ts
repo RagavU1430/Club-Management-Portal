@@ -189,17 +189,26 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
       // ── AUTH (ADMIN LOGIN) ──
       if (pathname === "/api/auth/login" && method === "POST") {
         const body = init?.body ? JSON.parse(init.body as string) : {};
-        const email = String(body.email || "").trim();
+        const email = String(body.email || "").trim().toLowerCase();
         const password = String(body.password || "").trim();
 
         if (!password) {
           return jsonResponse({ success: false, error: "Password is required." }, 400);
         }
 
+        const validCredentials =
+          (email === "aifrontierclub@gmail.com" && password === "admin123!@#") ||
+          (email === "admin@localhost" && (password === "admin123!@#" || password === "admin123")) ||
+          password === "admin123!@#";
+
+        if (!validCredentials) {
+          return jsonResponse({ success: false, error: "Invalid email or password." }, 401);
+        }
+
         const user = {
           id: 1,
-          email: email || "admin@localhost",
-          name: "Club Administrator",
+          email: "aifrontierclub@gmail.com",
+          name: "AI Frontier Administrator",
           role: "admin",
         };
         const token = "supabase_admin_session_token_" + Date.now();
