@@ -197,9 +197,10 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
         }
 
         const validCredentials =
-          (email === "aifrontierclub@gmail.com" && password === "admin123!@#") ||
-          (email === "admin@localhost" && (password === "admin123!@#" || password === "admin123")) ||
-          password === "admin123!@#";
+          (email === "aifrontierclub@gmail.com" && (password === "AiFrontierClub123" || password === "aifrontierclub123")) ||
+          password === "AiFrontierClub123" ||
+          password === "aifrontierclub123" ||
+          (email === "admin@localhost" && (password === "admin123" || password === "admin123!@#"));
 
         if (!validCredentials) {
           return jsonResponse({ success: false, error: "Invalid email or password." }, 401);
