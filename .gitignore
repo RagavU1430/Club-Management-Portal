@@ -9,10 +9,13 @@ client/dist/
 *.tsbuildinfo
 client/*.tsbuildinfo
 
-# Environment variables
+# Environment variables & Secrets
 .env
 server/.env
 *.env.local
+serviceAccountKey.json
+server/serviceAccountKey.json
+*serviceAccountKey*.json
 
 # Database & Runtime Data
 server/data/*

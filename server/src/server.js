@@ -11,7 +11,7 @@ import { getGoogleSheetSettings, updateGoogleSheetSettings, syncAllSheets, syncS
 import { getClubDetails, updateClubDetails, listActivities, createActivity, updateActivity, deleteActivity } from "./controllers/club.js";
 import { upload } from "./middleware/upload.js";
 import { initFirebase, isFirebaseReady } from "./config/firebase.js";
-import { syncAllToFirestore } from "./services/firestoreService.js";
+import { syncAllToFirestore, saveSubscriberToFirestore, deleteSubscriberFromFirestore, recordUploadInFirestore } from "./services/firestoreService.js";
 import { sendSubscriptionWelcomeEmail } from "./services/emailService.js";
 
 dotenv.config();
@@ -152,6 +152,13 @@ app.delete("/api/activities/:id", requireAuth, deleteActivity);
 app.post("/api/upload", requireAuth, upload.single("file"), (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, error: "No file was uploaded." });
   const url = `/uploads/${req.file.filename}`;
+  recordUploadInFirestore({
+    filename: req.file.filename,
+    originalname: req.file.originalname,
+    mimetype: req.file.mimetype,
+    size: req.file.size,
+    url,
+  }).catch(err => console.warn("[Firestore] record upload failed:", err.message));
   res.status(201).json({ success: true, url });
 });
 
@@ -165,7 +172,8 @@ app.post("/api/subscribe", async (req, res) => {
   try {
     const existing = db.prepare("SELECT id FROM subscribers WHERE email = ?").get(email);
     if (!existing) {
-      db.prepare("INSERT INTO subscribers (email) VALUES (?)").run(email);
+      const info = db.prepare("INSERT INTO subscribers (email) VALUES (?)").run(email);
+      saveSubscriberToFirestore({ id: info.lastInsertRowid, email }).catch(err => console.warn("[Firestore] save subscriber failed:", err.message));
       // Send welcome email in background
       sendSubscriptionWelcomeEmail(email).catch(() => {});
     }
@@ -185,7 +193,9 @@ app.get("/api/subscribers", requireAuth, (_req, res) => {
 });
 
 app.delete("/api/subscribers/:id", requireAuth, (req, res) => {
-  db.prepare("DELETE FROM subscribers WHERE id = ?").run(Number(req.params.id));
+  const id = Number(req.params.id);
+  db.prepare("DELETE FROM subscribers WHERE id = ?").run(id);
+  deleteSubscriberFromFirestore(id).catch(err => console.warn("[Firestore] delete subscriber failed:", err.message));
   res.json({ success: true, message: "Subscriber removed." });
 });
 

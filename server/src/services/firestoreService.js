@@ -210,10 +210,145 @@ export async function syncAllToFirestore() {
       await fs.collection("club_activities").doc(String(a.id)).set(rowToJSON(a), { merge: true });
     }
 
-    console.log(`[Firestore Sync] Successfully synced ${events.length} events, ${regs.length} registrations, and ${team.length} team members to Cloud Firestore! 🔥`);
-    return { synced: true, events: events.length, registrations: regs.length, team: team.length };
+    // 6. Subscribers
+    const subscribers = db.prepare("SELECT * FROM subscribers").all();
+    for (const s of subscribers) {
+      await fs.collection("subscribers").doc(String(s.id)).set(rowToJSON(s), { merge: true });
+    }
+
+    console.log(`[Firestore Sync] Successfully synced ${events.length} events, ${regs.length} registrations, ${team.length} team members, and ${subscribers.length} subscribers to Cloud Firestore! 🔥`);
+    return { synced: true, events: events.length, registrations: regs.length, team: team.length, subscribers: subscribers.length };
   } catch (err) {
     console.error(`[Firestore Sync] Error during sync:`, err.message);
     return { synced: false, error: err.message };
+  }
+}
+
+// ── 6. Additional Sync Handlers for Full Real-Time Coverage ──
+
+export async function deleteRegistrationFromFirestore(regId) {
+  const fs = getFirestore();
+  if (isFirebaseReady() && fs) {
+    try {
+      await fs.collection("event_registrations").doc(String(regId)).delete();
+      console.log(`[Firestore] Deleted registration ${regId} from Cloud Firestore 🔥`);
+    } catch (err) {
+      console.warn("[Firestore] Failed to delete registration:", err.message);
+    }
+  }
+}
+
+export async function updateAttendanceInFirestore(regId, attended, attendedAt = null) {
+  const fs = getFirestore();
+  if (isFirebaseReady() && fs) {
+    try {
+      await fs.collection("event_registrations").doc(String(regId)).set({
+        attended: Boolean(attended),
+        attendedAt: attendedAt || (attended ? new Date().toISOString() : null),
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+      console.log(`[Firestore] Updated attendance for registration ${regId} (${attended ? 'Present' : 'Absent'}) in Cloud Firestore 🔥`);
+    } catch (err) {
+      console.warn("[Firestore] Failed to update attendance in Firestore:", err.message);
+    }
+  }
+}
+
+export async function deleteTeamMemberFromFirestore(id) {
+  const fs = getFirestore();
+  if (isFirebaseReady() && fs) {
+    try {
+      await fs.collection("team").doc(String(id)).delete();
+      await fs.collection("team_members").doc(String(id)).delete();
+      console.log(`[Firestore] Deleted team member ${id} from Cloud Firestore 🔥`);
+    } catch (err) {
+      console.warn("[Firestore] Failed to delete team member:", err.message);
+    }
+  }
+}
+
+export async function clearAllTeamFromFirestore() {
+  const fs = getFirestore();
+  if (isFirebaseReady() && fs) {
+    try {
+      const snap = await fs.collection("team_members").get();
+      const batch = fs.batch();
+      snap.docs.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+      console.log(`[Firestore] Cleared all team members from Cloud Firestore 🔥`);
+    } catch (err) {
+      console.warn("[Firestore] Failed to clear team members:", err.message);
+    }
+  }
+}
+
+export async function saveActivityToFirestore(activityData, existingId = null) {
+  const fs = getFirestore();
+  const id = existingId ? String(existingId) : String(Date.now());
+  if (isFirebaseReady() && fs) {
+    try {
+      await fs.collection("club_activities").doc(id).set({
+        ...activityData,
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+      console.log(`[Firestore] Saved activity ${id} (${activityData.title}) in Cloud Firestore 🔥`);
+    } catch (err) {
+      console.warn("[Firestore] Failed to save activity:", err.message);
+    }
+  }
+}
+
+export async function deleteActivityFromFirestore(id) {
+  const fs = getFirestore();
+  if (isFirebaseReady() && fs) {
+    try {
+      await fs.collection("club_activities").doc(String(id)).delete();
+      console.log(`[Firestore] Deleted activity ${id} from Cloud Firestore 🔥`);
+    } catch (err) {
+      console.warn("[Firestore] Failed to delete activity:", err.message);
+    }
+  }
+}
+
+export async function saveSubscriberToFirestore(subscriberData) {
+  const fs = getFirestore();
+  const id = String(subscriberData.id || subscriberData.email);
+  if (isFirebaseReady() && fs) {
+    try {
+      await fs.collection("subscribers").doc(id).set({
+        ...subscriberData,
+        subscribedAt: new Date().toISOString(),
+      }, { merge: true });
+      console.log(`[Firestore] Recorded new subscriber ${subscriberData.email} in Cloud Firestore 🔥`);
+    } catch (err) {
+      console.warn("[Firestore] Failed to save subscriber:", err.message);
+    }
+  }
+}
+
+export async function deleteSubscriberFromFirestore(id) {
+  const fs = getFirestore();
+  if (isFirebaseReady() && fs) {
+    try {
+      await fs.collection("subscribers").doc(String(id)).delete();
+      console.log(`[Firestore] Deleted subscriber ${id} from Cloud Firestore 🔥`);
+    } catch (err) {
+      console.warn("[Firestore] Failed to delete subscriber:", err.message);
+    }
+  }
+}
+
+export async function recordUploadInFirestore(fileInfo) {
+  const fs = getFirestore();
+  if (isFirebaseReady() && fs) {
+    try {
+      await fs.collection("uploads").add({
+        ...fileInfo,
+        uploadedAt: new Date().toISOString(),
+      });
+      console.log(`[Firestore] Recorded uploaded file ${fileInfo.filename} in Cloud Firestore 🔥`);
+    } catch (err) {
+      console.warn("[Firestore] Failed to record upload in Firestore:", err.message);
+    }
   }
 }

@@ -2,7 +2,7 @@ import { db, rowToJSON } from "../config/db.js";
 import { ApiError } from "../utils/http.js";
 import { createEventSheet, recordRegistration } from "../services/googleSheets.js";
 import { sendRegistrationEmail, notifySubscribersNewEvent } from "../services/emailService.js";
-import { saveEventToFirestore, deleteEventFromFirestore, saveRegistrationToFirestore } from "../services/firestoreService.js";
+import { saveEventToFirestore, deleteEventFromFirestore, saveRegistrationToFirestore, deleteRegistrationFromFirestore, updateAttendanceInFirestore } from "../services/firestoreService.js";
 import XLSX from "xlsx";
 
 function pickBody(body = {}) {
@@ -519,6 +519,7 @@ export async function deleteEventRegistration(req, res) {
   const eventId = Number(req.params.id);
   const regId = Number(req.params.regId);
   db.prepare("DELETE FROM event_registrations WHERE id = ? AND event_id = ?").run(regId, eventId);
+  deleteRegistrationFromFirestore(regId).catch(err => console.warn("[Firestore] delete registration failed:", err.message));
   res.json({ success: true, message: "Registration deleted." });
 }
 
@@ -559,6 +560,8 @@ export async function toggleAttendance(req, res) {
 
   db.prepare("UPDATE event_registrations SET attended = ?, checked_in_at = ? WHERE id = ? AND event_id = ?")
     .run(newStatus, checkInTime, regId, eventId);
+
+  updateAttendanceInFirestore(regId, newStatus === 1, checkInTime).catch(err => console.warn("[Firestore] toggle attendance sync failed:", err.message));
 
   const updated = db.prepare("SELECT * FROM event_registrations WHERE id = ?").get(regId);
   res.json({
@@ -614,6 +617,8 @@ export async function quickCheckIn(req, res) {
   db.prepare("UPDATE event_registrations SET attended = 1, checked_in_at = ? WHERE id = ?")
     .run(checkInTime, record.id);
 
+  updateAttendanceInFirestore(record.id, true, checkInTime).catch(err => console.warn("[Firestore] quick checkin sync failed:", err.message));
+
   const updated = db.prepare("SELECT * FROM event_registrations WHERE id = ?").get(record.id);
   res.json({
     success: true,
@@ -635,8 +640,16 @@ export async function bulkAttendance(req, res) {
   if (action === "mark_all_present") {
     const now = new Date().toISOString();
     db.prepare("UPDATE event_registrations SET attended = 1, checked_in_at = ? WHERE event_id = ?").run(now, eventId);
+    const regs = db.prepare("SELECT id FROM event_registrations WHERE event_id = ?").all(eventId);
+    for (const r of regs) {
+      updateAttendanceInFirestore(r.id, true, now).catch(() => {});
+    }
   } else if (action === "mark_all_absent") {
     db.prepare("UPDATE event_registrations SET attended = 0, checked_in_at = '' WHERE event_id = ?").run(eventId);
+    const regs = db.prepare("SELECT id FROM event_registrations WHERE event_id = ?").all(eventId);
+    for (const r of regs) {
+      updateAttendanceInFirestore(r.id, false, null).catch(() => {});
+    }
   } else {
     throw new ApiError(400, "Invalid bulk action.");
   }

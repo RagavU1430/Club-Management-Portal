@@ -1,5 +1,6 @@
 import { db, rowToJSON } from "../config/db.js";
 import { ApiError } from "../utils/http.js";
+import { saveClubDetailsToFirestore, saveActivityToFirestore, deleteActivityFromFirestore } from "../services/firestoreService.js";
 
 // ── GET /api/club-details ──
 export async function getClubDetails(_req, res) {
@@ -70,7 +71,9 @@ export async function updateClubDetails(req, res) {
   }
 
   const updated = db.prepare("SELECT * FROM club_details WHERE id = 1").get();
-  res.json({ success: true, data: rowToJSON(updated) });
+  const formatted = rowToJSON(updated);
+  saveClubDetailsToFirestore(formatted).catch(err => console.warn("[Firestore] save club details failed:", err.message));
+  res.json({ success: true, data: formatted });
 }
 
 // ── GET /api/activities ──
@@ -98,8 +101,9 @@ export async function createActivity(req, res) {
     VALUES (@name, @photo, @date, @category, @description, @order)
   `).run(payload);
 
-  const inserted = db.prepare("SELECT * FROM club_activities WHERE id = ?").get(result.lastInsertRowid);
-  res.status(201).json({ success: true, data: rowToJSON(inserted) });
+  const inserted = rowToJSON(db.prepare("SELECT * FROM club_activities WHERE id = ?").get(result.lastInsertRowid));
+  saveActivityToFirestore(inserted, inserted.id).catch(err => console.warn("[Firestore] save activity failed:", err.message));
+  res.status(201).json({ success: true, data: inserted });
 }
 
 // ── PUT /api/activities/:id ──
@@ -126,8 +130,9 @@ export async function updateActivity(req, res) {
     db.prepare(`UPDATE club_activities SET ${updates.join(", ")} WHERE id = ?`).run(...vals);
   }
 
-  const updated = db.prepare("SELECT * FROM club_activities WHERE id = ?").get(id);
-  res.json({ success: true, data: rowToJSON(updated) });
+  const updated = rowToJSON(db.prepare("SELECT * FROM club_activities WHERE id = ?").get(id));
+  saveActivityToFirestore(updated, id).catch(err => console.warn("[Firestore] update activity failed:", err.message));
+  res.json({ success: true, data: updated });
 }
 
 // ── DELETE /api/activities/:id ──
@@ -137,5 +142,6 @@ export async function deleteActivity(req, res) {
   if (!existing) throw new ApiError(404, "Club activity not found.");
 
   db.prepare("DELETE FROM club_activities WHERE id = ?").run(id);
+  deleteActivityFromFirestore(id).catch(err => console.warn("[Firestore] delete activity failed:", err.message));
   res.json({ success: true, message: "Activity deleted successfully." });
 }

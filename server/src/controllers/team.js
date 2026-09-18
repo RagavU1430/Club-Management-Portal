@@ -1,5 +1,6 @@
 import { db, rowToJSON } from "../config/db.js";
 import { ApiError } from "../utils/http.js";
+import { saveTeamMemberToFirestore, deleteTeamMemberFromFirestore, clearAllTeamFromFirestore } from "../services/firestoreService.js";
 
 const FIELDS = ["name", "role", "department", "photo", "email", "phone", "linkedin", "github", "bio", "order", "active"];
 
@@ -48,7 +49,9 @@ export async function create(req, res) {
     active: raw.active !== undefined ? (raw.active ? 1 : 0) : 1,
   };
   const result = db.prepare(`INSERT INTO team_members (name, role, department, photo, email, phone, linkedin, github, bio, "order", active) VALUES (@name, @role, @department, @photo, @email, @phone, @linkedin, @github, @bio, @order, @active)`).run(payload);
-  res.status(201).json({ success: true, data: decorate(db.prepare("SELECT * FROM team_members WHERE id = ?").get(result.lastInsertRowid)) });
+  const created = decorate(db.prepare("SELECT * FROM team_members WHERE id = ?").get(result.lastInsertRowid));
+  saveTeamMemberToFirestore(created, created.id).catch(err => console.warn("[Firestore] save team member failed:", err.message));
+  res.status(201).json({ success: true, data: created });
 }
 
 // ── PUT /api/team/:id ──
@@ -65,7 +68,9 @@ export async function update(req, res) {
   const vals = entries.map(([, v]) => v ?? "");
   vals.push(id);
   db.prepare(`UPDATE team_members SET ${set} WHERE id = ?`).run(...vals);
-  res.json({ success: true, data: decorate(db.prepare("SELECT * FROM team_members WHERE id = ?").get(id)) });
+  const updated = decorate(db.prepare("SELECT * FROM team_members WHERE id = ?").get(id));
+  saveTeamMemberToFirestore(updated, id).catch(err => console.warn("[Firestore] update team member failed:", err.message));
+  res.json({ success: true, data: updated });
 }
 
 // ── DELETE /api/team/:id ──
@@ -73,12 +78,14 @@ export async function remove(req, res) {
   const id = Number(req.params.id);
   if (!db.prepare("SELECT id FROM team_members WHERE id = ?").get(id)) throw new ApiError(404, "That team member doesn't exist.");
   db.prepare("DELETE FROM team_members WHERE id = ?").run(id);
+  deleteTeamMemberFromFirestore(id).catch(err => console.warn("[Firestore] delete team member failed:", err.message));
   res.json({ success: true, data: { id, deleted: true } });
 }
 
 // ── DELETE /api/team (Clear All) ──
 export async function clearAll(req, res) {
   const result = db.prepare("DELETE FROM team_members").run();
+  clearAllTeamFromFirestore().catch(err => console.warn("[Firestore] clear team failed:", err.message));
   res.json({ success: true, deleted: result.changes, message: "All coordinators cleared successfully." });
 }
 
