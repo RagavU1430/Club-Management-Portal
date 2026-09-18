@@ -12,7 +12,7 @@ export default function Layout({ children }: LayoutProps) {
     <div className="relative min-h-screen flex flex-col bg-[#050811] text-slate-100 selection:bg-cyan-400 selection:text-black overflow-x-hidden">
       {/* Ambient Cyber Grid Background (Permanent across site) */}
       <div className="pointer-events-none fixed inset-0 z-0 cyber-grid opacity-35" />
-      
+
       {/* Global Scroll-Driven Video Playback (Active on all pages) */}
       <GlobalVideoBackground />
 
