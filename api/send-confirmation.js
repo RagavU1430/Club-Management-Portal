@@ -3,7 +3,7 @@ import nodemailer from "nodemailer";
 /**
  * Vercel Serverless Function: /api/send-confirmation
  * Automatically sends official event confirmation passes to participant emails.
- * Supports Resend API + Gmail SMTP fallback.
+ * Powered by Gmail SMTP (ragavkrr14@gmail.com).
  */
 export default async function handler(req, res) {
   // Set CORS headers for Vercel
@@ -189,127 +189,65 @@ export default async function handler(req, res) {
 `1. Report to venue 15 minutes before the event.\n` +
 `2. Bring your college ID card.\n` +
 `3. Keep your Registration ID (${registrationCode}) handy for desk verification.\n\n` +
-`See you there!\n${senderName}\nEmail: ${clubEmail}\n`;
+`See you there!\n${senderName}\nEmail: ragavkrr14@gmail.com\n`;
 
-  let participantSent = false;
-  let providerUsed = "";
-  let dispatchId = "";
+  const gmailUser = process.env.GMAIL_USER || "ragavkrr14@gmail.com";
+  const gmailPass = (
+    process.env.GMAIL_APP_PASSWORD ||
+    process.env.GMAIL_PASSWORD ||
+    ""
+  )
+    .replace(/\s+/g, "")
+    .trim();
 
-  // ─────────────────────────────────────────────────────────────
-  // 1. Resend API Attempt
-  // ─────────────────────────────────────────────────────────────
-  const resendKey = process.env.RESEND_API_KEY;
-  if (resendKey) {
-    const resendFrom = process.env.RESEND_FROM_EMAIL || "AI Frontier Club <onboarding@resend.dev>";
-
-    // A. Notify Club Admin (Resend always delivers to aifrontierclub@gmail.com)
-    try {
-      await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${resendKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: resendFrom,
-          reply_to: clubEmail,
-          to: [clubEmail],
-          subject: `[Admin Copy] ${subject}`,
-          html: htmlContent,
-          text: textContent,
-        }),
-      });
-    } catch (e) {
-      console.warn("[Resend Admin Notification Note]:", e.message);
-    }
-
-    // B. Attempt to send directly to participants via Resend
-    try {
-      const resp = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${resendKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: resendFrom,
-          reply_to: clubEmail,
-          to: recipients,
-          subject,
-          html: htmlContent,
-          text: textContent,
-        }),
-      });
-
-      const data = await resp.json();
-      if (resp.ok) {
-        participantSent = true;
-        providerUsed = "resend";
-        dispatchId = data.id;
-      } else {
-        console.warn("[Resend Notice - Unverified Domain Sandbox]:", data.message);
-      }
-    } catch (e) {
-      console.warn("[Resend Dispatch Error]:", e.message);
-    }
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // 2. High-Reliability Gmail SMTP Fallback
-  // (Delivers instantly to ANY participant email if Resend is in sandbox)
-  // ─────────────────────────────────────────────────────────────
-  if (!participantSent) {
-    const gmailUser = process.env.GMAIL_USER || "ragavkrr14@gmail.com";
-    const gmailPass = (
-      process.env.GMAIL_APP_PASSWORD ||
-      process.env.GMAIL_PASSWORD ||
-      "qzkuhlklzhijrlob"
-    )
-      .replace(/\s+/g, "")
-      .trim();
-
-    if (gmailUser && gmailPass) {
-      try {
-        const transporter = nodemailer.createTransport({
-          host: "smtp.gmail.com",
-          port: 465,
-          secure: true,
-          auth: {
-            user: gmailUser,
-            pass: gmailPass,
-          },
-        });
-
-        const info = await transporter.sendMail({
-          from: `"${senderName}" <${gmailUser}>`,
-          replyTo: clubEmail,
-          to: recipients.join(", "),
-          subject,
-          html: htmlContent,
-          text: textContent,
-        });
-
-        participantSent = true;
-        providerUsed = "gmail-smtp";
-        dispatchId = info.messageId;
-      } catch (err) {
-        console.error("[Email] Gmail SMTP delivery error:", err.message);
-      }
-    }
-  }
-
-  if (participantSent) {
-    return res.json({
-      success: true,
-      provider: providerUsed,
-      id: dispatchId,
-      recipients,
+  if (!gmailUser || !gmailPass) {
+    return res.status(500).json({
+      success: false,
+      error: "GMAIL_USER or GMAIL_APP_PASSWORD is not configured.",
+      preview: textContent,
     });
   }
 
-  return res.json({
-    success: false,
-    error: "Unable to deliver to participants. Please verify your domain in Resend or check Gmail credentials.",
-    preview: textContent,
-  });
+  try {
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      auth: {
+        user: gmailUser,
+        pass: gmailPass,
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+      connectionTimeout: 10000,
+      socketTimeout: 15000,
+    });
+
+    const info = await transporter.sendMail({
+      from: `"${senderName}" <${gmailUser}>`,
+      replyTo: gmailUser,
+      to: recipients.join(", "),
+      subject,
+      html: htmlContent,
+      text: textContent,
+    });
+
+    return res.json({
+      success: true,
+      provider: "gmail-smtp",
+      id: info.messageId,
+      sender: gmailUser,
+      recipients,
+    });
+  } catch (err) {
+    console.error("[Email] Gmail SMTP delivery error:", err.message);
+    return res.status(500).json({
+      success: false,
+      provider: "gmail-smtp",
+      error: `Failed to deliver email: ${err.message}`,
+      recipients,
+    });
+  }
 }
+

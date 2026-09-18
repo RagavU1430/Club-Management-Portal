@@ -13,6 +13,7 @@ import { upload } from "./middleware/upload.js";
 import { initFirebase, isFirebaseReady } from "./config/firebase.js";
 import { syncAllToFirestore, saveSubscriberToFirestore, deleteSubscriberFromFirestore, recordUploadInFirestore } from "./services/firestoreService.js";
 import { sendSubscriptionWelcomeEmail } from "./services/emailService.js";
+import sendConfirmationHandler from "../../api/send-confirmation.js";
 
 dotenv.config();
 
@@ -96,6 +97,7 @@ app.delete("/api/events/:id", requireAuth, remove);
 // Event Registrations & Excel/CSV Response Recording
 app.post("/api/events/lookup-ticket", registrationLimiter, lookupTicket);
 app.post("/api/events/:id/register", registrationLimiter, registerForEvent);
+app.all("/api/send-confirmation", registrationLimiter, sendConfirmationHandler);
 app.get("/api/events/:id/registrations", requireAuth, getEventRegistrations);
 app.get("/api/events/:id/registrations/export.csv", requireAuth, exportEventRegistrationsCSV);
 app.get("/api/events/:id/registrations/export.xlsx", requireAuth, exportEventRegistrationsExcel);
