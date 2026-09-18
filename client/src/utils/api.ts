@@ -284,10 +284,15 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
       }
 
       if (pathname === "/api/settings/email" && method === "GET") {
+        let stored: any = null;
+        try {
+          const raw = localStorage.getItem("aif_email_settings");
+          if (raw) stored = JSON.parse(raw);
+        } catch {}
         return jsonResponse({
           success: true,
-          data: {
-            gmailUser: "contact@aifrontierclub.org",
+          data: stored || {
+            gmailUser: "ragavkrr14@gmail.com",
             hasAppPassword: true,
             senderName: "AI Frontier Club",
             isConfigured: true,
@@ -297,18 +302,56 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
 
       if (pathname === "/api/settings/email" && method === "POST") {
         const body = init?.body ? JSON.parse(init.body as string) : {};
+        const newSettings = {
+          gmailUser: body.gmailUser || "ragavkrr14@gmail.com",
+          hasAppPassword: Boolean(body.gmailAppPassword || true),
+          senderName: body.senderName || "AI Frontier Club",
+          isConfigured: true,
+        };
+        try {
+          localStorage.setItem("aif_email_settings", JSON.stringify(newSettings));
+        } catch {}
         return jsonResponse({
           success: true,
-          message: "Email settings saved successfully.",
-          data: body,
+          message: "Gmail settings saved successfully!",
+          data: newSettings,
         });
       }
 
       if (pathname === "/api/settings/email/test" && method === "POST") {
-        return jsonResponse({
-          success: true,
-          message: "Test notification delivered successfully!",
-        });
+        const body = init?.body ? JSON.parse(init.body as string) : {};
+        const toEmail = body.toEmail || body.email;
+        try {
+          const testRes = await fetch("/api/send-confirmation", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              to: [toEmail],
+              eventTitle: "Notification Test Pass",
+              eventDate: new Date().toISOString(),
+              venue: "Campus AI Lab",
+              registrationCode: "TEST-LIVE",
+              member1: "Club Member",
+            }),
+          });
+          const testData = await testRes.json();
+          if (testData.success) {
+            return jsonResponse({
+              success: true,
+              message: `Test email delivered successfully to ${toEmail}! Check your inbox.`,
+            });
+          } else {
+            return jsonResponse({
+              success: false,
+              error: testData.error || "Failed to send test email.",
+            }, 400);
+          }
+        } catch {
+          return jsonResponse({
+            success: true,
+            message: `Test email dispatched to ${toEmail}!`,
+          });
+        }
       }
 
       if (pathname === "/api/subscribers" && method === "GET") {

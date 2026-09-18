@@ -3554,8 +3554,11 @@ function EmailSettingsManager() {
 
   useEffect(() => {
     setLoading(true);
-    fetch("/api/settings/email", { headers: authHeader() })
-      .then((r) => r.json())
+    apiFetch("/api/settings/email", { headers: authHeader() })
+      .then(async (r) => {
+        const text = await r.text();
+        return text ? JSON.parse(text) : {};
+      })
       .then((d) => {
         if (d.success) {
           const cfg = d.data;
@@ -3573,18 +3576,19 @@ function EmailSettingsManager() {
     setSaving(true);
     setMsg(null);
     try {
-      const res = await fetch("/api/settings/email", {
+      const res = await apiFetch("/api/settings/email", {
         method: "POST",
         headers: authHeader(),
         body: JSON.stringify({ gmailUser, gmailAppPassword: gmailAppPassword || undefined, senderName }),
       });
-      const d = await res.json();
+      const text = await res.text();
+      const d = text ? JSON.parse(text) : {};
       if (!res.ok || !d.success) throw new Error(d.error || "Save failed.");
       setConfig(d.data);
       setGmailAppPassword("");
       setMsg({ text: "Gmail settings saved successfully!", ok: true });
     } catch (err: any) {
-      setMsg({ text: err.message, ok: false });
+      setMsg({ text: err.message || "Failed to save settings.", ok: false });
     } finally {
       setSaving(false);
     }
@@ -3598,16 +3602,17 @@ function EmailSettingsManager() {
     setTesting(true);
     setTestResult(null);
     try {
-      const res = await fetch("/api/settings/email/test", {
+      const res = await apiFetch("/api/settings/email/test", {
         method: "POST",
         headers: authHeader(),
         body: JSON.stringify({ toEmail: testEmail }),
       });
-      const d = await res.json();
+      const text = await res.text();
+      const d = text ? JSON.parse(text) : {};
       if (!res.ok || !d.success) throw new Error(d.error || "Test failed.");
       setTestResult({ text: d.message || "Test email delivered successfully!", ok: true });
     } catch (err: any) {
-      setTestResult({ text: err.message, ok: false });
+      setTestResult({ text: err.message || "Test email failed.", ok: false });
     } finally {
       setTesting(false);
     }
