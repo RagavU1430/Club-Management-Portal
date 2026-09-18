@@ -69,10 +69,30 @@ export async function getEvents(options: { scope?: string; limit?: number } = {}
     throw error;
   }
 
-  const normalized = (data || []).map((e) => ({
-    ...e,
-    tags: parseTags(e.tags),
-  }));
+  // Count registrations for each event from Supabase
+  const { data: allRegs } = await supabase
+    .from("event_registrations")
+    .select("event_id");
+
+  const countMap: Record<number, number> = {};
+  if (allRegs) {
+    for (const r of allRegs) {
+      countMap[r.event_id] = (countMap[r.event_id] || 0) + 1;
+    }
+  }
+
+  const normalized = (data || []).map((e) => {
+    const regCount = countMap[e.id] || 0;
+    return {
+      ...e,
+      tags: parseTags(e.tags),
+      registrationCount: regCount,
+      registration_count: regCount,
+      webhookUrl: e.webhook_url || "",
+      registrationLink: e.registration_link || "",
+      endDate: e.end_date || null,
+    };
+  });
 
   return { success: true, data: normalized };
 }
@@ -88,11 +108,21 @@ export async function getEventByIdOrSlug(idOrSlug: string | number) {
   const { data, error } = await query;
   if (error) throw error;
 
+  const { count } = await supabase
+    .from("event_registrations")
+    .select("*", { count: "exact", head: true })
+    .eq("event_id", data.id);
+
   return {
     success: true,
     data: {
       ...data,
       tags: parseTags(data.tags),
+      registrationCount: count || 0,
+      registration_count: count || 0,
+      webhookUrl: data.webhook_url || "",
+      registrationLink: data.registration_link || "",
+      endDate: data.end_date || null,
     },
   };
 }
@@ -260,20 +290,27 @@ export async function registerForEvent(eventId: number, input: RegistrationInput
 
   const regCode = `AIF-${eventId}-${data.id}`;
 
-  // Optional direct Google Sheet sync webhook
-  if (event.webhook_url) {
-    fetch(event.webhook_url, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "RECORD_REGISTRATION",
-        eventTitle: event.title,
-        registrationId: regCode,
-        ...payload,
-      }),
-    }).catch(() => {});
-  }
+  // Trigger official confirmation email via serverless dispatcher (background non-blocking)
+  const recipientEmails = [payload.email, payload.member2_phone].filter(
+    (e) => e && e.includes("@")
+  );
+  fetch("/api/send-confirmation", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      to: recipientEmails,
+      eventTitle: event.title,
+      eventDate: event.date,
+      venue: event.venue,
+      registrationCode: regCode,
+      name: payload.name,
+      teamName: payload.team_name,
+      member1: payload.member1,
+      member2: payload.member2,
+      department: payload.department,
+      year: payload.year,
+    }),
+  }).catch((err) => console.warn("[Email Dispatch]", err.message));
 
   return {
     success: true,

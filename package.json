@@ -9,5 +9,8 @@
     "dev": "npm --prefix client run dev",
     "build": "npm --prefix client install && npm --prefix client run build",
     "start": "npm --prefix client run preview"
+  },
+  "dependencies": {
+    "nodemailer": "^10.0.10"
   }
 }
