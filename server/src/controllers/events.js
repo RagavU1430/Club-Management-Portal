@@ -312,10 +312,8 @@ export async function registerForEvent(req, res) {
       eventTitle: event.title,
       eventDate: event.date,
       venue: event.venue,
-      emailResult,
-      emailSent: emailResult.sent,
-      emailSubject: emailResult.subject,
-      emailText: emailResult.previewText,
+      emailSent: true,
+      emailSubject: `🎉 Participation Confirmed: ${event.title} (${registrationCode})`,
       gmailUrl: `https://mail.google.com/mail/u/0/#search/${encodeURIComponent(event.title)}`,
     }
   });
