@@ -2,14 +2,12 @@
   "name": "club-workspace",
   "version": "1.0.0",
   "private": true,
+  "workspaces": [
+    "client"
+  ],
   "scripts": {
     "dev": "npm --prefix client run dev",
-    "build": "npm --prefix client run build",
-    "start": "npm --prefix client run preview",
-    "dev:server": "npm --prefix server run dev",
-    "dev:client": "npm --prefix client run dev"
-  },
-  "dependencies": {
-    "firebase": "^12.19.0"
+    "build": "npm --prefix client install && npm --prefix client run build",
+    "start": "npm --prefix client run preview"
   }
 }
