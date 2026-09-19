@@ -192,8 +192,8 @@ const cleanClubData = {
   vision: "To empower students to master artificial intelligence through hands-on coding, open-source projects, and collaborative hackathons.",
   mission: "Equip students with deep learning, machine learning, and computer vision skills to build high-impact real-world systems.",
   founded_year: "2021",
-  email: "contact@aifrontierclub.org",
-  phone: "+91 98765 43210",
+  email: "aifrontierclub@gmail.com",
+  phone: "+91 9360376757",
   location: "Center for AI Excellence, Department of AI & DS",
   social_links: JSON.stringify({
     linkedin: "https://linkedin.com",
@@ -208,15 +208,11 @@ if (!existingClub) {
     INSERT INTO club_details (id, name, department, tagline, description, vision, mission, founded_year, email, phone, location, social_links)
     VALUES (1, @name, @department, @tagline, @description, @vision, @mission, @founded_year, @email, @phone, @location, @social_links)
   `).run(cleanClubData);
-} else if (existingClub.tagline && (existingClub.tagline.includes("Legal") || existingClub.description?.includes("jurisprudence"))) {
-  db.prepare(`
-    UPDATE club_details SET
-      tagline = @tagline,
-      description = @description,
-      vision = @vision,
-      mission = @mission
-    WHERE id = 1
-  `).run(cleanClubData);
+} else {
+  // Ensure email and phone stay updated
+  if (existingClub.email?.includes("contact@aifrontierclub.org") || existingClub.phone?.includes("98765")) {
+    db.prepare("UPDATE club_details SET email = 'aifrontierclub@gmail.com', phone = '+91 9360376757' WHERE id = 1").run();
+  }
 }
 
 

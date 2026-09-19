@@ -525,11 +525,14 @@ export async function getAttendance(req, res) {
   const present = list.filter(r => r.attended === 1).length;
   const absent = total - present;
   const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+  const totalParticipants = list.reduce((sum, r) => sum + 1 + (r.member2 && r.member2.trim() ? 1 : 0), 0);
+  const presentParticipants = list.filter(r => r.attended === 1)
+    .reduce((sum, r) => sum + 1 + (r.member2 && r.member2.trim() ? 1 : 0), 0);
 
   res.json({
     success: true,
     event,
-    stats: { total, present, absent, percentage },
+    stats: { total, present, absent, percentage, totalParticipants, presentParticipants },
     data: list.map(r => ({
       ...rowToJSON(r),
       registrationCode: `AIF-${eventId}-${r.id}`,

@@ -90,7 +90,7 @@ export function generateEmailContent({ event, registration }) {
   let clubName = "AI Frontier Club";
   let clubDept = "Department of Artificial Intelligence & Data Science";
   let clubEmail = "aifrontierclub@gmail.com";
-  let clubPhone = "+91 98765 43210";
+  let clubPhone = "+91 9360376757";
   let clubSocial = "https://aifrontierclub.edu • @aifrontierclub";
 
   try {

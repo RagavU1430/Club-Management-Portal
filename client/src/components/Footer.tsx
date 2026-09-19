@@ -89,7 +89,7 @@ export default function Footer() {
                 <TwitterIcon className="h-4 w-4" />
               </a>
               <a
-                href="mailto:contact@aifrontierclub.org"
+                href="mailto:aifrontierclub@gmail.com"
                 className="p-2 rounded-lg bg-white/5 border border-white/10 hover:border-cyan-500/50 hover:text-cyan-300 transition shadow-sm"
                 aria-label="Email"
               >

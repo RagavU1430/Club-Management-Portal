@@ -174,7 +174,7 @@ export default async function handler(req, res) {
         <td style="padding: 20px 30px; border-top: 1px solid rgba(255, 255, 255, 0.08); text-align: center; font-size: 12px; color: #64748b;">
           <p style="margin: 0 0 4px; font-weight: 600; color: #94a3b8;">${senderName}</p>
           <p style="margin: 0; font-size: 11px;">
-            Questions? Reply directly to this email or contact <a href="mailto:${clubEmail}" style="color: #38bdf8; text-decoration: none;">${clubEmail}</a>
+            Questions? Contact <a href="mailto:${clubEmail}" style="color: #38bdf8; text-decoration: none;">${clubEmail}</a> • 📱 <a href="tel:+919360376757" style="color: #38bdf8; text-decoration: none;">+91 9360376757</a>
           </p>
         </td>
       </tr>
@@ -201,7 +201,7 @@ export default async function handler(req, res) {
 `1. Report to venue 15 minutes before the event.\n` +
 `2. Bring your college ID card.\n` +
 `3. Keep your Registration ID (${registrationCode}) handy for desk verification.\n\n` +
-`See you there!\n${senderName}\nEmail: ragavkrr14@gmail.com\n`;
+`See you there!\n${senderName}\nEmail: aifrontierclub@gmail.com\nPhone: +91 9360376757\n`;
 
   const customUser = req.body?.gmailUser;
   const customPass = req.body?.gmailAppPassword;

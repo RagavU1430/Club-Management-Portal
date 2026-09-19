@@ -1079,7 +1079,14 @@ function ResponsesModal({
 /* ── 3. Modal: Attendance Generator & Live Check-in Tracker ── */
 function AttendanceGeneratorModal({ event, onClose }: { event: any; onClose: () => void }) {
   const [data, setData] = useState<any[]>([]);
-  const [stats, setStats] = useState({ total: 0, present: 0, absent: 0, percentage: 0 });
+  const [stats, setStats] = useState<{
+    total: number;
+    present: number;
+    absent: number;
+    percentage: number;
+    totalParticipants?: number;
+    presentParticipants?: number;
+  }>({ total: 0, present: 0, absent: 0, percentage: 0 });
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "present" | "absent">("all");
@@ -1097,8 +1104,28 @@ function AttendanceGeneratorModal({ event, onClose }: { event: any; onClose: () 
       });
       const d = await res.json();
       if (d.success) {
-        setData(d.data || []);
-        if (d.stats) setStats(d.stats);
+        const list = Array.isArray(d.data) ? d.data : [];
+        setData(list);
+        const total = list.length;
+        const present = list.filter((r: any) => r.attended === 1 || r.attended === true).length;
+        const absent = total - present;
+        const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+        const totalParticipants = list.reduce(
+          (sum: number, r: any) => sum + 1 + (r.member2 && String(r.member2).trim() ? 1 : 0),
+          0
+        );
+        const presentParticipants = list
+          .filter((r: any) => r.attended === 1 || r.attended === true)
+          .reduce((sum: number, r: any) => sum + 1 + (r.member2 && String(r.member2).trim() ? 1 : 0), 0);
+
+        setStats({
+          total: d.stats?.total ?? total,
+          present: d.stats?.present ?? present,
+          absent: d.stats?.absent ?? absent,
+          percentage: d.stats?.percentage ?? percentage,
+          totalParticipants: d.stats?.totalParticipants ?? totalParticipants,
+          presentParticipants: d.stats?.presentParticipants ?? presentParticipants,
+        });
       }
     } catch {}
     setLoading(false);
@@ -1121,18 +1148,33 @@ function AttendanceGeneratorModal({ event, onClose }: { event: any; onClose: () 
       });
       const d = await res.json();
       if (d.success) {
-        setData((prev) =>
-          prev.map((item) =>
+        setData((prev) => {
+          const updated = prev.map((item) =>
             item.id === regId
-              ? { ...item, attended: !currentAttended, checked_in_at: d.data.checked_in_at }
+              ? { ...item, attended: !currentAttended, checked_in_at: d.data?.checked_in_at || (!currentAttended ? new Date().toISOString() : "") }
               : item
-          )
-        );
-        setStats((prev) => {
-          const newPresent = !currentAttended ? prev.present + 1 : Math.max(0, prev.present - 1);
-          const newAbsent = prev.total - newPresent;
-          const pct = prev.total > 0 ? Math.round((newPresent / prev.total) * 100) : 0;
-          return { ...prev, present: newPresent, absent: newAbsent, percentage: pct };
+          );
+          const total = updated.length;
+          const present = updated.filter((r: any) => r.attended === 1 || r.attended === true).length;
+          const absent = total - present;
+          const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+          const totalParticipants = updated.reduce(
+            (sum: number, r: any) => sum + 1 + (r.member2 && String(r.member2).trim() ? 1 : 0),
+            0
+          );
+          const presentParticipants = updated
+            .filter((r: any) => r.attended === 1 || r.attended === true)
+            .reduce((sum: number, r: any) => sum + 1 + (r.member2 && String(r.member2).trim() ? 1 : 0), 0);
+
+          setStats({
+            total,
+            present,
+            absent,
+            percentage,
+            totalParticipants,
+            presentParticipants,
+          });
+          return updated;
         });
       }
     } catch {}
@@ -1274,22 +1316,39 @@ function AttendanceGeneratorModal({ event, onClose }: { event: any; onClose: () 
         {/* Live Attendance Statistics Ribbon */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
           <div className="glass rounded-2xl p-3.5 border border-white/10 flex flex-col justify-between">
-            <span className="text-[11px] font-mono text-slate-400 uppercase">Total Registrations</span>
-            <span className="text-2xl font-black text-white mt-1 font-display">{stats.total}</span>
+            <span className="text-[11px] font-mono text-slate-400 uppercase">Total Teams Registered</span>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-2xl font-black text-white font-display">{stats.total}</span>
+              <span className="text-[11px] font-mono text-cyan-400 font-semibold">
+                {stats.total === 1 ? "Team" : "Teams"}
+                {stats.totalParticipants ? ` (${stats.totalParticipants} Members)` : ""}
+              </span>
+            </div>
           </div>
 
           <div className="glass rounded-2xl p-3.5 border border-emerald-500/30 bg-emerald-950/20 flex flex-col justify-between">
             <span className="text-[11px] font-mono text-emerald-400 uppercase flex items-center gap-1">
               <CheckCircle2 className="h-3 w-3" /> Present / Checked In
             </span>
-            <span className="text-2xl font-black text-emerald-300 mt-1 font-display">{stats.present}</span>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-2xl font-black text-emerald-300 font-display">{stats.present}</span>
+              <span className="text-[11px] font-mono text-emerald-400 font-semibold">
+                {stats.present === 1 ? "Team" : "Teams"}
+                {stats.presentParticipants ? ` (${stats.presentParticipants} Members)` : ""}
+              </span>
+            </div>
           </div>
 
           <div className="glass rounded-2xl p-3.5 border border-rose-500/30 bg-rose-950/20 flex flex-col justify-between">
             <span className="text-[11px] font-mono text-rose-400 uppercase flex items-center gap-1">
               <XCircle className="h-3 w-3" /> Absent
             </span>
-            <span className="text-2xl font-black text-rose-300 mt-1 font-display">{stats.absent}</span>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-2xl font-black text-rose-300 font-display">{stats.absent}</span>
+              <span className="text-[11px] font-mono text-rose-400 font-semibold">
+                {stats.absent === 1 ? "Team" : "Teams"}
+              </span>
+            </div>
           </div>
 
           <div className="glass rounded-2xl p-3.5 border border-cyan-500/30 bg-cyan-950/20 flex flex-col justify-between">
@@ -1359,7 +1418,7 @@ function AttendanceGeneratorModal({ event, onClose }: { event: any; onClose: () 
                   : "text-slate-400 hover:text-white"
               }`}
             >
-              All ({stats.total})
+              All Teams ({stats.total})
             </button>
             <button
               type="button"
@@ -2386,8 +2445,8 @@ function ClubManager() {
     vision: "",
     mission: "",
     founded_year: "2021",
-    email: "",
-    phone: "",
+    email: "aifrontierclub@gmail.com",
+    phone: "+91 9360376757",
     location: "",
     social_links: {
       linkedin: "",
@@ -2434,8 +2493,8 @@ function ClubManager() {
             vision: details.vision || "",
             mission: details.mission || "",
             founded_year: details.founded_year || "2021",
-            email: details.email || "",
-            phone: details.phone || "",
+            email: details.email || "aifrontierclub@gmail.com",
+            phone: details.phone || "+91 9360376757",
             location: details.location || "",
             social_links: {
               linkedin: links.linkedin || "",

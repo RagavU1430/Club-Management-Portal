@@ -436,73 +436,191 @@ export async function getEventRegistrations(eventId: number) {
     .order("id", { ascending: true });
 
   if (error) throw error;
-  return { success: true, data: data || [] };
+  const list = (data || []).map((r) => ({
+    ...r,
+    registrationCode: `AIF-${eventId}-${r.id}`,
+    attended: Boolean(r.attended),
+    checked_in_at: r.checked_in_at || "",
+  }));
+  return { success: true, data: list };
 }
 
-export async function toggleAttendance(_eventId: number, regId: number) {
-  const { data: reg, error: getErr } = await supabase
-    .from("event_registrations")
-    .select("attended")
-    .eq("id", regId)
-    .single();
-  if (getErr) throw getErr;
+export async function getAttendance(eventId: number) {
+  const { data: event, error: evErr } = await supabase
+    .from("events")
+    .select("id, title, date, venue, capacity")
+    .eq("id", eventId)
+    .maybeSingle();
 
-  const newAttended = reg.attended ? 0 : 1;
+  if (evErr) console.warn("[Supabase] getAttendance event query:", evErr.message);
+
+  const { data: list, error } = await supabase
+    .from("event_registrations")
+    .select("*")
+    .eq("event_id", eventId)
+    .order("id", { ascending: true });
+
+  if (error) throw error;
+
+  const regs = list || [];
+  const total = regs.length;
+  const present = regs.filter((r) => r.attended === 1 || r.attended === true).length;
+  const absent = total - present;
+  const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+
+  const totalParticipants = regs.reduce((sum, r) => sum + 1 + (r.member2 && r.member2.trim() ? 1 : 0), 0);
+  const presentParticipants = regs.filter((r) => r.attended === 1 || r.attended === true)
+    .reduce((sum, r) => sum + 1 + (r.member2 && r.member2.trim() ? 1 : 0), 0);
+
+  return {
+    success: true,
+    event,
+    stats: {
+      total,
+      present,
+      absent,
+      percentage,
+      totalParticipants,
+      presentParticipants,
+    },
+    data: regs.map((r) => ({
+      ...r,
+      registrationCode: `AIF-${eventId}-${r.id}`,
+      attended: Boolean(r.attended),
+      checked_in_at: r.checked_in_at || "",
+    })),
+  };
+}
+
+export async function toggleAttendance(eventId: number, regId: number, attended?: boolean) {
+  let newAttended: number;
+  if (attended !== undefined) {
+    newAttended = attended ? 1 : 0;
+  } else {
+    const { data: reg, error: getErr } = await supabase
+      .from("event_registrations")
+      .select("attended")
+      .eq("id", regId)
+      .single();
+    if (getErr) throw getErr;
+    newAttended = reg.attended ? 0 : 1;
+  }
+
+  const checkInTime = newAttended ? new Date().toISOString() : null;
   const { data, error } = await supabase
     .from("event_registrations")
     .update({
       attended: newAttended,
-      checked_in_at: newAttended ? new Date().toISOString() : null,
+      checked_in_at: checkInTime,
     })
     .eq("id", regId)
     .select()
     .single();
 
   if (error) throw error;
-  return { success: true, data };
+  return {
+    success: true,
+    data: {
+      ...data,
+      registrationCode: `AIF-${eventId}-${regId}`,
+      attended: Boolean(newAttended),
+      checked_in_at: checkInTime || "",
+    },
+    message: newAttended === 1 ? "Attendee marked PRESENT." : "Attendee marked ABSENT.",
+  };
 }
 
 export async function quickCheckIn(eventId: number, codeOrEmail: string) {
-  const clean = String(codeOrEmail || "").trim().toLowerCase();
+  const clean = String(codeOrEmail || "").trim();
+  if (!clean) throw new Error("Please enter a Ticket ID, Email, Team Name, or Attendee Name.");
+
   let query = supabase.from("event_registrations").select("*").eq("event_id", eventId);
 
-  if (clean.startsWith("aif-")) {
-    const parts = clean.split("-");
-    const id = Number(parts[parts.length - 1]);
-    if (!isNaN(id)) query = query.eq("id", id);
-    else query = query.ilike("email", clean);
+  const codeMatch = clean.match(/AIF-(\d+)-(\d+)/i);
+  if (codeMatch && Number(codeMatch[1]) === eventId) {
+    query = query.eq("id", Number(codeMatch[2]));
+  } else if (/^\d+$/.test(clean)) {
+    query = query.eq("id", Number(clean));
   } else {
-    query = query.ilike("email", clean);
+    query = query.or(`email.ilike.%${clean}%,name.ilike.%${clean}%,member1.ilike.%${clean}%,member2.ilike.%${clean}%,team_name.ilike.%${clean}%`);
   }
 
-  const { data, error } = await query.maybeSingle();
-  if (error || !data) throw new Error("Ticket not found for this event.");
+  const { data: records, error } = await query;
+  if (error || !records || records.length === 0) throw new Error("Attendee or Team not found for this event.");
+  const data = records[0];
 
+  const checkInTime = new Date().toISOString();
   const { data: updated, error: updateErr } = await supabase
     .from("event_registrations")
     .update({
       attended: 1,
-      checked_in_at: new Date().toISOString(),
+      checked_in_at: checkInTime,
     })
     .eq("id", data.id)
     .select()
     .single();
 
   if (updateErr) throw updateErr;
-  return { success: true, data: updated, message: `Checked in ${data.name || data.member1}!` };
+  return {
+    success: true,
+    data: {
+      ...updated,
+      registrationCode: `AIF-${eventId}-${updated.id}`,
+      attended: true,
+      checked_in_at: checkInTime,
+    },
+    message: `Checked in ${data.team_name ? `Team "${data.team_name}" (${data.member1 || data.name})` : (data.name || data.member1)}!`,
+  };
 }
 
-export async function bulkAttendance(_eventId: number, items: { id: number; attended: boolean }[]) {
-  for (const item of items) {
-    await supabase
+export async function bulkAttendance(eventId: number, payload: any) {
+  const action = payload?.action;
+  if (action === "mark_all_present") {
+    const { data, error } = await supabase
       .from("event_registrations")
       .update({
-        attended: item.attended ? 1 : 0,
-        checked_in_at: item.attended ? new Date().toISOString() : null,
+        attended: 1,
+        checked_in_at: new Date().toISOString(),
       })
-      .eq("id", item.id);
+      .eq("event_id", eventId)
+      .select();
+    if (error) throw error;
+    return { success: true, message: "All attendees marked PRESENT.", updated: data?.length || 0 };
+  } else if (action === "mark_all_absent") {
+    const { data, error } = await supabase
+      .from("event_registrations")
+      .update({
+        attended: 0,
+        checked_in_at: null,
+      })
+      .eq("event_id", eventId)
+      .select();
+    if (error) throw error;
+    return { success: true, message: "All attendees marked ABSENT.", updated: data?.length || 0 };
+  } else if (Array.isArray(payload)) {
+    for (const item of payload) {
+      await supabase
+        .from("event_registrations")
+        .update({
+          attended: item.attended ? 1 : 0,
+          checked_in_at: item.attended ? new Date().toISOString() : null,
+        })
+        .eq("id", item.id);
+    }
+    return { success: true, updated: payload.length };
+  } else if (payload?.items && Array.isArray(payload.items)) {
+    for (const item of payload.items) {
+      await supabase
+        .from("event_registrations")
+        .update({
+          attended: item.attended ? 1 : 0,
+          checked_in_at: item.attended ? new Date().toISOString() : null,
+        })
+        .eq("id", item.id);
+    }
+    return { success: true, updated: payload.items.length };
   }
-  return { success: true, updated: items.length };
+  return { success: true };
 }
 
 export async function deleteEventRegistration(regId: number) {

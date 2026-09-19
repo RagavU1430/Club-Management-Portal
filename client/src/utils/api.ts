@@ -89,23 +89,31 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
       }
 
       // ── ATTENDANCE ──
+      const attMatch = pathname.match(/^\/api\/events\/(\d+)\/attendance$/);
+      if (attMatch && method === "GET") {
+        const res = await sb.getAttendance(Number(attMatch[1]));
+        return jsonResponse(res);
+      }
+
       const toggleAttMatch = pathname.match(/^\/api\/events\/(\d+)\/attendance\/(\d+)$/);
       if (toggleAttMatch && (method === "PATCH" || method === "POST")) {
-        const res = await sb.toggleAttendance(Number(toggleAttMatch[1]), Number(toggleAttMatch[2]));
+        const body = init?.body ? JSON.parse(init.body as string) : {};
+        const res = await sb.toggleAttendance(Number(toggleAttMatch[1]), Number(toggleAttMatch[2]), body.attended);
         return jsonResponse(res);
       }
 
       const quickCheckMatch = pathname.match(/^\/api\/events\/(\d+)\/attendance\/quick-checkin$/);
       if (quickCheckMatch && method === "POST") {
         const body = init?.body ? JSON.parse(init.body as string) : {};
-        const res = await sb.quickCheckIn(Number(quickCheckMatch[1]), body.codeOrEmail || body.identifier);
+        const queryTerm = body.query || body.codeOrEmail || body.identifier;
+        const res = await sb.quickCheckIn(Number(quickCheckMatch[1]), queryTerm);
         return jsonResponse(res);
       }
 
       const bulkAttMatch = pathname.match(/^\/api\/events\/(\d+)\/attendance\/bulk$/);
       if (bulkAttMatch && method === "POST") {
         const body = init?.body ? JSON.parse(init.body as string) : {};
-        const res = await sb.bulkAttendance(Number(bulkAttMatch[1]), body.items || []);
+        const res = await sb.bulkAttendance(Number(bulkAttMatch[1]), body);
         return jsonResponse(res);
       }
 

@@ -94,8 +94,10 @@ export function exportAttendanceToExcel(event: ExportEvent, attendanceList: any[
       "S.No": index + 1,
       "Registration ID": r.registrationCode || `AIF-${event.id}-${r.id}`,
       "Team Name": r.team_name || "",
-      "Participant Name": r.member1 || r.name || "",
-      "Email": r.email || "",
+      "Member 1 (Lead)": r.member1 || r.name || "",
+      "Lead Email": r.email || "",
+      "Member 2": r.member2 || "",
+      "Member 2 Contact": r.member2_phone || r.member2Phone || "",
       "Department": r.department || r.college || "",
       "Year": r.year || "",
       "Attendance Status": r.attended === 1 || r.attended === true ? "Present" : "Absent",
@@ -108,8 +110,10 @@ export function exportAttendanceToExcel(event: ExportEvent, attendanceList: any[
     { wch: 8 },  // S.No
     { wch: 18 }, // Registration ID
     { wch: 22 }, // Team Name
-    { wch: 24 }, // Participant Name
+    { wch: 24 }, // Member 1
     { wch: 30 }, // Email
+    { wch: 24 }, // Member 2
+    { wch: 28 }, // Member 2 Contact
     { wch: 32 }, // Department
     { wch: 14 }, // Year
     { wch: 20 }, // Status
@@ -128,25 +132,49 @@ export function exportAttendanceToExcel(event: ExportEvent, attendanceList: any[
 export function exportODListToExcel(event: ExportEvent, attendanceList: any[]) {
   const presentList = attendanceList.filter((r) => r.attended === 1 || r.attended === true);
 
-  const rows = presentList.map((r, index) => ({
-    "S.No": index + 1,
-    "Registration ID": r.registrationCode || `AIF-${event.id}-${r.id}`,
-    "Participant Name": r.member1 || r.name || "",
-    "Email": r.email || "",
-    "Team Name": r.team_name || "",
-    "Department": r.department || r.college || "",
-    "Year": r.year || "",
-    "Event Title": event.title || "",
-    "Event Date": event.date || "",
-  }));
+  const rows: any[] = [];
+  let sNo = 1;
+
+  presentList.forEach((r) => {
+    // Lead / Member 1
+    rows.push({
+      "S.No": sNo++,
+      "Registration ID": r.registrationCode || `AIF-${event.id}-${r.id}`,
+      "Team Name": r.team_name || "",
+      "Participant Name": r.member1 || r.name || "",
+      "Role": "Lead / Member 1",
+      "Email": r.email || "",
+      "Department": r.department || r.college || "",
+      "Year": r.year || "",
+      "Event Title": event.title || "",
+      "Event Date": event.date || "",
+    });
+
+    // Member 2 (if registered)
+    if (r.member2 && String(r.member2).trim()) {
+      rows.push({
+        "S.No": sNo++,
+        "Registration ID": r.registrationCode || `AIF-${event.id}-${r.id}`,
+        "Team Name": r.team_name || "",
+        "Participant Name": r.member2,
+        "Role": "Member 2",
+        "Email": r.member2_phone || r.member2Phone || "",
+        "Department": r.department || r.college || "",
+        "Year": r.year || "",
+        "Event Title": event.title || "",
+        "Event Date": event.date || "",
+      });
+    }
+  });
 
   const worksheet = XLSX.utils.json_to_sheet(rows);
   worksheet["!cols"] = [
     { wch: 8 },  // S.No
     { wch: 18 }, // Registration ID
-    { wch: 24 }, // Participant Name
-    { wch: 30 }, // Email
     { wch: 22 }, // Team Name
+    { wch: 24 }, // Participant Name
+    { wch: 18 }, // Role
+    { wch: 30 }, // Email
     { wch: 32 }, // Department
     { wch: 14 }, // Year
     { wch: 28 }, // Event Title
