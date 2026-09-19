@@ -9,16 +9,16 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   return (
-    <div className="relative min-h-screen flex flex-col bg-[#050811] text-slate-100 selection:bg-cyan-400 selection:text-black overflow-x-hidden">
+    <div className="relative min-h-screen flex flex-col bg-slate-50 dark:bg-[#050811] text-slate-900 dark:text-slate-100 selection:bg-cyan-500 selection:text-white dark:selection:bg-cyan-400 dark:selection:text-black overflow-x-hidden transition-colors duration-300">
       {/* Ambient Cyber Grid Background (Permanent across site) */}
-      <div className="pointer-events-none fixed inset-0 z-0 cyber-grid opacity-35" />
+      <div className="pointer-events-none fixed inset-0 z-0 cyber-grid opacity-35 dark:opacity-35" />
 
       {/* Global Scroll-Driven Video Playback (Active on all pages) */}
       <GlobalVideoBackground />
 
       {/* Ambient Lighting Orbs */}
-      <div className="pointer-events-none fixed top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-[128px] z-0" />
-      <div className="pointer-events-none fixed bottom-1/4 right-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-[128px] z-0" />
+      <div className="pointer-events-none fixed top-1/4 left-1/4 w-96 h-96 bg-cyan-500/5 dark:bg-cyan-500/10 rounded-full blur-[128px] z-0" />
+      <div className="pointer-events-none fixed bottom-1/4 right-1/4 w-96 h-96 bg-indigo-500/5 dark:bg-blue-600/10 rounded-full blur-[128px] z-0" />
 
       {/* Global Navbar */}
       <Navbar />

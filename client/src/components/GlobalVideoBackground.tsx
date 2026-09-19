@@ -1,46 +1,58 @@
 import { useRef, useEffect, useCallback, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { useTheme } from "../context/ThemeContext";
 
 const TOTAL_FRAMES = 180;
 const FRAME_PATH = (i: number) =>
   `/frames/frame_${String(i).padStart(4, "0")}.jpg`;
+const WHITE_FRAME_PATH = (i: number) =>
+  `/white_frames/frame_${String(i).padStart(4, "0")}.jpg`;
 
 const MATRIX_CHARS = "0101010101ABCDEF0123456789λ∇θΣ⚡⌘{}</>[]AI_FRONTIER_CORE_SYS_NET_SYNAPSE_TENSOR_NODE";
 
 /**
  * Global Scroll-Driven Video Playback Component with First-Frame Cyber Matrix Rain.
- * On the initial first frame (top of page), renders an energetic cyber hacking code rain.
- * As soon as the user scrolls, the matrix rain smoothly fades out and the video playback takes over.
+ * Uses hardware-accelerated Canvas image frame rendering for both Dark and Light themes
+ * to guarantee ultra-smooth 60-120 FPS scroll scrub without any browser video seek lag.
  */
 export default function GlobalVideoBackground() {
   const { pathname } = useLocation();
+  const { isDark } = useTheme();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const matrixCanvasRef = useRef<HTMLCanvasElement>(null);
   const imagesRef = useRef<(HTMLImageElement | null)[]>([]);
+  const whiteImagesRef = useRef<(HTMLImageElement | null)[]>([]);
   const currentFrameRef = useRef<number>(0);
   const targetFrameRef = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
   const matrixRafRef = useRef<number | null>(null);
   const [matrixOpacity, setMatrixOpacity] = useState(1);
 
-  // Render a specific frame onto the full-screen canvas
+  const isDarkRef = useRef(isDark);
+  useEffect(() => {
+    isDarkRef.current = isDark;
+    renderFrame(Math.round(currentFrameRef.current));
+  }, [isDark]);
+
+  // Render a specific frame onto the full-screen canvas (selects dark or white cache)
   const renderFrame = useCallback((frameIndex: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    let img = imagesRef.current[frameIndex];
+    const cache = isDarkRef.current ? imagesRef.current : whiteImagesRef.current;
+    let img = cache[frameIndex];
     if (!img || !img.complete) {
       // Find nearest loaded frame fallback
       for (let offset = 1; offset < 30; offset++) {
-        const before = imagesRef.current[Math.max(0, frameIndex - offset)];
+        const before = cache[Math.max(0, frameIndex - offset)];
         if (before && before.complete) {
           img = before;
           break;
         }
-        const after = imagesRef.current[Math.min(TOTAL_FRAMES - 1, frameIndex + offset)];
+        const after = cache[Math.min(TOTAL_FRAMES - 1, frameIndex + offset)];
         if (after && after.complete) {
           img = after;
           break;
@@ -64,17 +76,18 @@ export default function GlobalVideoBackground() {
     ctx.drawImage(img, x, y, iWidth * scale, iHeight * scale);
   }, []);
 
-  // Preload all 180 frames aggressively
+  // Preload all 180 frames for both themes aggressively
   useEffect(() => {
     imagesRef.current = new Array(TOTAL_FRAMES).fill(null);
+    whiteImagesRef.current = new Array(TOTAL_FRAMES).fill(null);
 
-    const loadSingle = (index: number): Promise<void> => {
+    const loadSingleDark = (index: number): Promise<void> => {
       return new Promise((resolve) => {
         const img = new Image();
         img.src = FRAME_PATH(index + 1);
         img.onload = () => {
           imagesRef.current[index] = img;
-          if (index === 0) {
+          if (index === 0 && isDarkRef.current) {
             renderFrame(0);
           }
           resolve();
@@ -83,16 +96,35 @@ export default function GlobalVideoBackground() {
       });
     };
 
-    // Immediate priority chunk: first 35 frames
+    const loadSingleWhite = (index: number): Promise<void> => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.src = WHITE_FRAME_PATH(index + 1);
+        img.onload = () => {
+          whiteImagesRef.current[index] = img;
+          if (index === 0 && !isDarkRef.current) {
+            renderFrame(0);
+          }
+          resolve();
+        };
+        img.onerror = () => resolve();
+      });
+    };
+
+    // Immediate priority chunk: first 35 frames for both themes
     const priorityIndices = Array.from({ length: 35 }, (_, i) => i);
-    Promise.all(priorityIndices.map(loadSingle)).then(() => {
+    Promise.all([
+      ...priorityIndices.map(loadSingleDark),
+      ...priorityIndices.map(loadSingleWhite),
+    ]).then(() => {
       // Remaining frames in fast background batches
       const remainingIndices = Array.from(
         { length: TOTAL_FRAMES - 35 },
         (_, i) => i + 35
       );
       remainingIndices.forEach((idx) => {
-        loadSingle(idx);
+        loadSingleDark(idx);
+        loadSingleWhite(idx);
       });
     });
   }, [renderFrame]);
@@ -153,7 +185,7 @@ export default function GlobalVideoBackground() {
     setMatrixOpacity(isAdmin ? 0 : 1);
   }, [pathname, isAdmin]);
 
-  // Butter-smooth video frame lerp loop
+  // Butter-smooth video frame lerp loop (hardware-accelerated canvas for 60-120 FPS on both themes)
   useEffect(() => {
     let active = true;
     let lastRenderedFrame = -1;
@@ -289,31 +321,82 @@ export default function GlobalVideoBackground() {
   }, [isAdmin]);
 
   return (
-    <div className="fixed inset-0 w-full h-full z-0 pointer-events-none overflow-hidden bg-[#050811]">
-      {/* Scroll-Driven Video Canvas */}
+    <div className="fixed inset-0 w-full h-full z-0 pointer-events-none overflow-hidden transition-colors duration-500"
+      style={{ backgroundColor: isDark ? "#050811" : "#f6f8fa" }}
+    >
+      {/* ── Dark & Light Mode: Unified Scroll-Driven Canvas Frames (Fluid 60-120 FPS) ── */}
       <canvas
         ref={canvasRef}
-        className="h-full w-full object-cover opacity-100 brightness-110 contrast-105 saturate-110"
-        style={{ width: "100%", height: "100%" }}
+        className="absolute inset-0 h-full w-full pointer-events-none transition-opacity duration-300"
+        style={{
+          width: "100%",
+          height: "100%",
+          opacity: isDark ? 1 : 0.95,
+        }}
       />
 
-      {/* Cyber Hacking Rain Overlay (Active on First Frame, Dimmed / Subdued, Fades on Scroll) */}
+      {/* ── Dark Mode: Cyber Matrix Rain Overlay ── */}
       {!isAdmin && (
         <canvas
           ref={matrixCanvasRef}
-          className="absolute inset-0 h-full w-full object-cover pointer-events-none transition-opacity duration-300"
+          className="absolute inset-0 h-full w-full pointer-events-none transition-opacity duration-500"
           style={{
             width: "100%",
             height: "100%",
-            opacity: matrixOpacity * 0.42,
+            opacity: isDark ? matrixOpacity * 0.42 : 0,
           }}
         />
       )}
 
-      {/* Minimal ambient gradient for aesthetic depth & contrast */}
-      <div className="absolute inset-0 bg-gradient-to-t from-[#050811]/50 via-transparent to-[#050811]/20 pointer-events-none" />
-      <div className="absolute inset-0 bg-radial from-transparent via-transparent to-[#050811]/30 pointer-events-none" />
+      {/* ── Light Mode: Vibrant Instagram Colorful Atmosphere & Gradient Depth ── */}
+      {/* 1. Multi-chromatic Instagram sunset ambient orbs (Violet, Magenta, Coral, Amber) */}
+      <div
+        className="absolute inset-0 pointer-events-none transition-opacity duration-700"
+        style={{
+          opacity: isDark ? 0 : 1,
+          background: `
+            radial-gradient(ellipse 65% 55% at 88% 18%, rgba(225, 48, 108, 0.22) 0%, rgba(193, 53, 132, 0.12) 45%, transparent 70%),
+            radial-gradient(ellipse 60% 50% at 12% 25%, rgba(131, 58, 180, 0.18) 0%, rgba(114, 9, 183, 0.08) 50%, transparent 70%),
+            radial-gradient(ellipse 70% 50% at 50% 50%, rgba(252, 175, 69, 0.16) 0%, rgba(247, 119, 55, 0.09) 45%, transparent 75%),
+            radial-gradient(ellipse 75% 55% at 18% 85%, rgba(253, 29, 29, 0.18) 0%, rgba(225, 48, 108, 0.10) 45%, transparent 70%),
+            radial-gradient(ellipse 65% 50% at 85% 82%, rgba(131, 58, 180, 0.20) 0%, rgba(76, 0, 112, 0.08) 50%, transparent 70%)
+          `,
+        }}
+      />
+
+      {/* 2. Top-to-bottom soft readability scrim (allows video to shine in hero, ensures crystal readability below) */}
+      <div
+        className="absolute inset-0 pointer-events-none transition-opacity duration-500"
+        style={{
+          opacity: isDark ? 0 : 1,
+          background: "linear-gradient(180deg, rgba(246,248,250,0.05) 0%, rgba(246,248,250,0.45) 30%, rgba(246,248,250,0.85) 65%, #f6f8fa 100%)",
+        }}
+      />
+
+      {/* 3. Iconic Instagram rainbow accent line at the absolute top of the viewport */}
+      <div
+        className="absolute top-0 left-0 right-0 h-[3px] pointer-events-none transition-opacity duration-500 z-20"
+        style={{
+          opacity: isDark ? 0 : 1,
+          background: "linear-gradient(90deg, #f09433 0%, #e6683c 20%, #dc2743 40%, #cc2366 60%, #bc1888 80%, #833ab4 100%)",
+        }}
+      />
+
+      {/* ── Dark Mode: Ambient depth gradient ── */}
+      <div
+        className="absolute inset-0 pointer-events-none transition-opacity duration-500"
+        style={{
+          opacity: isDark ? 1 : 0,
+          background: "linear-gradient(to top, rgba(5,8,17,0.5) 0%, transparent 50%, rgba(5,8,17,0.2) 100%)",
+        }}
+      />
+      <div
+        className="absolute inset-0 pointer-events-none transition-opacity duration-500"
+        style={{
+          opacity: isDark ? 1 : 0,
+          background: "radial-gradient(ellipse at center, transparent 40%, rgba(5,8,17,0.3) 100%)",
+        }}
+      />
     </div>
   );
 }
-
