@@ -38,6 +38,7 @@ html {
   color-scheme: dark;
   scroll-behavior: smooth;
   background-color: #050811;
+  transition: background-color 0.65s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 html.light {
@@ -52,8 +53,23 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.65s cubic-bezier(0.4, 0, 0.2, 1), color 0.65s cubic-bezier(0.4, 0, 0.2, 1);
   letter-spacing: -0.005em;
+}
+
+/* ── Seamless Cinematic Light/Dark Theme Transition ── */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: 
+    background-color 650ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 650ms cubic-bezier(0.4, 0, 0.2, 1),
+    color 650ms cubic-bezier(0.4, 0, 0.2, 1),
+    fill 650ms cubic-bezier(0.4, 0, 0.2, 1),
+    stroke 650ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 650ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition-delay: 0s !important;
 }
 
 h1, h2, h3, h4, h5, h6, .font-display {

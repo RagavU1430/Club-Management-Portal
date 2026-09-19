@@ -26,6 +26,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const root = document.documentElement;
+    root.classList.add("theme-transitioning");
+
     if (theme === "dark") {
       root.classList.add("dark");
       root.classList.remove("light");
@@ -38,6 +40,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.setItem(THEME_STORAGE_KEY, theme);
     } catch {}
+
+    const timer = setTimeout(() => {
+      root.classList.remove("theme-transitioning");
+    }, 700);
+
+    return () => clearTimeout(timer);
   }, [theme]);
 
   const toggleTheme = () => {

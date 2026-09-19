@@ -19,7 +19,8 @@ export default function GlobalVideoBackground() {
   const { pathname } = useLocation();
   const { isDark } = useTheme();
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const darkCanvasRef = useRef<HTMLCanvasElement>(null);
+  const lightCanvasRef = useRef<HTMLCanvasElement>(null);
   const matrixCanvasRef = useRef<HTMLCanvasElement>(null);
   const imagesRef = useRef<(HTMLImageElement | null)[]>([]);
   const whiteImagesRef = useRef<(HTMLImageElement | null)[]>([]);
@@ -29,23 +30,18 @@ export default function GlobalVideoBackground() {
   const matrixRafRef = useRef<number | null>(null);
   const [matrixOpacity, setMatrixOpacity] = useState(1);
 
-  const isDarkRef = useRef(isDark);
-  useEffect(() => {
-    isDarkRef.current = isDark;
-    renderFrame(Math.round(currentFrameRef.current));
-  }, [isDark]);
-
-  // Render a specific frame onto the full-screen canvas (selects dark or white cache)
-  const renderFrame = useCallback((frameIndex: number) => {
-    const canvas = canvasRef.current;
+  // Helper to draw a specific frame onto a given canvas
+  const drawImageOnCanvas = (
+    canvas: HTMLCanvasElement | null,
+    cache: (HTMLImageElement | null)[],
+    frameIndex: number
+  ) => {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const cache = isDarkRef.current ? imagesRef.current : whiteImagesRef.current;
     let img = cache[frameIndex];
     if (!img || !img.complete) {
-      // Find nearest loaded frame fallback
       for (let offset = 1; offset < 30; offset++) {
         const before = cache[Math.max(0, frameIndex - offset)];
         if (before && before.complete) {
@@ -67,13 +63,18 @@ export default function GlobalVideoBackground() {
     const iWidth = img.naturalWidth || 960;
     const iHeight = img.naturalHeight || 540;
 
-    // Fullscreen cover aspect ratio scaling
     const scale = Math.max(cWidth / iWidth, cHeight / iHeight);
     const x = (cWidth - iWidth * scale) / 2;
     const y = (cHeight - iHeight * scale) / 2;
 
     ctx.clearRect(0, 0, cWidth, cHeight);
     ctx.drawImage(img, x, y, iWidth * scale, iHeight * scale);
+  };
+
+  // Render current frame onto BOTH canvases so theme switching cross-fades seamlessly
+  const renderFrame = useCallback((frameIndex: number) => {
+    drawImageOnCanvas(darkCanvasRef.current, imagesRef.current, frameIndex);
+    drawImageOnCanvas(lightCanvasRef.current, whiteImagesRef.current, frameIndex);
   }, []);
 
   // Preload all 180 frames for both themes aggressively
@@ -87,8 +88,8 @@ export default function GlobalVideoBackground() {
         img.src = FRAME_PATH(index + 1);
         img.onload = () => {
           imagesRef.current[index] = img;
-          if (index === 0 && isDarkRef.current) {
-            renderFrame(0);
+          if (index === 0) {
+            drawImageOnCanvas(darkCanvasRef.current, imagesRef.current, 0);
           }
           resolve();
         };
@@ -102,8 +103,8 @@ export default function GlobalVideoBackground() {
         img.src = WHITE_FRAME_PATH(index + 1);
         img.onload = () => {
           whiteImagesRef.current[index] = img;
-          if (index === 0 && !isDarkRef.current) {
-            renderFrame(0);
+          if (index === 0) {
+            drawImageOnCanvas(lightCanvasRef.current, whiteImagesRef.current, 0);
           }
           resolve();
         };
@@ -127,21 +128,28 @@ export default function GlobalVideoBackground() {
         loadSingleWhite(idx);
       });
     });
-  }, [renderFrame]);
+  }, []);
 
-  // Window resize handler
+  // Window resize handler for both canvases
   useEffect(() => {
     const handleResize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      if (canvasRef.current) {
-        canvasRef.current.width = window.innerWidth * dpr;
-        canvasRef.current.height = window.innerHeight * dpr;
-        renderFrame(Math.round(currentFrameRef.current));
+      const w = window.innerWidth * dpr;
+      const h = window.innerHeight * dpr;
+
+      if (darkCanvasRef.current) {
+        darkCanvasRef.current.width = w;
+        darkCanvasRef.current.height = h;
+      }
+      if (lightCanvasRef.current) {
+        lightCanvasRef.current.width = w;
+        lightCanvasRef.current.height = h;
       }
       if (matrixCanvasRef.current) {
-        matrixCanvasRef.current.width = window.innerWidth * dpr;
-        matrixCanvasRef.current.height = window.innerHeight * dpr;
+        matrixCanvasRef.current.width = w;
+        matrixCanvasRef.current.height = h;
       }
+      renderFrame(Math.round(currentFrameRef.current));
     };
 
     handleResize();
@@ -321,17 +329,29 @@ export default function GlobalVideoBackground() {
   }, [isAdmin]);
 
   return (
-    <div className="fixed inset-0 w-full h-full z-0 pointer-events-none overflow-hidden transition-colors duration-500"
+    <div
+      className="fixed inset-0 w-full h-full z-0 pointer-events-none overflow-hidden transition-colors duration-700 ease-in-out"
       style={{ backgroundColor: isDark ? "#050811" : "#f6f8fa" }}
     >
-      {/* ── Dark & Light Mode: Unified Scroll-Driven Canvas Frames (Fluid 60-120 FPS) ── */}
+      {/* ── Dark Mode Canvas: Scroll-Driven Hardware-Accelerated ── */}
       <canvas
-        ref={canvasRef}
-        className="absolute inset-0 h-full w-full pointer-events-none transition-opacity duration-300"
+        ref={darkCanvasRef}
+        className="absolute inset-0 h-full w-full pointer-events-none transition-opacity duration-700 ease-in-out"
         style={{
           width: "100%",
           height: "100%",
-          opacity: isDark ? 1 : 0.95,
+          opacity: isDark ? 1 : 0,
+        }}
+      />
+
+      {/* ── Light Mode Canvas: Scroll-Driven Hardware-Accelerated (White Frames) ── */}
+      <canvas
+        ref={lightCanvasRef}
+        className="absolute inset-0 h-full w-full pointer-events-none transition-opacity duration-700 ease-in-out"
+        style={{
+          width: "100%",
+          height: "100%",
+          opacity: isDark ? 0 : 0.95,
         }}
       />
 
@@ -339,7 +359,7 @@ export default function GlobalVideoBackground() {
       {!isAdmin && (
         <canvas
           ref={matrixCanvasRef}
-          className="absolute inset-0 h-full w-full pointer-events-none transition-opacity duration-500"
+          className="absolute inset-0 h-full w-full pointer-events-none transition-opacity duration-700 ease-in-out"
           style={{
             width: "100%",
             height: "100%",
@@ -351,7 +371,7 @@ export default function GlobalVideoBackground() {
       {/* ── Light Mode: Vibrant Instagram Colorful Atmosphere & Gradient Depth ── */}
       {/* 1. Multi-chromatic Instagram sunset ambient orbs (Violet, Magenta, Coral, Amber) */}
       <div
-        className="absolute inset-0 pointer-events-none transition-opacity duration-700"
+        className="absolute inset-0 pointer-events-none transition-opacity duration-700 ease-in-out"
         style={{
           opacity: isDark ? 0 : 1,
           background: `
@@ -364,37 +384,41 @@ export default function GlobalVideoBackground() {
         }}
       />
 
-      {/* 2. Top-to-bottom soft readability scrim (allows video to shine in hero, ensures crystal readability below) */}
+      {/* 2. Top-to-bottom soft readability scrim */}
       <div
-        className="absolute inset-0 pointer-events-none transition-opacity duration-500"
+        className="absolute inset-0 pointer-events-none transition-opacity duration-700 ease-in-out"
         style={{
           opacity: isDark ? 0 : 1,
-          background: "linear-gradient(180deg, rgba(246,248,250,0.05) 0%, rgba(246,248,250,0.45) 30%, rgba(246,248,250,0.85) 65%, #f6f8fa 100%)",
+          background:
+            "linear-gradient(180deg, rgba(246,248,250,0.05) 0%, rgba(246,248,250,0.45) 30%, rgba(246,248,250,0.85) 65%, #f6f8fa 100%)",
         }}
       />
 
-      {/* 3. Iconic Instagram rainbow accent line at the absolute top of the viewport */}
+      {/* 3. Iconic Instagram rainbow accent line */}
       <div
-        className="absolute top-0 left-0 right-0 h-[3px] pointer-events-none transition-opacity duration-500 z-20"
+        className="absolute top-0 left-0 right-0 h-[3px] pointer-events-none transition-opacity duration-700 ease-in-out z-20"
         style={{
           opacity: isDark ? 0 : 1,
-          background: "linear-gradient(90deg, #f09433 0%, #e6683c 20%, #dc2743 40%, #cc2366 60%, #bc1888 80%, #833ab4 100%)",
+          background:
+            "linear-gradient(90deg, #f09433 0%, #e6683c 20%, #dc2743 40%, #cc2366 60%, #bc1888 80%, #833ab4 100%)",
         }}
       />
 
       {/* ── Dark Mode: Ambient depth gradient ── */}
       <div
-        className="absolute inset-0 pointer-events-none transition-opacity duration-500"
+        className="absolute inset-0 pointer-events-none transition-opacity duration-700 ease-in-out"
         style={{
           opacity: isDark ? 1 : 0,
-          background: "linear-gradient(to top, rgba(5,8,17,0.5) 0%, transparent 50%, rgba(5,8,17,0.2) 100%)",
+          background:
+            "linear-gradient(to top, rgba(5,8,17,0.5) 0%, transparent 50%, rgba(5,8,17,0.2) 100%)",
         }}
       />
       <div
-        className="absolute inset-0 pointer-events-none transition-opacity duration-500"
+        className="absolute inset-0 pointer-events-none transition-opacity duration-700 ease-in-out"
         style={{
           opacity: isDark ? 1 : 0,
-          background: "radial-gradient(ellipse at center, transparent 40%, rgba(5,8,17,0.3) 100%)",
+          background:
+            "radial-gradient(ellipse at center, transparent 40%, rgba(5,8,17,0.3) 100%)",
         }}
       />
     </div>
