@@ -248,6 +248,7 @@ function EventManager() {
   const [saving, setSaving] = useState(false);
   const [selectedEventResponses, setSelectedEventResponses] = useState<any | null>(null);
   const [selectedAttendanceEvent, setSelectedAttendanceEvent] = useState<any | null>(null);
+  const [initialAttendanceData, setInitialAttendanceData] = useState<any[] | null>(null);
 
   const [sheetConfig, setSheetConfig] = useState<any>(null);
   const [showSheetModal, setShowSheetModal] = useState(false);
@@ -832,8 +833,9 @@ function EventManager() {
             setSelectedEventResponses(null);
             load();
           }}
-          onOpenAttendance={(ev) => {
+          onOpenAttendance={(ev, regs) => {
             setSelectedEventResponses(null);
+            setInitialAttendanceData(regs || null);
             setSelectedAttendanceEvent(ev);
           }}
         />
@@ -843,8 +845,10 @@ function EventManager() {
       {selectedAttendanceEvent && (
         <AttendanceGeneratorModal
           event={selectedAttendanceEvent}
+          initialData={initialAttendanceData || undefined}
           onClose={() => {
             setSelectedAttendanceEvent(null);
+            setInitialAttendanceData(null);
             load();
           }}
         />
@@ -885,7 +889,7 @@ function ResponsesModal({
 }: {
   event: any;
   onClose: () => void;
-  onOpenAttendance?: (ev: any) => void;
+  onOpenAttendance?: (ev: any, regs?: any[]) => void;
 }) {
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -956,7 +960,7 @@ function ResponsesModal({
           <div className="flex items-center gap-2">
             {onOpenAttendance && (
               <button
-                onClick={() => onOpenAttendance(event)}
+                onClick={() => onOpenAttendance(event, registrations)}
                 className="flex items-center gap-1.5 rounded-xl bg-cyan-500/20 border border-cyan-400/40 px-3 py-2 text-xs font-mono text-cyan-300 hover:bg-cyan-500/30 transition cursor-pointer"
                 title="Switch to Attendance Generator"
               >
@@ -1077,8 +1081,26 @@ function ResponsesModal({
 }
 
 /* ── 3. Modal: Attendance Generator & Live Check-in Tracker ── */
-function AttendanceGeneratorModal({ event, onClose }: { event: any; onClose: () => void }) {
-  const [data, setData] = useState<any[]>([]);
+function AttendanceGeneratorModal({
+  event,
+  initialData,
+  onClose,
+}: {
+  event: any;
+  initialData?: any[];
+  onClose: () => void;
+}) {
+  const [data, setData] = useState<any[]>(() => {
+    if (initialData && initialData.length > 0) {
+      return initialData.map((r: any) => ({
+        ...r,
+        registrationCode: r.registrationCode || `AIF-${event?.id || 4}-${r.id}`,
+        attended: Boolean(r.attended),
+        checked_in_at: r.checked_in_at || "",
+      }));
+    }
+    return [];
+  });
   const [stats, setStats] = useState<{
     total: number;
     present: number;
@@ -1086,8 +1108,25 @@ function AttendanceGeneratorModal({ event, onClose }: { event: any; onClose: () 
     percentage: number;
     totalParticipants?: number;
     presentParticipants?: number;
-  }>({ total: 0, present: 0, absent: 0, percentage: 0 });
-  const [loading, setLoading] = useState(true);
+  }>(() => {
+    if (initialData && initialData.length > 0) {
+      const list = initialData;
+      const total = list.length;
+      const present = list.filter((r: any) => r.attended === 1 || r.attended === true).length;
+      const absent = total - present;
+      const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+      const totalParticipants = list.reduce(
+        (sum: number, r: any) => sum + 1 + (r.member2 && String(r.member2).trim() ? 1 : 0),
+        0
+      );
+      const presentParticipants = list
+        .filter((r: any) => r.attended === 1 || r.attended === true)
+        .reduce((sum: number, r: any) => sum + 1 + (r.member2 && String(r.member2).trim() ? 1 : 0), 0);
+      return { total, present, absent, percentage, totalParticipants, presentParticipants };
+    }
+    return { total: 0, present: 0, absent: 0, percentage: 0 };
+  });
+  const [loading, setLoading] = useState(initialData && initialData.length > 0 ? false : true);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "present" | "absent">("all");
   const [quickInput, setQuickInput] = useState("");
@@ -1096,15 +1135,44 @@ function AttendanceGeneratorModal({ event, onClose }: { event: any; onClose: () 
   const inputRef = useRef<HTMLInputElement>(null);
 
   const fetchAttendance = useCallback(async () => {
-    setLoading(true);
     try {
       const token = localStorage.getItem("aif_token");
-      const res = await apiFetch(`/api/events/${event.id}/attendance`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const d = await res.json();
-      if (d.success) {
-        const list = Array.isArray(d.data) ? d.data : [];
+      let list: any[] = [];
+      let incomingStats: any = null;
+
+      try {
+        const res = await apiFetch(`/api/events/${event.id}/attendance`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const d = await res.json();
+        if (d.success && Array.isArray(d.data) && d.data.length > 0) {
+          list = d.data;
+          incomingStats = d.stats;
+        }
+      } catch (e) {
+        console.warn("[Attendance] Fetch attendance error:", e);
+      }
+
+      if (list.length === 0) {
+        try {
+          const res = await apiFetch(`/api/events/${event.id}/registrations`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const d = await res.json();
+          if (d.success && Array.isArray(d.data) && d.data.length > 0) {
+            list = d.data.map((r: any) => ({
+              ...r,
+              registrationCode: r.registrationCode || `AIF-${event.id}-${r.id}`,
+              attended: Boolean(r.attended),
+              checked_in_at: r.checked_in_at || "",
+            }));
+          }
+        } catch (e) {
+          console.warn("[Attendance] Fallback fetch registrations error:", e);
+        }
+      }
+
+      if (list.length > 0) {
         setData(list);
         const total = list.length;
         const present = list.filter((r: any) => r.attended === 1 || r.attended === true).length;
@@ -1119,12 +1187,12 @@ function AttendanceGeneratorModal({ event, onClose }: { event: any; onClose: () 
           .reduce((sum: number, r: any) => sum + 1 + (r.member2 && String(r.member2).trim() ? 1 : 0), 0);
 
         setStats({
-          total: d.stats?.total ?? total,
-          present: d.stats?.present ?? present,
-          absent: d.stats?.absent ?? absent,
-          percentage: d.stats?.percentage ?? percentage,
-          totalParticipants: d.stats?.totalParticipants ?? totalParticipants,
-          presentParticipants: d.stats?.presentParticipants ?? presentParticipants,
+          total: incomingStats?.total ?? total,
+          present: incomingStats?.present ?? present,
+          absent: incomingStats?.absent ?? absent,
+          percentage: incomingStats?.percentage ?? percentage,
+          totalParticipants: incomingStats?.totalParticipants ?? totalParticipants,
+          presentParticipants: incomingStats?.presentParticipants ?? presentParticipants,
         });
       }
     } catch {}

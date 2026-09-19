@@ -76,44 +76,44 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
         return jsonResponse(res);
       }
 
-      const regsMatch = pathname.match(/^\/api\/events\/(\d+)\/registrations$/);
+      const regsMatch = pathname.match(/^\/api\/events\/([^/]+)\/registrations\/?$/);
       if (regsMatch && method === "GET") {
-        const res = await sb.getEventRegistrations(Number(regsMatch[1]));
+        const res = await sb.getEventRegistrations(regsMatch[1]);
         return jsonResponse(res);
       }
 
-      const delRegMatch = pathname.match(/^\/api\/events\/\d+\/registrations\/(\d+)$/);
+      const delRegMatch = pathname.match(/^\/api\/events\/[^/]+\/registrations\/(\d+)\/?$/);
       if (delRegMatch && method === "DELETE") {
         const res = await sb.deleteEventRegistration(Number(delRegMatch[1]));
         return jsonResponse(res);
       }
 
       // ── ATTENDANCE ──
-      const attMatch = pathname.match(/^\/api\/events\/(\d+)\/attendance$/);
+      const attMatch = pathname.match(/^\/api\/events\/([^/]+)\/attendance\/?$/);
       if (attMatch && method === "GET") {
-        const res = await sb.getAttendance(Number(attMatch[1]));
+        const res = await sb.getAttendance(attMatch[1]);
         return jsonResponse(res);
       }
 
-      const toggleAttMatch = pathname.match(/^\/api\/events\/(\d+)\/attendance\/(\d+)$/);
+      const toggleAttMatch = pathname.match(/^\/api\/events\/([^/]+)\/attendance\/(\d+)\/?$/);
       if (toggleAttMatch && (method === "PATCH" || method === "POST")) {
         const body = init?.body ? JSON.parse(init.body as string) : {};
-        const res = await sb.toggleAttendance(Number(toggleAttMatch[1]), Number(toggleAttMatch[2]), body.attended);
+        const res = await sb.toggleAttendance(toggleAttMatch[1], Number(toggleAttMatch[2]), body.attended);
         return jsonResponse(res);
       }
 
-      const quickCheckMatch = pathname.match(/^\/api\/events\/(\d+)\/attendance\/quick-checkin$/);
+      const quickCheckMatch = pathname.match(/^\/api\/events\/([^/]+)\/attendance\/quick-checkin\/?$/);
       if (quickCheckMatch && method === "POST") {
         const body = init?.body ? JSON.parse(init.body as string) : {};
         const queryTerm = body.query || body.codeOrEmail || body.identifier;
-        const res = await sb.quickCheckIn(Number(quickCheckMatch[1]), queryTerm);
+        const res = await sb.quickCheckIn(quickCheckMatch[1], queryTerm);
         return jsonResponse(res);
       }
 
-      const bulkAttMatch = pathname.match(/^\/api\/events\/(\d+)\/attendance\/bulk$/);
+      const bulkAttMatch = pathname.match(/^\/api\/events\/([^/]+)\/attendance\/bulk\/?$/);
       if (bulkAttMatch && method === "POST") {
         const body = init?.body ? JSON.parse(init.body as string) : {};
-        const res = await sb.bulkAttendance(Number(bulkAttMatch[1]), body);
+        const res = await sb.bulkAttendance(bulkAttMatch[1], body);
         return jsonResponse(res);
       }
 
