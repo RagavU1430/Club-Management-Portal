@@ -364,8 +364,14 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
         return jsonResponse({ success: true, data: [] });
       }
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : "Supabase request failed";
-      console.error(`[Supabase Router Error] ${pathname}:`, errorMsg);
+      const errorMsg =
+        err instanceof Error
+          ? err.message
+          : (err as any)?.message ||
+            (err as any)?.error_description ||
+            (err as any)?.details ||
+            (typeof err === "string" ? err : "Supabase request failed");
+      console.error(`[Supabase Router Error] ${pathname}:`, err);
       return jsonResponse({ success: false, error: errorMsg, message: errorMsg }, 400);
     }
   }

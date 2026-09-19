@@ -127,34 +127,194 @@ export async function getEventByIdOrSlug(idOrSlug: string | number) {
   };
 }
 
-export async function createEvent(eventData: Partial<EventRecord>) {
-  const payload = {
-    ...eventData,
-    tags: Array.isArray(eventData.tags) ? eventData.tags : parseTags(eventData.tags),
+function slugify(input = ""): string {
+  return String(input)
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
+
+export async function createEvent(eventData: Record<string, any>) {
+  if (!eventData.title || !String(eventData.title).trim()) {
+    throw new Error("Event title is required.");
+  }
+  if (!eventData.date) {
+    throw new Error("Event date is required.");
+  }
+
+  // Generate unique slug
+  let baseSlug =
+    (eventData.slug && String(eventData.slug).trim()) ||
+    slugify(eventData.title) ||
+    `event-${Date.now()}`;
+  let slug = baseSlug;
+  let counter = 2;
+
+  try {
+    while (true) {
+      const { data: existing } = await supabase
+        .from("events")
+        .select("id")
+        .eq("slug", slug)
+        .maybeSingle();
+      if (!existing) break;
+      slug = `${baseSlug}-${counter++}`;
+    }
+  } catch {
+    slug = `${baseSlug}-${Date.now().toString(36)}`;
+  }
+
+  let isoDate: string;
+  try {
+    isoDate = new Date(eventData.date).toISOString();
+  } catch {
+    isoDate = String(eventData.date);
+  }
+
+  let isoEndDate: string | null = null;
+  const rawEndDate = eventData.endDate !== undefined ? eventData.endDate : eventData.end_date;
+  if (rawEndDate) {
+    try {
+      isoEndDate = new Date(rawEndDate).toISOString();
+    } catch {
+      isoEndDate = String(rawEndDate);
+    }
+  }
+
+  let tags = Array.isArray(eventData.tags) ? [...eventData.tags] : parseTags(eventData.tags);
+  if (eventData.category && typeof eventData.category === "string" && !tags.includes(eventData.category)) {
+    tags.unshift(eventData.category);
+  }
+
+  const rawWebhook = eventData.webhookUrl !== undefined ? eventData.webhookUrl : eventData.webhook_url;
+  const rawReg = eventData.registrationLink !== undefined ? eventData.registrationLink : eventData.registration_link;
+
+  const payload: Record<string, any> = {
+    title: String(eventData.title).trim(),
+    slug,
+    date: isoDate,
+    end_date: isoEndDate,
+    venue: String(eventData.venue || "").trim(),
+    description: String(eventData.description || "").trim(),
+    summary: String(eventData.summary || "").trim(),
+    image: String(eventData.image || "").trim(),
+    registration_link: String(rawReg || "").trim(),
+    tags,
+    status: String(eventData.status || "published").trim(),
+    featured: eventData.featured ? 1 : 0,
+    capacity: Number(eventData.capacity) || 0,
+    webhook_url: String(rawWebhook || "").trim(),
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
 
   const { data, error } = await supabase.from("events").insert(payload).select().single();
-  if (error) throw error;
-  return { success: true, data: { ...data, tags: parseTags(data.tags) } };
+  if (error) {
+    console.error("[Supabase createEvent Error]", error);
+    throw new Error(error.message || "Failed to create event in Supabase.");
+  }
+
+  // Optionally trigger Google Sheet tab creation if webhook configured
+  try {
+    const cfg = await getGoogleSheetSettings();
+    const targetUrl = payload.webhook_url || cfg.data?.webhookUrl;
+    if (targetUrl && targetUrl.startsWith("http")) {
+      callSheetWebhook(targetUrl, {
+        action: "create_event_sheet",
+        sheetName: getSafeSheetName(data.title),
+        eventTitle: data.title,
+        eventId: data.id,
+      }).catch((e) => console.warn("[GoogleSheet Event Creation Tab]", e));
+    }
+  } catch {}
+
+  return {
+    success: true,
+    data: {
+      ...data,
+      tags: parseTags(data.tags),
+      registrationCount: 0,
+      registration_count: 0,
+      webhookUrl: data.webhook_url || "",
+      registrationLink: data.registration_link || "",
+      endDate: data.end_date || null,
+    },
+  };
 }
 
-export async function updateEvent(id: number, eventData: Partial<EventRecord>) {
-  const payload = {
-    ...eventData,
-    tags: Array.isArray(eventData.tags) ? eventData.tags : parseTags(eventData.tags),
+export async function updateEvent(id: number, eventData: Record<string, any>) {
+  const payload: Record<string, any> = {
     updated_at: new Date().toISOString(),
   };
 
+  if (eventData.title !== undefined) payload.title = String(eventData.title).trim();
+  if (eventData.venue !== undefined) payload.venue = String(eventData.venue).trim();
+  if (eventData.description !== undefined) payload.description = String(eventData.description).trim();
+  if (eventData.summary !== undefined) payload.summary = String(eventData.summary).trim();
+  if (eventData.image !== undefined) payload.image = String(eventData.image).trim();
+  if (eventData.status !== undefined) payload.status = String(eventData.status).trim();
+  if (eventData.capacity !== undefined) payload.capacity = Number(eventData.capacity) || 0;
+  if (eventData.featured !== undefined) payload.featured = eventData.featured ? 1 : 0;
+
+  if (eventData.date) {
+    try {
+      payload.date = new Date(eventData.date).toISOString();
+    } catch {
+      payload.date = String(eventData.date);
+    }
+  }
+
+  const rawEndDate = eventData.endDate !== undefined ? eventData.endDate : eventData.end_date;
+  if (rawEndDate) {
+    try {
+      payload.end_date = new Date(rawEndDate).toISOString();
+    } catch {
+      payload.end_date = String(rawEndDate);
+    }
+  } else if (rawEndDate === null || rawEndDate === "") {
+    payload.end_date = null;
+  }
+
+  const rawReg = eventData.registrationLink !== undefined ? eventData.registrationLink : eventData.registration_link;
+  if (rawReg !== undefined) payload.registration_link = String(rawReg).trim();
+
+  const rawWebhook = eventData.webhookUrl !== undefined ? eventData.webhookUrl : eventData.webhook_url;
+  if (rawWebhook !== undefined) payload.webhook_url = String(rawWebhook).trim();
+
+  if (eventData.tags !== undefined) {
+    let tags = Array.isArray(eventData.tags) ? [...eventData.tags] : parseTags(eventData.tags);
+    if (eventData.category && typeof eventData.category === "string" && !tags.includes(eventData.category)) {
+      tags.unshift(eventData.category);
+    }
+    payload.tags = tags;
+  }
+
   const { data, error } = await supabase.from("events").update(payload).eq("id", id).select().single();
-  if (error) throw error;
-  return { success: true, data: { ...data, tags: parseTags(data.tags) } };
+  if (error) {
+    console.error("[Supabase updateEvent Error]", error);
+    throw new Error(error.message || "Failed to update event in Supabase.");
+  }
+  return {
+    success: true,
+    data: {
+      ...data,
+      tags: parseTags(data.tags),
+      webhookUrl: data.webhook_url || "",
+      registrationLink: data.registration_link || "",
+      endDate: data.end_date || null,
+    },
+  };
 }
 
 export async function deleteEvent(id: number) {
   const { error } = await supabase.from("events").delete().eq("id", id);
-  if (error) throw error;
+  if (error) {
+    console.error("[Supabase deleteEvent Error]", error);
+    throw new Error(error.message || "Failed to delete event in Supabase.");
+  }
   return { success: true, data: { id, deleted: true } };
 }
 
@@ -191,20 +351,60 @@ export async function getTeamMembers() {
 }
 
 export async function createTeamMember(memberData: Partial<TeamMember>) {
-  const { data, error } = await supabase.from("team_members").insert(memberData).select().single();
-  if (error) throw error;
+  const payload: Record<string, any> = {
+    name: String(memberData.name || "").trim(),
+    role: String(memberData.role || "").trim(),
+    department: String(memberData.department || "").trim(),
+    photo: String(memberData.photo || "").trim(),
+    email: String(memberData.email || "").trim(),
+    phone: String(memberData.phone || "").trim(),
+    linkedin: String(memberData.linkedin || "").trim(),
+    github: String(memberData.github || "").trim(),
+    bio: String(memberData.bio || "").trim(),
+    order: typeof memberData.order === "number" ? memberData.order : Number(memberData.order) || 0,
+    active: memberData.active !== undefined ? (memberData.active ? 1 : 0) : 1,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await supabase.from("team_members").insert(payload).select().single();
+  if (error) {
+    console.error("[Supabase createTeamMember Error]", error);
+    throw new Error(error.message || "Failed to create coordinator in Supabase.");
+  }
   return { success: true, data };
 }
 
 export async function updateTeamMember(id: number, memberData: Partial<TeamMember>) {
-  const { data, error } = await supabase.from("team_members").update(memberData).eq("id", id).select().single();
-  if (error) throw error;
+  const payload: Record<string, any> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (memberData.name !== undefined) payload.name = String(memberData.name).trim();
+  if (memberData.role !== undefined) payload.role = String(memberData.role).trim();
+  if (memberData.department !== undefined) payload.department = String(memberData.department).trim();
+  if (memberData.photo !== undefined) payload.photo = String(memberData.photo).trim();
+  if (memberData.email !== undefined) payload.email = String(memberData.email).trim();
+  if (memberData.phone !== undefined) payload.phone = String(memberData.phone).trim();
+  if (memberData.linkedin !== undefined) payload.linkedin = String(memberData.linkedin).trim();
+  if (memberData.github !== undefined) payload.github = String(memberData.github).trim();
+  if (memberData.bio !== undefined) payload.bio = String(memberData.bio).trim();
+  if (memberData.order !== undefined) payload.order = Number(memberData.order) || 0;
+  if (memberData.active !== undefined) payload.active = memberData.active ? 1 : 0;
+
+  const { data, error } = await supabase.from("team_members").update(payload).eq("id", id).select().single();
+  if (error) {
+    console.error("[Supabase updateTeamMember Error]", error);
+    throw new Error(error.message || "Failed to update coordinator in Supabase.");
+  }
   return { success: true, data };
 }
 
 export async function deleteTeamMember(id: number) {
   const { error } = await supabase.from("team_members").delete().eq("id", id);
-  if (error) throw error;
+  if (error) {
+    console.error("[Supabase deleteTeamMember Error]", error);
+    throw new Error(error.message || "Failed to delete coordinator in Supabase.");
+  }
   return { success: true, data: { id, deleted: true } };
 }
 
