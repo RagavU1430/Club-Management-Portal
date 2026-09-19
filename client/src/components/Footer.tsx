@@ -199,6 +199,12 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <p>© {new Date().getFullYear()} AI Frontier Club. All rights reserved.</p>
+          <div className="flex items-center gap-1.5 font-mono text-xs text-slate-600 dark:text-slate-400">
+            <span>Done by</span>
+            <span className="font-semibold text-slate-900 dark:text-white bg-slate-200/80 dark:bg-white/10 px-2.5 py-0.5 rounded-full border border-slate-300 dark:border-white/15 shadow-sm">
+              Ragav U
+            </span>
+          </div>
           <div className="flex items-center gap-6">
             <span className="hover:text-slate-700 dark:hover:text-slate-400 cursor-pointer transition">Constitution</span>
             <span className="hover:text-slate-700 dark:hover:text-slate-400 cursor-pointer transition">Code of Conduct</span>
