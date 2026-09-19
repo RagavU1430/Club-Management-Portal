@@ -431,11 +431,7 @@ function TeamCard({
       {/* Card Content Container */}
       <div className="p-6 relative z-10">
         {/* Top Badges */}
-        <div className="flex items-center justify-between gap-2 mb-4">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 px-2.5 py-0.5 text-[10px] font-mono text-slate-700 dark:text-slate-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-cyan-500 dark:bg-cyan-400 animate-pulse" />
-            {member.department || "Artificial Intelligence & Data Science"}
-          </span>
+        <div className="flex items-center justify-end mb-4">
           <span className={`inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${catConfig.badgeClass}`}>
             <Shield className="h-3 w-3" />
             {catConfig.badge}
