@@ -228,16 +228,16 @@ export default function Team() {
         <div className="relative w-full max-w-lg mx-auto">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
-            type="search"
-            placeholder="Search by name, role, department, or skill..."
+            type="text"
+            placeholder="Search by name, role, department..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="w-full rounded-2xl border border-slate-200 dark:border-white/10 bg-white/80 dark:bg-[#0c1222]/80 backdrop-blur-md py-3 pl-10 pr-4 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-[#e1306c] dark:focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-[#e1306c] shadow-sm transition"
+            className="w-full rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#070d1e] backdrop-blur-xl py-3 pl-10 pr-4 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-[#e1306c] dark:focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-[#e1306c] shadow-md shadow-slate-200/30 dark:shadow-black/50 transition"
           />
         </div>
 
-        {/* Division Filter Navigation Pills */}
-        <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+        {/* Filter Pills */}
+        <div className="flex flex-wrap items-center justify-center gap-2">
           {filterTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeCategory === tab.id;
@@ -245,10 +245,10 @@ export default function Team() {
               <button
                 key={tab.id}
                 onClick={() => setActiveCategory(tab.id)}
-                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-mono transition-all duration-300 cursor-pointer ${
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono transition-all duration-300 cursor-pointer ${
                   isActive
-                    ? "bg-gradient-to-r from-[#833ab4] via-[#e1306c] to-[#f77737] dark:bg-cyan-500 text-white dark:text-black font-bold shadow-md shadow-pink-500/30 dark:shadow-[0_0_16px_rgba(6,182,212,0.4)] scale-[1.03]"
-                    : "bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-pink-500/40 hover:text-[#c13584] dark:hover:border-cyan-500/40 dark:hover:text-white"
+                    ? "bg-slate-900 dark:bg-white text-white dark:text-slate-950 font-bold shadow-lg shadow-black/10 dark:shadow-white/10 scale-105"
+                    : "bg-white dark:bg-[#070d1e] backdrop-blur-xl border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-pink-500/40 hover:text-[#c13584] dark:hover:border-cyan-500/40 dark:hover:text-white shadow-sm"
                 }`}
               >
                 <Icon className={`h-3.5 w-3.5 ${isActive ? "text-white dark:text-black" : "text-[#e1306c] dark:text-cyan-400"}`} />
@@ -279,7 +279,7 @@ export default function Team() {
 
       {/* Empty State */}
       {!loading && searchFiltered.length === 0 && (
-        <div className="relative z-10 text-center py-20 rounded-3xl glass border border-slate-200 dark:border-white/10 p-8 shadow-sm max-w-xl mx-auto">
+        <div className="relative z-10 text-center py-20 rounded-3xl bg-white dark:bg-[#070d1e] backdrop-blur-xl border border-slate-200 dark:border-white/10 p-8 shadow-sm max-w-xl mx-auto">
           <User className="mx-auto h-12 w-12 text-slate-400 dark:text-slate-600 mb-4" />
           <h3 className="font-display text-xl font-bold text-slate-900 dark:text-white">
             {members.length === 0 ? "No Coordinators Listed Yet" : "No coordinators match your search"}
@@ -344,8 +344,8 @@ export default function Team() {
 
             return (
               <section key={catKey} className="relative z-10 space-y-6">
-                {/* Section Header */}
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between pb-4 border-b border-slate-200 dark:border-white/10 gap-3">
+                {/* Section Header with solid high opacity backdrop */}
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#070d1e] backdrop-blur-2xl border border-slate-200/90 dark:border-white/10 gap-3 shadow-md shadow-slate-200/40 dark:shadow-black/60">
                   <div className="flex items-center gap-3">
                     <div className={`p-2.5 rounded-2xl border ${catConfig.badgeClass}`}>
                       <SectionIcon className={`h-5 w-5 ${catConfig.accentClass}`} />
@@ -359,7 +359,7 @@ export default function Team() {
                           {catMembers.length} {catMembers.length === 1 ? "Member" : "Members"}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 font-medium">
                         {catConfig.subtitle}
                       </p>
                     </div>
@@ -407,9 +407,9 @@ function TeamCard({
 
   return (
     <div
-      className={`group relative rounded-3xl glass border border-slate-200/80 dark:border-white/10 ${catConfig.glowBorder}
+      className={`group relative rounded-3xl bg-white dark:bg-[#070d1e] backdrop-blur-2xl border border-slate-200/90 dark:border-white/10 ${catConfig.glowBorder}
         transform-gpu transition-[transform,box-shadow,border-color,background-color] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]
-        hover:-translate-y-2 overflow-hidden shadow-lg shadow-slate-200/40 dark:shadow-black/40 will-change-transform cursor-pointer`}
+        hover:-translate-y-2 overflow-hidden shadow-xl shadow-slate-200/50 dark:shadow-black/70 will-change-transform cursor-pointer`}
       style={{ backfaceVisibility: "hidden" }}
     >
       {/* Hit-area extension buffer below to completely eliminate hover fluttering */}
@@ -510,7 +510,7 @@ function TeamCard({
           <div className="overflow-hidden min-h-0">
             <div className="pt-3 mt-3 border-t border-slate-200 dark:border-white/10 opacity-0 group-hover:opacity-100 transition-all duration-400 delay-75 space-y-2.5">
               {/* Email Card */}
-              <div className="rounded-xl bg-slate-100/80 dark:bg-white/5 p-2.5 border border-slate-200 dark:border-white/10 hover:border-cyan-500/40 dark:hover:border-cyan-400/40 transition-colors duration-300">
+              <div className="rounded-xl bg-slate-100 dark:bg-[#0c1324] p-2.5 border border-slate-200 dark:border-white/10 hover:border-cyan-500/40 dark:hover:border-cyan-400/40 transition-colors duration-300">
                 <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 dark:text-slate-400 mb-1">
                   <span className="flex items-center gap-1 text-cyan-700 dark:text-cyan-300 font-semibold">
                     <Mail className="h-3 w-3" /> EMAIL
@@ -540,7 +540,7 @@ function TeamCard({
               </div>
 
               {/* Phone / WhatsApp Card */}
-              <div className="rounded-xl bg-slate-100/80 dark:bg-white/5 p-2.5 border border-slate-200 dark:border-white/10 hover:border-cyan-500/40 dark:hover:border-cyan-400/40 transition-colors duration-300">
+              <div className="rounded-xl bg-slate-100 dark:bg-[#0c1324] p-2.5 border border-slate-200 dark:border-white/10 hover:border-cyan-500/40 dark:hover:border-cyan-400/40 transition-colors duration-300">
                 <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 dark:text-slate-400 mb-1">
                   <span className="flex items-center gap-1 text-cyan-700 dark:text-cyan-300 font-semibold">
                     <Phone className="h-3 w-3" /> PHONE / WHATSAPP
@@ -582,7 +582,7 @@ function TeamCard({
                       target="_blank"
                       rel="noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-cyan-500/15 dark:hover:bg-cyan-500/20 border border-slate-200 dark:border-white/10 hover:border-cyan-500/40 dark:hover:border-cyan-400/40 text-xs font-mono text-slate-700 dark:text-slate-300 hover:text-cyan-700 dark:hover:text-cyan-300 transition-all duration-300 shadow-sm cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-[#0c1324] hover:bg-cyan-500/15 dark:hover:bg-cyan-500/20 border border-slate-200 dark:border-white/10 hover:border-cyan-500/40 dark:hover:border-cyan-400/40 text-xs font-mono text-slate-700 dark:text-slate-300 hover:text-cyan-700 dark:hover:text-cyan-300 transition-all duration-300 shadow-sm cursor-pointer"
                       title="LinkedIn"
                     >
                       <LinkedinIcon className="h-3.5 w-3.5" />
@@ -596,7 +596,7 @@ function TeamCard({
                       target="_blank"
                       rel="noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-cyan-500/15 dark:hover:bg-cyan-500/20 border border-slate-200 dark:border-white/10 hover:border-cyan-500/40 dark:hover:border-cyan-400/40 text-xs font-mono text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all duration-300 shadow-sm cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-[#0c1324] hover:bg-cyan-500/15 dark:hover:bg-cyan-500/20 border border-slate-200 dark:border-white/10 hover:border-cyan-500/40 dark:hover:border-cyan-400/40 text-xs font-mono text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all duration-300 shadow-sm cursor-pointer"
                       title="GitHub"
                     >
                       <GithubIcon className="h-3.5 w-3.5" />
