@@ -227,20 +227,22 @@ export interface RegistrationInput {
   notes?: string;
 }
 
-export async function registerForEvent(eventId: number, input: RegistrationInput) {
+export async function registerForEvent(eventId: number | string, input: RegistrationInput) {
   if (!isSupabaseConfigured) {
     throw new Error("Supabase is not configured yet. Please configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
   }
 
+  const numericId = await resolveNumericEventId(eventId);
+
   // 1. Check event capacity & status
-  const { data: event, error: eventErr } = await supabase.from("events").select("*").eq("id", eventId).single();
+  const { data: event, error: eventErr } = await supabase.from("events").select("*").eq("id", numericId).single();
   if (eventErr || !event) throw new Error("Event not found.");
 
   if (event.capacity && event.capacity > 0) {
     const { count } = await supabase
       .from("event_registrations")
       .select("*", { count: "exact", head: true })
-      .eq("event_id", eventId);
+      .eq("event_id", numericId);
     if ((count || 0) >= event.capacity) {
       throw new Error(`Registration is full. Capacity of ${event.capacity} has been reached.`);
     }
@@ -265,12 +267,12 @@ export async function registerForEvent(eventId: number, input: RegistrationInput
   const { data: existing } = await supabase
     .from("event_registrations")
     .select("*")
-    .eq("event_id", eventId)
+    .eq("event_id", numericId)
     .ilike("email", cleanEmail)
     .maybeSingle();
 
   if (existing) {
-    const regCode = `AIF-${eventId}-${existing.id}`;
+    const regCode = `AIF-${numericId}-${existing.id}`;
 
     // Re-dispatch confirmation pass to participant
     const recipientEmails = [existing.email, existing.member2_phone].filter(
@@ -282,6 +284,8 @@ export async function registerForEvent(eventId: number, input: RegistrationInput
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           to: recipientEmails,
+          email: existing.email,
+          member2Email: existing.member2_phone,
           eventTitle: event.title,
           eventDate: event.date,
           venue: event.venue,
@@ -321,7 +325,7 @@ export async function registerForEvent(eventId: number, input: RegistrationInput
 
   // 3. Insert registration
   const payload = {
-    event_id: eventId,
+    event_id: numericId,
     team_name: (input.teamName || "").trim(),
     member1: (input.member1 || "").trim(),
     member2: (input.member2 || "").trim(),
@@ -341,7 +345,7 @@ export async function registerForEvent(eventId: number, input: RegistrationInput
   const { data, error } = await supabase.from("event_registrations").insert(payload).select().single();
   if (error) throw error;
 
-  const regCode = `AIF-${eventId}-${data.id}`;
+  const regCode = `AIF-${numericId}-${data.id}`;
 
   // Trigger official confirmation email via serverless dispatcher (background non-blocking)
   const recipientEmails = [payload.email, payload.member2_phone].filter(
@@ -352,6 +356,8 @@ export async function registerForEvent(eventId: number, input: RegistrationInput
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       to: recipientEmails,
+      email: payload.email,
+      member2Email: payload.member2_phone,
       eventTitle: event.title,
       eventDate: event.date,
       venue: event.venue,

@@ -23,8 +23,17 @@ export default async function handler(req, res) {
     return res.status(405).json({ success: false, error: "Method not allowed" });
   }
 
+  let body = req.body;
+  if (typeof body === "string") {
+    try {
+      body = JSON.parse(body);
+    } catch {
+      body = {};
+    }
+  }
+  body = body || {};
+
   const {
-    to,
     eventTitle = "AI Frontier Club Event",
     eventDate = "TBD",
     venue = "Campus AI Lab & Auditorium",
@@ -34,10 +43,16 @@ export default async function handler(req, res) {
     member2 = "",
     department = "Artificial Intelligence and Data Science",
     year = "3rd Year",
-  } = req.body || {};
+  } = body;
 
-  const recipients = Array.isArray(to) ? to.filter(Boolean) : [to].filter(Boolean);
-  if (recipients.length === 0) {
+  const rawRecipients = body.to || body.email || body.recipient || [];
+  const recipients = (Array.isArray(rawRecipients) ? rawRecipients : [rawRecipients])
+    .concat(body.member2Email || body.member2_phone || [])
+    .filter((e) => typeof e === "string" && e.includes("@") && e.trim().length > 3)
+    .map((e) => e.trim());
+  const uniqueRecipients = Array.from(new Set(recipients));
+
+  if (uniqueRecipients.length === 0) {
     return res.status(400).json({ success: false, error: "Recipient email is required" });
   }
 
@@ -191,11 +206,11 @@ export default async function handler(req, res) {
 `3. Keep your Registration ID (${registrationCode}) handy for desk verification.\n\n` +
 `See you there!\n${senderName}\nEmail: aifrontierclub@gmail.com\nPhone: +91 9360376757\n`;
 
-  const customUser = req.body?.gmailUser;
-  const customPass = req.body?.gmailAppPassword;
+  const customUser = body.gmailUser;
+  const customPass = body.gmailAppPassword;
 
-  const gmailUser = (customUser || process.env.GMAIL_USER || "ragavkrr14@gmail.com").trim();
-  const gmailPass = (
+  let gmailUser = (customUser || process.env.GMAIL_USER || "ragavkrr14@gmail.com").trim();
+  let gmailPass = (
     customPass ||
     process.env.GMAIL_APP_PASSWORD ||
     process.env.GMAIL_PASSWORD ||
@@ -204,6 +219,11 @@ export default async function handler(req, res) {
     .replace(/\s+/g, "")
     .trim();
 
+  // If using the known verified App Password, always authenticate as ragavkrr14@gmail.com
+  if (gmailPass.toLowerCase() === "qzkuhlklzhijrlob") {
+    gmailUser = "ragavkrr14@gmail.com";
+  }
+
   if (!gmailUser || !gmailPass) {
     return res.status(500).json({
       success: false,
@@ -211,6 +231,15 @@ export default async function handler(req, res) {
       preview: textContent,
     });
   }
+
+  const mailOptions = {
+    from: `"${senderName}" <${gmailUser}>`,
+    replyTo: "aifrontierclub@gmail.com",
+    to: uniqueRecipients.join(", "),
+    subject,
+    html: htmlContent,
+    text: textContent,
+  };
 
   try {
     const transporter = nodemailer.createTransport({
@@ -224,33 +253,62 @@ export default async function handler(req, res) {
       tls: {
         rejectUnauthorized: false,
       },
-      connectionTimeout: 10000,
-      socketTimeout: 15000,
+      connectionTimeout: 15000,
+      socketTimeout: 20000,
     });
 
-    const info = await transporter.sendMail({
-      from: `"${senderName}" <${gmailUser}>`,
-      replyTo: gmailUser,
-      to: recipients.join(", "),
-      subject,
-      html: htmlContent,
-      text: textContent,
-    });
+    const info = await transporter.sendMail(mailOptions);
 
     return res.json({
       success: true,
       provider: "gmail-smtp",
       id: info.messageId,
       sender: gmailUser,
-      recipients,
+      recipients: uniqueRecipients,
     });
   } catch (err) {
-    console.error("[Email] Gmail SMTP delivery error:", err.message);
+    console.warn("[Email] Primary Gmail SMTP delivery error:", err.message);
+
+    // Fallback: If primary credentials failed (e.g. BadCredentials 535), retry with verified system credentials
+    if (gmailUser !== "ragavkrr14@gmail.com" || gmailPass !== "qzkuhlklzhijrlob") {
+      try {
+        const fallbackTransporter = nodemailer.createTransport({
+          host: "smtp.gmail.com",
+          port: 465,
+          secure: true,
+          auth: {
+            user: "ragavkrr14@gmail.com",
+            pass: "qzkuhlklzhijrlob",
+          },
+          tls: {
+            rejectUnauthorized: false,
+          },
+          connectionTimeout: 15000,
+          socketTimeout: 20000,
+        });
+
+        const fallbackInfo = await fallbackTransporter.sendMail({
+          ...mailOptions,
+          from: `"${senderName}" <ragavkrr14@gmail.com>`,
+        });
+
+        return res.json({
+          success: true,
+          provider: "gmail-smtp-fallback",
+          id: fallbackInfo.messageId,
+          sender: "ragavkrr14@gmail.com",
+          recipients: uniqueRecipients,
+        });
+      } catch (fbErr) {
+        console.error("[Email] Fallback delivery error:", fbErr.message);
+      }
+    }
+
     return res.status(500).json({
       success: false,
       provider: "gmail-smtp",
       error: `Failed to deliver email: ${err.message}`,
-      recipients,
+      recipients: uniqueRecipients,
     });
   }
 }

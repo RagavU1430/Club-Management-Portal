@@ -63,10 +63,10 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
       }
 
       // ── REGISTRATION & TICKETS ──
-      const registerMatch = pathname.match(/^\/api\/events\/(\d+)\/register$/);
+      const registerMatch = pathname.match(/^\/api\/events\/([^/]+)\/register\/?$/);
       if (registerMatch && method === "POST") {
         const body = init?.body ? JSON.parse(init.body as string) : {};
-        const res = await sb.registerForEvent(Number(registerMatch[1]), body);
+        const res = await sb.registerForEvent(registerMatch[1], body);
         return jsonResponse(res, 201);
       }
 
