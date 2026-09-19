@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -35,9 +35,11 @@ import {
   XCircle,
   Award,
   QrCode,
+  FileText,
 } from "lucide-react";
 import { GithubIcon, LinkedinIcon } from "../components/SocialIcons";
 import { apiFetch } from "../utils/api";
+import { parseAgendaDocument, type ExtractedAgendaResult } from "../utils/documentParser";
 import {
   exportRegistrationsToExcel,
   fetchAndExportRegistrations,
@@ -99,19 +101,19 @@ export default function Admin() {
     return (
       <main className="flex min-h-[85vh] items-center justify-center px-4 py-20">
         <div className="w-full max-w-md">
-          <div className="glass rounded-2xl p-8 border border-white/10 shadow-2xl">
+          <div className="glass rounded-2xl p-8 border border-slate-200/80 dark:border-white/10 shadow-2xl">
             <div className="flex items-center gap-2 mb-2">
-              <span className="h-2 w-2 rounded-full bg-cyan-400 animate-ping" />
-              <span className="text-xs font-mono text-cyan-300 tracking-wider font-semibold">RESTRICTED ACCESS</span>
+              <span className="h-2 w-2 rounded-full bg-cyan-500 dark:bg-cyan-400 animate-ping" />
+              <span className="text-xs font-mono text-cyan-700 dark:text-cyan-300 tracking-wider font-semibold">RESTRICTED ACCESS</span>
             </div>
-            <h1 className="text-2xl font-bold text-white font-display">Admin Portal</h1>
-            <p className="mt-1 text-xs text-slate-400">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white font-display">Admin Portal</h1>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               Sign in to manage club events, responses, and members.
             </p>
 
             <form onSubmit={handleLogin} className="mt-6 space-y-4">
               <div>
-                <label className="block text-xs font-mono text-slate-400 mb-1">EMAIL / ID</label>
+                <label className="block text-xs font-mono text-slate-500 dark:text-slate-400 mb-1">EMAIL / ID</label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
@@ -119,14 +121,14 @@ export default function Admin() {
                     required
                     value={login.email}
                     onChange={(e) => setLogin({ ...login, email: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
+                    className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 py-2.5 pl-10 pr-4 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
                     placeholder="aifrontierclub@gmail.com"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-mono text-slate-400 mb-1">PASSWORD</label>
+                <label className="block text-xs font-mono text-slate-500 dark:text-slate-400 mb-1">PASSWORD</label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
@@ -134,14 +136,14 @@ export default function Admin() {
                     required
                     value={login.password}
                     onChange={(e) => setLogin({ ...login, password: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
+                    className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 py-2.5 pl-10 pr-4 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
                     placeholder="••••••••"
                   />
                 </div>
               </div>
 
               {loginErr && (
-                <div className="rounded-lg bg-red-950/40 border border-red-500/30 p-3 text-xs text-red-300">
+                <div className="rounded-lg bg-red-500/10 dark:bg-red-950/40 border border-red-500/30 p-3 text-xs text-red-600 dark:text-red-300">
                   {loginErr}
                 </div>
               )}
@@ -163,25 +165,25 @@ export default function Admin() {
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-24">
       {/* Top Header */}
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-6">
         <div>
-          <div className="inline-flex items-center gap-2 text-xs font-mono text-cyan-400 mb-1 font-semibold">
-            <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
+          <div className="inline-flex items-center gap-2 text-xs font-mono text-cyan-600 dark:text-cyan-400 mb-1 font-semibold">
+            <span className="h-2 w-2 rounded-full bg-cyan-500 dark:bg-cyan-400 animate-pulse" />
             CONSOLE ACTIVE // {auth.user.role.toUpperCase()}
           </div>
-          <h1 className="text-3xl font-black text-white font-display">Club Management</h1>
-          <p className="text-sm text-slate-400">Welcome back, {auth.user.name}.</p>
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white font-display">Club Management</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Welcome back, {auth.user.name}.</p>
         </div>
         <button
           onClick={handleLogout}
-          className="rounded-xl glass px-4 py-2 text-xs font-mono text-slate-300 transition hover:text-white border border-white/10 hover:border-red-500/40 hover:bg-red-950/20 cursor-pointer"
+          className="rounded-xl glass px-4 py-2 text-xs font-mono text-slate-700 dark:text-slate-300 transition hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10 hover:border-red-500/40 hover:bg-red-500/10 dark:hover:bg-red-950/20 cursor-pointer"
         >
           Sign Out
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="mb-8 flex flex-wrap gap-2 border-b border-white/5 pb-3">
+      <div className="mb-8 flex flex-wrap gap-2 border-b border-slate-200 dark:border-white/5 pb-3">
         {[
           { id: "events", label: "Events & Registrations", icon: Calendar },
           { id: "team", label: "Coordinators", icon: Users },
@@ -198,8 +200,8 @@ export default function Admin() {
               }}
               className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-mono uppercase tracking-wider transition cursor-pointer ${
                 tab === t.id
-                  ? "bg-cyan-400 text-black font-bold shadow-md shadow-cyan-500/25"
-                  : "glass text-slate-300 hover:text-white border border-white/10"
+                  ? "bg-cyan-500 dark:bg-cyan-400 text-white dark:text-black font-bold shadow-md shadow-cyan-500/25"
+                  : "glass text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10"
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -277,6 +279,36 @@ function EventManager() {
     } catch {}
     return defaultEventForm;
   });
+
+  const agendaFileInputRef = useRef<HTMLInputElement>(null);
+  const [parsingAgenda, setParsingAgenda] = useState(false);
+  const [agendaParseResult, setAgendaParseResult] = useState<ExtractedAgendaResult | null>(null);
+  const [agendaParseError, setAgendaParseError] = useState<string | null>(null);
+
+  async function handleAgendaFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setParsingAgenda(true);
+    setAgendaParseError(null);
+    setAgendaParseResult(null);
+
+    try {
+      const res = await parseAgendaDocument(file);
+      setAgendaParseResult(res);
+
+      setForm((prev: any) => ({
+        ...prev,
+        description: res.text,
+        title: !prev.title && res.suggestedTitle ? res.suggestedTitle : prev.title,
+      }));
+    } catch (err: any) {
+      setAgendaParseError(err.message || "Failed to extract agenda from document.");
+    } finally {
+      setParsingAgenda(false);
+      if (e.target) e.target.value = "";
+    }
+  }
 
   // Auto-save form draft so switching tabs or browser tabs never loses data
   useEffect(() => {
@@ -470,15 +502,15 @@ function EventManager() {
       {/* Header action bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-white font-display">Active Events</h2>
-          <p className="text-xs text-slate-400">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white font-display">Active Events</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             Create events, review participants, and sync responses directly to your Google Sheet.
           </p>
         </div>
 
         <button
           onClick={() => setShowCreate(!showCreate)}
-          className="flex items-center gap-2 rounded-xl bg-cyan-400 px-4 py-2.5 text-xs font-mono font-bold text-black hover:bg-cyan-300 transition shadow-[0_0_20px_rgba(0,240,255,0.3)]"
+          className="flex items-center gap-2 rounded-xl bg-cyan-500 dark:bg-cyan-400 px-4 py-2.5 text-xs font-mono font-bold text-white dark:text-black hover:bg-cyan-600 dark:hover:bg-cyan-300 transition shadow-[0_0_20px_rgba(2,132,199,0.25)] dark:shadow-[0_0_20px_rgba(0,240,255,0.3)] cursor-pointer"
         >
           {showCreate ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
           <span>{showCreate ? "Cancel" : "Create New Event"}</span>
@@ -486,24 +518,24 @@ function EventManager() {
       </div>
 
       {/* Connected Google Spreadsheet Live Sync Banner */}
-      <div className="glass rounded-2xl p-4 sm:p-5 border border-cyan-400/20 bg-gradient-to-r from-cyan-950/25 via-slate-900/40 to-emerald-950/25 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+      <div className="glass rounded-2xl p-4 sm:p-5 border border-cyan-500/20 dark:border-cyan-400/20 bg-gradient-to-r from-cyan-500/5 via-slate-50 dark:via-slate-900/40 to-emerald-500/5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="h-11 w-11 rounded-xl bg-emerald-500/10 border border-emerald-400/30 flex items-center justify-center shrink-0">
-            <FileSpreadsheet className="h-5 w-5 text-emerald-400" />
+          <div className="h-11 w-11 rounded-xl bg-emerald-500/10 border border-emerald-500/30 dark:border-emerald-400/30 flex items-center justify-center shrink-0">
+            <FileSpreadsheet className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h4 className="text-sm font-bold text-white font-display">Connected Google Spreadsheet</h4>
+              <h4 className="text-sm font-bold text-slate-900 dark:text-white font-display">Connected Google Spreadsheet</h4>
               <span
                 className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 ${
                   sheetConfig?.hasWebhook
-                    ? "bg-emerald-500/15 text-emerald-300 border-emerald-400/30"
-                    : "bg-amber-500/15 text-amber-300 border-amber-400/30"
+                    ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 dark:border-emerald-400/30"
+                    : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 dark:border-amber-400/30"
                 }`}
               >
                 {sheetConfig?.hasWebhook ? (
                   <>
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
                     <span>AUTOMATIC REAL-TIME SYNC ACTIVE</span>
                   </>
                 ) : (
@@ -515,7 +547,7 @@ function EventManager() {
               href={sheetConfig?.spreadsheetUrl || "https://docs.google.com/spreadsheets/d/1MUkixf7X2_5cYzZJm1dL1atzRK2sIPxLpgKDGV7rTYk/edit?usp=sharing"}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 mt-0.5 font-mono truncate max-w-lg"
+              className="text-xs text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 hover:underline flex items-center gap-1 mt-0.5 font-mono truncate max-w-lg"
             >
               <span>{sheetConfig?.spreadsheetUrl || "https://docs.google.com/spreadsheets/d/1MUkixf7X2_5cYzZJm1dL1atzRK2sIPxLpgKDGV7rTYk/edit?usp=sharing"}</span>
               <ExternalLink className="h-3 w-3 inline shrink-0" />
@@ -528,7 +560,7 @@ function EventManager() {
             href={sheetConfig?.spreadsheetUrl || "https://docs.google.com/spreadsheets/d/1MUkixf7X2_5cYzZJm1dL1atzRK2sIPxLpgKDGV7rTYk/edit?usp=sharing"}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-xl glass px-3.5 py-2 text-xs font-mono text-cyan-300 hover:text-white hover:border-cyan-400/40 transition"
+            className="flex items-center gap-1.5 rounded-xl glass px-3.5 py-2 text-xs font-mono text-cyan-700 dark:text-cyan-300 hover:text-slate-900 dark:hover:text-white hover:border-cyan-500/40 dark:hover:border-cyan-400/40 transition"
           >
             <ExternalLink className="h-3.5 w-3.5" />
             <span>Open Sheet</span>
@@ -536,16 +568,16 @@ function EventManager() {
 
           <button
             onClick={() => setShowSheetModal(true)}
-            className="flex items-center gap-1.5 rounded-xl glass px-3.5 py-2 text-xs font-mono text-slate-300 hover:text-white border border-white/10 hover:border-cyan-400/30 transition"
+            className="flex items-center gap-1.5 rounded-xl glass px-3.5 py-2 text-xs font-mono text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10 hover:border-cyan-500/30 dark:hover:border-cyan-400/30 transition cursor-pointer"
           >
-            <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-400" />
+            <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
             <span>Setup Sync Script</span>
           </button>
 
           <button
             onClick={handleSyncAll}
             disabled={syncingAll}
-            className="flex items-center gap-1.5 rounded-xl bg-emerald-500/20 border border-emerald-400/30 px-3.5 py-2 text-xs font-mono font-bold text-emerald-300 hover:bg-emerald-500/30 transition disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 dark:border-emerald-400/30 px-3.5 py-2 text-xs font-mono font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25 transition disabled:opacity-50 cursor-pointer"
             title="All new registrations sync automatically! Click here only if you need to force re-send all records."
           >
             <RefreshCw className={`h-3.5 w-3.5 ${syncingAll ? "animate-spin" : ""}`} />
@@ -652,15 +684,88 @@ function EventManager() {
             </div>
 
             <div className="sm:col-span-2 lg:col-span-3">
-              <label className="block text-xs font-mono text-slate-400 mb-1">FULL DESCRIPTION *</label>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                <label className="block text-xs font-mono text-slate-400">
+                  FULL DESCRIPTION & AGENDA *
+                </label>
+                
+                {/* Hidden File Input & Upload Button */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    ref={agendaFileInputRef}
+                    onChange={handleAgendaFileUpload}
+                    accept=".pdf,.docx,.txt,.md"
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => agendaFileInputRef.current?.click()}
+                    disabled={parsingAgenda}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-400/30 px-3 py-1.5 text-xs font-mono font-semibold transition cursor-pointer shadow-sm hover:shadow-[0_0_12px_rgba(0,240,255,0.3)] disabled:opacity-50"
+                  >
+                    {parsingAgenda ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-cyan-400" />
+                        <span>Extracting Agenda...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="h-3.5 w-3.5 text-cyan-400" />
+                        <span>Upload Agenda (PDF / Word .docx)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Extraction Feedback Banner */}
+              {agendaParseResult && (
+                <div className="mb-2.5 flex items-center justify-between rounded-xl bg-emerald-500/10 border border-emerald-500/30 px-3.5 py-2 text-xs font-mono text-emerald-300">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                    <span>
+                      ✓ Extracted from <strong className="text-white font-bold">{agendaParseResult.fileName}</strong> ({agendaParseResult.lineCount} agenda schedule items inserted)
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAgendaParseResult(null)}
+                    className="text-slate-400 hover:text-white transition cursor-pointer"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+
+              {agendaParseError && (
+                <div className="mb-2.5 flex items-center justify-between rounded-xl bg-red-500/10 border border-red-500/30 px-3.5 py-2 text-xs font-mono text-red-300">
+                  <div className="flex items-center gap-2">
+                    <XCircle className="h-4 w-4 text-red-400 shrink-0" />
+                    <span>{agendaParseError}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAgendaParseError(null)}
+                    className="text-slate-400 hover:text-white transition cursor-pointer"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+
               <textarea
                 required
-                rows={3}
-                placeholder="Detailed agenda, requirements, and rules..."
+                rows={5}
+                placeholder="Detailed agenda, requirements, and rules (e.g. 09:30 AM - Registration, 10:00 AM - Hands-on AI Workshop)..."
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none leading-relaxed"
               />
+              <p className="mt-1.5 text-[11px] text-cyan-400/80 font-mono flex items-center gap-1.5">
+                <Sparkles className="h-3 w-3 text-cyan-400 shrink-0" />
+                <span>Upload a PDF or Word file above to automatically populate agenda times & schedule items for the registration popup!</span>
+              </p>
             </div>
 
             <div className="sm:col-span-2 lg:col-span-3">
@@ -1856,9 +1961,11 @@ function TeamManager() {
   const [statusMsg, setStatusMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+
   const [addForm, setAddForm] = useState({
     name: "",
-    role: "Coordinator",
+    role: "Overall Coordinator",
     department: "Artificial Intelligence & Data Science",
     photo: "",
     email: "",
@@ -1871,7 +1978,7 @@ function TeamManager() {
   const [editingMember, setEditingMember] = useState<any | null>(null);
   const [editForm, setEditForm] = useState({
     name: "",
-    role: "Coordinator",
+    role: "Overall Coordinator",
     department: "Artificial Intelligence & Data Science",
     photo: "",
     email: "",
@@ -2021,7 +2128,43 @@ function TeamManager() {
     }
   }
 
+  function getAdminCategory(role: string, department?: string): "hod" | "overall" | "student" | "digital" {
+    const r = (role || "").toLowerCase();
+    const d = (department || "").toLowerCase();
+    if (
+      r.includes("hod") ||
+      r.includes("head") ||
+      r.includes("assistant coordinator") ||
+      r.includes("faculty") ||
+      r.includes("professor") ||
+      r.includes("ap/") ||
+      r.includes("ap /") ||
+      r.includes("advisor") ||
+      d.includes("hod") ||
+      d.includes("ap/") ||
+      d.includes("ap /") ||
+      (r === "coordinator" && !r.includes("student") && !r.includes("year"))
+    ) {
+      return "hod";
+    }
+    if (r.includes("overall") || r.includes("president") || r.includes("chief")) return "overall";
+    if (r.includes("digital") || r.includes("media") || r.includes("design") || r.includes("web") || r.includes("social") || r.includes("tech lead")) return "digital";
+    return "student";
+  }
+
+  const counts = useMemo(() => {
+    const res = { all: members.length, hod: 0, overall: 0, student: 0, digital: 0 };
+    for (const m of members) {
+      const c = getAdminCategory(m.role, m.department);
+      res[c] = (res[c] || 0) + 1;
+    }
+    return res;
+  }, [members]);
+
   const filtered = members.filter((m) => {
+    if (selectedCategory !== "all" && getAdminCategory(m.role, m.department) !== selectedCategory) {
+      return false;
+    }
     if (!q) return true;
     const query = q.toLowerCase();
     return (
@@ -2114,7 +2257,13 @@ function TeamManager() {
                 onChange={(e) => setAddForm({ ...addForm, role: e.target.value })}
                 className="w-full rounded-xl border border-white/10 bg-[#0c1222] px-4 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none"
               >
-                <option value="Coordinator">Coordinator</option>
+                <option value="Coordinator">Coordinator (Faculty / HoD)</option>
+                <option value="Assistant Coordinator">Assistant Coordinator (Faculty / AP)</option>
+                <option value="Students Overall Coordinator">Students Overall Coordinator</option>
+                <option value="Third Year Coordinator">Third Year Coordinator</option>
+                <option value="Second Year Coordinator">Second Year Coordinator</option>
+                <option value="First Year Coordinator">First Year Coordinator</option>
+                <option value="Digital Team">Digital Team of Club</option>
               </select>
             </div>
 
@@ -2199,21 +2348,47 @@ function TeamManager() {
         </form>
       )}
 
-      {/* Search Bar & Count Badge */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/5">
-        <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-          <input
-            type="search"
-            placeholder="Search by name, role, department..."
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pl-9 pr-3 text-xs text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
-          />
+      {/* Search Bar, Category Filters & Count Badge */}
+      <div className="space-y-3 pb-3 border-b border-white/5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="relative w-full sm:w-80">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <input
+              type="search"
+              placeholder="Search by name, role, department..."
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pl-9 pr-3 text-xs text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
+            />
+          </div>
+
+          <div className="text-xs font-mono text-slate-400">
+            Total Coordinators: <span className="text-cyan-300 font-bold">{members.length}</span>
+          </div>
         </div>
 
-        <div className="text-xs font-mono text-slate-400">
-          Total Coordinators: <span className="text-cyan-300 font-bold">{members.length}</span>
+        {/* Division Filter Navigation */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+          {[
+            { id: "all", label: "All", count: counts.all },
+            { id: "hod", label: "Faculty & HOD", count: counts.hod },
+            { id: "overall", label: "Overall Coordinators", count: counts.overall },
+            { id: "student", label: "Student Coordinators", count: counts.student },
+            { id: "digital", label: "Digital Team", count: counts.digital },
+          ].map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => setSelectedCategory(cat.id)}
+              className={`px-3 py-1 rounded-lg text-xs font-mono transition-colors cursor-pointer ${
+                selectedCategory === cat.id
+                  ? "bg-cyan-500 text-black font-bold shadow-[0_0_10px_rgba(6,182,212,0.3)]"
+                  : "bg-white/5 text-slate-400 hover:text-white hover:bg-white/10"
+              }`}
+            >
+              {cat.label} ({cat.count})
+            </button>
+          ))}
         </div>
       </div>
 
@@ -2248,7 +2423,15 @@ function TeamManager() {
                     <h4 className="font-bold text-white text-base group-hover:text-cyan-300 transition-colors">
                       {m.name}
                     </h4>
-                    <span className="inline-block mt-1 rounded-full bg-cyan-400/10 border border-cyan-400/20 px-2.5 py-0.5 text-[11px] font-mono text-cyan-300">
+                    <span className={`inline-block mt-1 rounded-full px-2.5 py-0.5 text-[10px] font-mono font-bold border ${
+                      getAdminCategory(m.role, m.department) === "hod"
+                        ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                        : getAdminCategory(m.role, m.department) === "overall"
+                        ? "bg-purple-500/15 text-purple-300 border-purple-500/30"
+                        : getAdminCategory(m.role, m.department) === "digital"
+                        ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                        : "bg-cyan-500/15 text-cyan-300 border-cyan-500/30"
+                    }`}>
                       {m.role}
                     </span>
                   </div>
@@ -2366,10 +2549,23 @@ function TeamManager() {
                     onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
                     className="w-full rounded-xl border border-white/10 bg-[#0c1222] px-4 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
                   >
-                    <option value="Coordinator">Coordinator</option>
-                    {editForm.role && editForm.role !== "Coordinator" && (
-                      <option value={editForm.role}>{editForm.role}</option>
-                    )}
+                    <option value="Coordinator">Coordinator (Faculty / HoD)</option>
+                    <option value="Assistant Coordinator">Assistant Coordinator (Faculty / AP)</option>
+                    <option value="Students Overall Coordinator">Students Overall Coordinator</option>
+                    <option value="Third Year Coordinator">Third Year Coordinator</option>
+                    <option value="Second Year Coordinator">Second Year Coordinator</option>
+                    <option value="First Year Coordinator">First Year Coordinator</option>
+                    <option value="Digital Team">Digital Team of Club</option>
+                    {editForm.role &&
+                      ![
+                        "Coordinator",
+                        "Assistant Coordinator",
+                        "Students Overall Coordinator",
+                        "Third Year Coordinator",
+                        "Second Year Coordinator",
+                        "First Year Coordinator",
+                        "Digital Team",
+                      ].includes(editForm.role) && <option value={editForm.role}>{editForm.role}</option>}
                   </select>
                 </div>
 
