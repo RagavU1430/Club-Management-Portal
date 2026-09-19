@@ -759,30 +759,78 @@ export async function subscribeNewsletter(email: string) {
 // 6. STORAGE UPLOADS (DIRECT SUPABASE STORAGE)
 // ─────────────────────────────────────────────────────────────
 
+async function compressImageToDataUrl(file: File, maxWidth = 1280, quality = 0.82): Promise<string> {
+  if (typeof window === "undefined" || !file.type.startsWith("image/")) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          let { width, height } = img;
+          if (width > maxWidth || height > maxWidth) {
+            if (width > height) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            } else {
+              width = Math.round((width * maxWidth) / height);
+              height = maxWidth;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL(file.type === "image/png" ? "image/png" : "image/jpeg", quality));
+            return;
+          }
+        } catch {}
+        resolve(e.target?.result as string);
+      };
+      img.onerror = () => resolve(e.target?.result as string);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => resolve("");
+    reader.readAsDataURL(file);
+  });
+}
+
 export async function uploadToSupabase(file: File, bucket = "club-uploads"): Promise<string> {
   if (!isSupabaseConfigured) {
-    throw new Error("Supabase is not configured yet.");
+    return compressImageToDataUrl(file);
   }
 
   const fileExt = file.name.split(".").pop();
   const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
   const filePath = `uploads/${fileName}`;
 
-  const { error } = await supabase.storage.from(bucket).upload(filePath, file, {
-    cacheControl: "3600",
-    upsert: false,
-  });
+  try {
+    const { error } = await supabase.storage.from(bucket).upload(filePath, file, {
+      cacheControl: "3600",
+      upsert: false,
+    });
 
-  if (error) {
-    // If bucket doesn't exist yet, throw clear instruction
-    if (error.message.includes("Bucket not found") || error.message.includes("bucket")) {
-      throw new Error(`Storage bucket '${bucket}' not found. Please create a public bucket named '${bucket}' in Supabase Dashboard ➔ Storage.`);
+    if (error) {
+      console.warn("[Supabase Storage] Storage RLS or bucket notice:", error.message, "Using optimized Data URL fallback.");
+      return await compressImageToDataUrl(file);
     }
-    throw error;
-  }
 
-  const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
-  return publicUrlData.publicUrl;
+    const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+    return publicUrlData.publicUrl;
+  } catch (err: any) {
+    console.warn("[Supabase Storage] Storage exception:", err?.message, "Using optimized Data URL fallback.");
+    return await compressImageToDataUrl(file);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────

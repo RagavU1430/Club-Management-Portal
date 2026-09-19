@@ -225,3 +225,37 @@ BEGIN
     PERFORM setval(pg_get_serial_sequence('event_registrations', 'id'), (SELECT COALESCE(MAX(id), 1) FROM event_registrations));
   END IF;
 END $$;
+
+-- 6. Supabase Storage: Public Bucket & RLS Policies for club-uploads
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('club-uploads', 'club-uploads', true, 10485760, ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "Public select club-uploads" ON storage.objects;
+  DROP POLICY IF EXISTS "Public insert club-uploads" ON storage.objects;
+  DROP POLICY IF EXISTS "Public update club-uploads" ON storage.objects;
+  DROP POLICY IF EXISTS "Public delete club-uploads" ON storage.objects;
+
+  CREATE POLICY "Public select club-uploads"
+    ON storage.objects FOR SELECT
+    TO public
+    USING (bucket_id = 'club-uploads');
+
+  CREATE POLICY "Public insert club-uploads"
+    ON storage.objects FOR INSERT
+    TO public
+    WITH CHECK (bucket_id = 'club-uploads');
+
+  CREATE POLICY "Public update club-uploads"
+    ON storage.objects FOR UPDATE
+    TO public
+    USING (bucket_id = 'club-uploads');
+
+  CREATE POLICY "Public delete club-uploads"
+    ON storage.objects FOR DELETE
+    TO public
+    USING (bucket_id = 'club-uploads');
+END $$;
+
