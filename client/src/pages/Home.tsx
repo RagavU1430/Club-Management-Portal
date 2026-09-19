@@ -158,9 +158,10 @@ export default function Home() {
               </Link>
               <Link
                 to="/team"
+                onClick={() => window.scrollTo({ top: 0, behavior: "instant" })}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-white/90 dark:bg-white/5 border border-slate-200 dark:border-white/10 px-8 py-3.5 font-bold text-slate-800 dark:text-white hover:bg-slate-50 dark:hover:bg-white/10 hover:text-[#c13584] transition shadow-sm cursor-pointer"
               >
-                Meet the Leadership
+                Meet the Coordinators
               </Link>
             </div>
           </div>

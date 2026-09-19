@@ -51,6 +51,7 @@ export default function App() {
               <Route path="/" element={<Home />} />
               <Route path="/events" element={<Events />} />
               <Route path="/team" element={<Team />} />
+              <Route path="/coordinators" element={<Team />} />
               <Route path="/about" element={<About />} />
               <Route path="/admin/*" element={<Admin />} />
             </Routes>
