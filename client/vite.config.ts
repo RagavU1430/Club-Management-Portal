@@ -21,7 +21,18 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
+      '/api': {
+        target: 'http://127.0.0.1:4000',
+        changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on('error', (_err, _req, res) => {
+            if (res && 'writeHead' in res && !(res as any).headersSent) {
+              (res as any).writeHead(200, { 'Content-Type': 'application/json' });
+              (res as any).end(JSON.stringify({ success: false, message: 'Backend service offline' }));
+            }
+          });
+        },
+      },
       '/uploads': { target: 'http://127.0.0.1:4000', changeOrigin: true },
     },
   },
