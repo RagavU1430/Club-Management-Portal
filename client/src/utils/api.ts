@@ -255,40 +255,25 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
 
       // ── SETTINGS & GOOGLE SHEETS ──
       if (pathname === "/api/settings/google-sheets" && method === "GET") {
-        return jsonResponse({
-          success: true,
-          data: {
-            webhookUrl: "",
-            spreadsheetUrl: "",
-            hasWebhook: false,
-            hasSpreadsheet: false,
-            scriptCode: "",
-          },
-        });
+        const res = await sb.getGoogleSheetSettings();
+        return jsonResponse(res);
       }
 
       if (pathname === "/api/settings/google-sheets" && method === "POST") {
         const body = init?.body ? JSON.parse(init.body as string) : {};
-        return jsonResponse({
-          success: true,
-          message: "Google Sheets settings saved successfully.",
-          data: body,
-        });
+        const res = await sb.updateGoogleSheetSettings(body);
+        return jsonResponse(res);
       }
 
       if (pathname === "/api/settings/google-sheets/sync" && method === "POST") {
-        return jsonResponse({
-          success: true,
-          message: "Synced to Google Sheets successfully.",
-          eventsProcessed: 1,
-        });
+        const res = await sb.syncAllToGoogleSheets();
+        return jsonResponse(res);
       }
 
-      if (pathname.includes("/sync-sheet") && method === "POST") {
-        return jsonResponse({
-          success: true,
-          message: "Event synced to Google Sheets.",
-        });
+      const syncSheetMatch = pathname.match(/^\/api\/events\/([^/]+)\/sync-sheet\/?$/);
+      if (syncSheetMatch && method === "POST") {
+        const res = await sb.syncEventToGoogleSheet(syncSheetMatch[1]);
+        return jsonResponse(res);
       }
 
       if (pathname === "/api/settings/email" && method === "GET") {

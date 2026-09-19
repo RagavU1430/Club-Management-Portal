@@ -372,6 +372,13 @@ export async function registerForEvent(eventId: number | string, input: Registra
     }),
   }).catch((err) => console.warn("[Email Dispatch]", err.message));
 
+  // Google Sheets automatic real-time live sync (background non-blocking)
+  syncSingleRegistrationToGoogleSheet(event, {
+    ...payload,
+    id: data.id,
+    registrationCode: regCode,
+  }).catch((err) => console.warn("[Google Sheets Live Sync]", err?.message));
+
   return {
     success: true,
     message: `Registration confirmed for ${event.title}!`,
@@ -776,4 +783,444 @@ export async function uploadToSupabase(file: File, bucket = "club-uploads"): Pro
 
   const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
   return publicUrlData.publicUrl;
+}
+
+// ─────────────────────────────────────────────────────────────
+// 7. GOOGLE SHEETS LIVE SYNC & SETTINGS
+// ─────────────────────────────────────────────────────────────
+
+export const DEFAULT_SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1MUkixf7X2_5cYzZJm1dL1atzRK2sIPxLpgKDGV7rTYk/edit?usp=sharing";
+export const DEFAULT_SPREADSHEET_ID = "1MUkixf7X2_5cYzZJm1dL1atzRK2sIPxLpgKDGV7rTYk";
+
+export function getSafeSheetName(eventTitle?: string): string {
+  let title = (eventTitle || "Event").trim();
+  title = title.replace(/[:\\/?*\[\]]/g, "-").trim();
+  if (title.length <= 4 || /^[A-Za-z]{1,3}\d*$/i.test(title)) {
+    title = `${title} - Registrations`;
+  }
+  return title.slice(0, 80);
+}
+
+export function getGoogleAppsScriptTemplate(spreadsheetId = DEFAULT_SPREADSHEET_ID): string {
+  return `/**
+ * AI FRONTIER CLUB - GOOGLE SHEETS LIVE SYNC
+ * Spreadsheet ID: ${spreadsheetId}
+ * 
+ * SETUP INSTRUCTIONS:
+ * 1. Open your Google Spreadsheet:
+ *    https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit
+ * 2. In top menu click: Extensions -> Apps Script
+ * 3. Delete any existing code and PASTE THIS ENTIRE SCRIPT.
+ * 4. Click "Deploy" (top right) -> "New deployment"
+ * 5. Click the gear icon (Select type) -> choose "Web app"
+ * 6. Set Description: "AI Frontier Sync"
+ * 7. Set "Execute as": "Me"
+ * 8. Set "Who has access": "Anyone"  <-- CRITICAL!
+ * 9. Click "Deploy" -> "Authorize access" (choose your Google account, click Advanced -> Go to Untitled project)
+ * 10. Copy the "Web app URL" (ends in /exec) and paste it into the Admin Console!
+ */
+
+function doPost(e) {
+  try {
+    var raw = e && e.postData && e.postData.contents ? e.postData.contents : "{}";
+    var data = JSON.parse(raw);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    var rawTitle = (data.sheetName || data.eventTitle || "Event Registrations").trim();
+    var sheetName = rawTitle.replace(/[:\\\\/?*\\[\\]]/g, "-").trim();
+    if (sheetName.length <= 4 || /^[A-Za-z]{1,3}\\d*$/i.test(sheetName)) {
+      sheetName = sheetName + " - Registrations";
+    }
+    sheetName = sheetName.substring(0, 80);
+
+    var sheet = ss.getSheetByName(sheetName);
+
+    var headers = [
+      "Registration ID",
+      "Team Name",
+      "Department",
+      "Member 1 (Lead)",
+      "Lead Email",
+      "Year of Study",
+      "Notes / Queries",
+      "Registered At"
+    ];
+
+    function ensureHeaders(targetSheet) {
+      var lastCol = targetSheet.getLastColumn();
+      var needHeaders = false;
+      if (lastCol < headers.length) {
+        needHeaders = true;
+      } else {
+        var firstRow = targetSheet.getRange(1, 1, 1, Math.min(headers.length, lastCol)).getValues()[0];
+        if (firstRow[3] !== "Member 1 (Lead)" && firstRow[2] !== "Member 1 (Lead)") {
+          needHeaders = true;
+        }
+      }
+
+      if (needHeaders) {
+        targetSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+        var headerRange = targetSheet.getRange(1, 1, 1, headers.length);
+        headerRange.setFontWeight("bold");
+        headerRange.setBackground("#0f172a");
+        headerRange.setFontColor("#38bdf8");
+        targetSheet.setFrozenRows(1);
+        for (var i = 1; i <= headers.length; i++) {
+          targetSheet.autoResizeColumn(i);
+        }
+      }
+    }
+
+    if (data.action === "create_event_sheet" || !sheet) {
+      if (!sheet) {
+        sheet = ss.insertSheet(sheetName);
+      }
+      ensureHeaders(sheet);
+
+      if (data.action === "create_event_sheet") {
+        return ContentService.createTextOutput(JSON.stringify({
+          success: true,
+          message: "Sheet ready: " + sheetName,
+          sheetName: sheetName
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+
+    ensureHeaders(sheet);
+
+    if (data.action === "add_registration" || data.name || data.email || data.member1) {
+      var regId = String(data.registrationId || "").trim();
+      var leadEmail = String(data.email || "").trim().toLowerCase();
+      var member2Email = String(data.member2Email || data.member2_phone || data.member2Phone || "").trim().toLowerCase();
+      var teamName = String(data.teamName || data.team_name || "").trim();
+      var member1 = String(data.member1 || data.name || "").trim();
+      var member2 = String(data.member2 || "").trim();
+      var dept = String(data.department || data.college || "").trim();
+      var year = String(data.year || "").trim();
+      var notes = String(data.notes || "").trim();
+      var timestamp = data.timestamp || new Date().toLocaleString();
+
+      var regIdStr = regId ? "'" + regId : "";
+
+      var lastRow = sheet.getLastRow();
+      if (lastRow > 1 && regId) {
+        var values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+        for (var r = 0; r < values.length; r++) {
+          var existingRegId = String(values[r][0] || "").trim();
+          if (existingRegId === regId) {
+            return ContentService.createTextOutput(JSON.stringify({
+              success: true,
+              message: "Already synced: " + regId,
+              sheetName: sheetName,
+              alreadySynced: true
+            })).setMimeType(ContentService.MimeType.JSON);
+          }
+        }
+      }
+
+      if (member1) {
+        sheet.appendRow([
+          regIdStr,
+          teamName || (member1 + "'s Team"),
+          dept,
+          member1,
+          leadEmail,
+          year,
+          notes,
+          timestamp
+        ]);
+      }
+
+      if (member2 && member2 !== "-" && member2.toLowerCase() !== "none") {
+        sheet.appendRow([
+          regIdStr,
+          teamName || (member1 + "'s Team"),
+          dept,
+          member2,
+          member2Email || leadEmail || "-",
+          year,
+          notes,
+          timestamp
+        ]);
+      }
+
+      for (var col = 1; col <= headers.length; col++) {
+        sheet.autoResizeColumn(col);
+      }
+
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        message: "Registration recorded in " + sheetName,
+        sheetName: sheetName,
+        email: leadEmail,
+        member1: member1,
+        member2: member2
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      message: "Webhook acknowledged"
+    })).setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      error: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doGet(e) {
+  return ContentService.createTextOutput("AI Frontier Live Sync Webhook is Active!");
+}
+`;
+}
+
+export async function getGoogleSheetSettings() {
+  if (!isSupabaseConfigured) {
+    return {
+      success: true,
+      data: {
+        spreadsheetUrl: DEFAULT_SPREADSHEET_URL,
+        spreadsheetId: DEFAULT_SPREADSHEET_ID,
+        webhookUrl: "",
+        hasWebhook: false,
+        hasSpreadsheet: true,
+        scriptCode: getGoogleAppsScriptTemplate(DEFAULT_SPREADSHEET_ID),
+      },
+    };
+  }
+
+  const { data: rows, error } = await supabase
+    .from("settings")
+    .select("key, value")
+    .in("key", ["google_sheet_url", "google_sheet_id", "google_sheet_webhook_url"]);
+
+  if (error) {
+    console.warn("[Google Sheets] Error reading settings from Supabase:", error.message);
+  }
+
+  const map: Record<string, string> = {};
+  (rows || []).forEach((r: any) => {
+    if (r.key && r.value) map[r.key] = r.value;
+  });
+
+  const spreadsheetUrl = map["google_sheet_url"] || DEFAULT_SPREADSHEET_URL;
+  const spreadsheetId = map["google_sheet_id"] || DEFAULT_SPREADSHEET_ID;
+  const webhookUrl = map["google_sheet_webhook_url"] || "";
+  const hasWebhook = Boolean(webhookUrl && webhookUrl.startsWith("http"));
+
+  return {
+    success: true,
+    data: {
+      spreadsheetUrl,
+      spreadsheetId,
+      webhookUrl,
+      hasWebhook,
+      hasSpreadsheet: Boolean(spreadsheetUrl && spreadsheetUrl.startsWith("http")),
+      scriptCode: getGoogleAppsScriptTemplate(spreadsheetId),
+    },
+  };
+}
+
+export async function updateGoogleSheetSettings(payload: { webhookUrl?: string; spreadsheetUrl?: string }) {
+  const updates: Array<{ key: string; value: string; updated_at: string }> = [];
+  const now = new Date().toISOString();
+
+  let spreadsheetId = "";
+  if (payload.spreadsheetUrl !== undefined) {
+    const sUrl = payload.spreadsheetUrl.trim();
+    updates.push({ key: "google_sheet_url", value: sUrl, updated_at: now });
+    const match = sUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    if (match && match[1]) {
+      spreadsheetId = match[1];
+      updates.push({ key: "google_sheet_id", value: spreadsheetId, updated_at: now });
+    }
+  }
+
+  if (payload.webhookUrl !== undefined) {
+    updates.push({ key: "google_sheet_webhook_url", value: payload.webhookUrl.trim(), updated_at: now });
+  }
+
+  if (updates.length > 0 && isSupabaseConfigured) {
+    const { error } = await supabase.from("settings").upsert(updates);
+    if (error) throw error;
+  }
+
+  return getGoogleSheetSettings();
+}
+
+export async function callSheetWebhook(url: string, payload: any): Promise<{ success: boolean; data?: any; error?: string }> {
+  if (!url || !url.startsWith("http")) {
+    return { success: false, error: "Invalid webhook URL" };
+  }
+
+  const bodyStr = JSON.stringify(payload);
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: bodyStr,
+    });
+    const text = await res.text();
+    try {
+      const json = JSON.parse(text);
+      return { success: true, data: json };
+    } catch {
+      return { success: res.ok, data: text };
+    }
+  } catch (err: any) {
+    try {
+      // Fallback for environments with strict browser cross-origin redirect protections
+      await fetch(url, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: bodyStr,
+      });
+      return { success: true, data: { status: "dispatched" } };
+    } catch (fallbackErr: any) {
+      console.warn("[Google Sheets Webhook Error]", fallbackErr);
+      return { success: false, error: fallbackErr?.message || err?.message };
+    }
+  }
+}
+
+export async function syncSingleRegistrationToGoogleSheet(event: any, reg: any) {
+  const cfg = await getGoogleSheetSettings();
+  const targetUrl = (event?.webhook_url && typeof event.webhook_url === "string" && event.webhook_url.startsWith("http"))
+    ? event.webhook_url
+    : cfg.data?.webhookUrl;
+
+  if (!targetUrl || !targetUrl.startsWith("http")) return null;
+
+  const sheetName = getSafeSheetName(event?.title);
+  const registrationCode = reg.registrationCode || (reg.id ? `AIF-${event?.id}-${reg.id}` : `AIF-${event?.id}`);
+
+  let formattedDate = "";
+  try {
+    const d = new Date(reg.created_at || Date.now());
+    formattedDate = d.toLocaleString("en-US", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  } catch {
+    formattedDate = reg.created_at || new Date().toISOString();
+  }
+
+  return callSheetWebhook(targetUrl, {
+    action: "add_registration",
+    sheetName,
+    eventId: event?.id,
+    registrationId: registrationCode,
+    teamName: String(reg.team_name || reg.teamName || "").trim(),
+    member1: String(reg.member1 || reg.name || "").trim(),
+    member2: String(reg.member2 || "").trim(),
+    name: String(reg.member1 || reg.name || "").trim(),
+    email: String(reg.email || "").trim().toLowerCase(),
+    member2Email: String(reg.member2_phone || reg.member2Phone || reg.member2Email || "").trim().toLowerCase(),
+    department: String(reg.department || reg.college || "").trim(),
+    year: String(reg.year || "").trim(),
+    notes: String(reg.notes || "").trim(),
+    timestamp: formattedDate,
+  });
+}
+
+export async function syncEventToGoogleSheet(eventId: number | string) {
+  const numericId = await resolveNumericEventId(eventId);
+  const { data: event, error: evErr } = await supabase.from("events").select("*").eq("id", numericId).single();
+  if (evErr || !event) throw new Error("Event not found");
+
+  const cfg = await getGoogleSheetSettings();
+  const targetUrl = (event.webhook_url && typeof event.webhook_url === "string" && event.webhook_url.startsWith("http"))
+    ? event.webhook_url
+    : cfg.data?.webhookUrl;
+
+  if (!targetUrl || !targetUrl.startsWith("http")) {
+    throw new Error("No Google Sheets webhook URL configured. Please paste your Google Apps Script Web App URL first.");
+  }
+
+  const sheetName = getSafeSheetName(event.title);
+
+  // 1. Create or verify tab exists
+  await callSheetWebhook(targetUrl, {
+    action: "create_event_sheet",
+    sheetName,
+    eventId: event.id,
+    date: event.date,
+    venue: event.venue,
+    capacity: event.capacity,
+  });
+
+  // 2. Fetch all registrations for this event
+  const { data: regs, error: regErr } = await supabase
+    .from("event_registrations")
+    .select("*")
+    .eq("event_id", numericId)
+    .order("id", { ascending: true });
+
+  if (regErr) throw regErr;
+
+  let count = 0;
+  for (const reg of regs || []) {
+    const regCode = `AIF-${numericId}-${reg.id}`;
+    let formattedDate = "";
+    try {
+      formattedDate = new Date(reg.created_at || Date.now()).toLocaleString("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+    } catch {
+      formattedDate = reg.created_at || "";
+    }
+
+    await callSheetWebhook(targetUrl, {
+      action: "add_registration",
+      sheetName,
+      eventId: event.id,
+      registrationId: regCode,
+      teamName: String(reg.team_name || reg.name || "").trim(),
+      member1: String(reg.member1 || reg.name || "").trim(),
+      member2: String(reg.member2 || "").trim(),
+      name: String(reg.member1 || reg.name || "").trim(),
+      email: String(reg.email || "").trim().toLowerCase(),
+      member2Email: String(reg.member2_phone || "").trim().toLowerCase(),
+      department: String(reg.department || reg.college || "").trim(),
+      year: String(reg.year || "").trim(),
+      notes: String(reg.notes || "").trim(),
+      timestamp: formattedDate,
+    });
+    count++;
+  }
+
+  return {
+    success: true,
+    message: `Synced ${count} registration${count === 1 ? "" : "s"} for "${event.title}" to Google Sheets!`,
+    syncedCount: count,
+  };
+}
+
+export async function syncAllToGoogleSheets() {
+  const cfg = await getGoogleSheetSettings();
+  const globalWebhook = cfg.data?.webhookUrl;
+  if (!globalWebhook || !globalWebhook.startsWith("http")) {
+    throw new Error("No Google Sheets webhook URL configured. Please paste your Google Apps Script Web App URL first.");
+  }
+
+  const { data: events, error: evErr } = await supabase.from("events").select("*").order("date", { ascending: true });
+  if (evErr) throw evErr;
+
+  let totalEvents = 0;
+  for (const ev of events || []) {
+    await syncEventToGoogleSheet(ev.id);
+    totalEvents++;
+  }
+
+  return {
+    success: true,
+    message: `Successfully synced ${totalEvents} event${totalEvents === 1 ? "" : "s"} and all participant responses to Google Sheets.`,
+    eventsProcessed: totalEvents,
+  };
 }
