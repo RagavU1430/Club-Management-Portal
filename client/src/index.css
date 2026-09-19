@@ -1,19 +1,37 @@
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Orbitron:wght@500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap");
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
-  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-sans: "Outfit", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Orbitron", "Space Grotesk", sans-serif;
+  --font-ai: "Orbitron", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
   --color-accent: #00f0ff;
   --color-accent-hover: #38bdf8;
   --color-purple: #9333ea;
   --color-purple-light: #c084fc;
   --color-cyber-bg: #050811;
   --color-cyber-surface: rgba(13, 19, 33, 0.7);
+  /* ── Instagram Palette (light mode) ── */
+  --ig-bg: #fafafa;
+  --ig-surface: #ffffff;
+  --ig-border: #dbdbdb;
+  --ig-text: #262626;
+  --ig-text-muted: #8e8e8e;
+  --ig-purple: #833ab4;
+  --ig-red: #fd1d1d;
+  --ig-orange: #fcb045;
+  --ig-gradient: linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%);
+  --ig-gradient-soft: linear-gradient(135deg, #c86dd7 0%, #f76a3b 100%);
 }
 
 :root {
   --color-bg: #050811;
   --border-glow: rgba(0, 240, 255, 0.25);
+  --color-text: #f1f5f9;
+  --color-text-muted: #94a3b8;
 }
 
 html {
@@ -22,17 +40,49 @@ html {
   background-color: #050811;
 }
 
+html.light {
+  color-scheme: light;
+  background-color: #f6f8fa;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: #050811;
   color: #f1f5f9;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  letter-spacing: -0.005em;
+}
+
+h1, h2, h3, h4, h5, h6, .font-display {
+  font-family: var(--font-display);
+  letter-spacing: 0.015em;
+}
+
+.font-ai {
+  font-family: var(--font-ai);
+  letter-spacing: 0.04em;
+}
+
+code, kbd, samp, pre, .font-mono {
+  font-family: var(--font-mono);
+}
+
+html.light body {
+  background-color: #f6f8fa;
+  color: #0f172a;
 }
 
 ::selection {
   background-color: #00f0ff;
   color: #050811;
+}
+
+html.light ::selection {
+  background-color: #833ab4;
+  color: #ffffff;
 }
 
 /* ── Cyber Background Grid ── */
@@ -43,9 +93,20 @@ body {
   background-size: 40px 40px;
 }
 
+html.light .cyber-grid {
+  background-image: 
+    linear-gradient(to right, rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
+  opacity: 0.5 !important;
+}
+
 .cyber-dots {
   background-image: radial-gradient(rgba(0, 240, 255, 0.15) 1px, transparent 1px);
   background-size: 24px 24px;
+}
+
+html.light .cyber-dots {
+  background-image: radial-gradient(rgba(131, 58, 180, 0.12) 1px, transparent 1px);
 }
 
 /* ── Glassmorphism ── */
@@ -54,6 +115,15 @@ body {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+html.light .glass {
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.05), 0 4px 12px -2px rgba(15, 23, 42, 0.02);
 }
 
 .glass-subtle {
@@ -61,6 +131,15 @@ body {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+html.light .glass-subtle {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
 }
 
 .glass-nav {
@@ -68,6 +147,15 @@ body {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+html.light .glass-nav {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
 }
 
 .glass-glow {
@@ -75,6 +163,200 @@ body {
   backdrop-filter: blur(16px);
   border: 1px solid rgba(0, 240, 255, 0.18);
   box-shadow: 0 0 25px rgba(0, 240, 255, 0.07);
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+html.light .glass-glow {
+  background: #ffffff;
+  border: 1px solid rgba(131, 58, 180, 0.25);
+  box-shadow: 0 12px 32px -8px rgba(131, 58, 180, 0.14), 0 4px 12px rgba(253, 29, 29, 0.05);
+}
+
+/* ── Light Mode Typography ── */
+html.light h1,
+html.light h2,
+html.light h3,
+html.light h4,
+html.light h5,
+html.light h6 {
+  color: #0f172a;
+}
+
+html.light h1.text-white,
+html.light h2.text-white,
+html.light h3.text-white,
+html.light h4.text-white,
+html.light h5.text-white,
+html.light h6.text-white {
+  color: #0f172a;
+}
+
+html.light .text-slate-100,
+html.light .text-slate-200 {
+  color: #0f172a;
+}
+
+html.light .text-slate-300 {
+  color: #334155;
+}
+
+html.light .text-slate-400 {
+  color: #64748b;
+}
+
+html.light .text-slate-500 {
+  color: #64748b;
+}
+
+html.light .text-cyan-300,
+html.light .text-cyan-400 {
+  background: linear-gradient(135deg, #833ab4, #fd1d1d);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+html.light .text-purple-300,
+html.light .text-purple-400 {
+  color: #833ab4;
+}
+
+html.light .text-emerald-300,
+html.light .text-emerald-400 {
+  color: #059669;
+}
+
+html.light .text-amber-300,
+html.light .text-amber-400 {
+  color: #d97706;
+}
+
+/* ── Light Mode Borders ── */
+html.light .divide-white\/5,
+html.light .divide-white\/10 {
+  border-color: #dbdbdb;
+}
+
+html.light .border-white\/5,
+html.light .border-white\/10,
+html.light .border-white\/15,
+html.light .border-white\/20 {
+  border-color: #dbdbdb;
+}
+
+/* ── Light Mode Backgrounds ── */
+html.light .bg-white\/5 {
+  background-color: #fafafa;
+}
+
+html.light .bg-white\/10 {
+  background-color: #f2f2f2;
+}
+
+html.light .hover\:bg-white\/5:hover {
+  background-color: #f7f7f7;
+}
+
+html.light .hover\:bg-white\/10:hover {
+  background-color: #efefef;
+}
+
+html.light .bg-slate-900\/40,
+html.light .bg-slate-900\/60,
+html.light .bg-slate-900\/80,
+html.light .bg-slate-950\/50,
+html.light .bg-slate-950\/70 {
+  background-color: #ffffff;
+}
+
+/* ── Light Mode Modal Backdrop ── */
+html.light .fixed.inset-0.bg-black\/85,
+html.light .fixed.inset-0.bg-black\/80 {
+  background-color: rgba(38, 38, 38, 0.6);
+}
+
+/* ── Light Mode Form Inputs (Instagram style) ── */
+html.light input:not([type="checkbox"]):not([type="radio"]),
+html.light select,
+html.light textarea {
+  background-color: #fafafa;
+  color: #262626;
+  border-color: #dbdbdb;
+}
+
+html.light input:not([type="checkbox"]):not([type="radio"]):focus,
+html.light select:focus,
+html.light textarea:focus {
+  border-color: #8e8e8e;
+  background-color: #ffffff;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #8e8e8e;
+}
+
+/* ── Instagram Theme Utilities & Vibrant Styling ── */
+.ig-story-ring {
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  padding: 2.5px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ig-story-ring-sm {
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  padding: 1.5px;
+  border-radius: 9999px;
+}
+
+.ig-gradient-text {
+  background: linear-gradient(135deg, #833ab4 0%, #c13584 25%, #e1306c 50%, #fd1d1d 75%, #fcb045 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.ig-gradient-text-warm {
+  background: linear-gradient(135deg, #e1306c 0%, #fd1d1d 50%, #fcb045 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.ig-gradient-bg {
+  background: linear-gradient(135deg, #833ab4 0%, #c13584 25%, #e1306c 50%, #fd1d1d 75%, #fcb045 100%);
+  color: #ffffff;
+}
+
+.ig-gradient-btn {
+  background: linear-gradient(135deg, #833ab4 0%, #c13584 25%, #e1306c 50%, #fd1d1d 75%, #fcb045 100%);
+  color: #ffffff !important;
+  box-shadow: 0 4px 15px rgba(225, 48, 108, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.ig-gradient-btn:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(225, 48, 108, 0.45);
+  filter: brightness(1.06);
+}
+
+.ig-card {
+  position: relative;
+  background: #ffffff;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html.light .ig-card:hover {
+  border-color: rgba(225, 48, 108, 0.4);
+  box-shadow: 0 16px 40px -8px rgba(225, 48, 108, 0.18), 0 4px 12px rgba(131, 58, 180, 0.08);
+  transform: translateY(-2px);
 }
 
 /* ── Glows & Highlights ── */
@@ -82,12 +364,32 @@ body {
   text-shadow: 0 0 25px rgba(0, 240, 255, 0.6), 0 0 50px rgba(147, 51, 234, 0.3);
 }
 
+html.light .glow-text {
+  text-shadow: none;
+  background: linear-gradient(135deg, #833ab4 0%, #c13584 30%, #e1306c 60%, #fd1d1d 85%, #fcb045 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 .glow-purple-text {
   text-shadow: 0 0 25px rgba(192, 132, 252, 0.6), 0 0 50px rgba(147, 51, 234, 0.4);
 }
 
+html.light .glow-purple-text {
+  text-shadow: none;
+  background: linear-gradient(135deg, #833ab4 0%, #c13584 50%, #e1306c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 .glow-box {
   box-shadow: 0 0 30px rgba(0, 240, 255, 0.18);
+}
+
+html.light .glow-box {
+  box-shadow: 0 12px 36px -6px rgba(225, 48, 108, 0.22), 0 4px 14px rgba(131, 58, 180, 0.12);
 }
 
 .glow-border {
@@ -108,12 +410,21 @@ body {
   pointer-events: none;
 }
 
+html.light .glow-border::after {
+  background: linear-gradient(135deg, #833ab4 0%, #e1306c 50%, #fcb045 100%);
+}
+
 /* ── Shimmer & Skeleton ── */
 .skeleton {
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 25%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.03) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.8s infinite;
   border-radius: 8px;
+}
+
+html.light .skeleton {
+  background: linear-gradient(90deg, #efefef 25%, #fafafa 50%, #efefef 75%);
+  background-size: 200% 100%;
 }
 
 @keyframes shimmer {
@@ -147,6 +458,18 @@ body {
   background: rgba(0, 240, 255, 0.5);
 }
 
+html.light ::-webkit-scrollbar-track {
+  background: #fafafa;
+}
+html.light ::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #c86dd7, #f76a3b);
+  border: 1px solid #dbdbdb;
+  border-radius: 9999px;
+}
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #833ab4, #fd1d1d);
+}
+
 /* ── Card 3D Flip ── */
 .perspective-1000 {
   perspective: 1000px;
@@ -166,3 +489,4 @@ body {
   transform: rotateY(180deg);
   -webkit-transform: rotateY(180deg);
 }
+
