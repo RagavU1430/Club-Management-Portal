@@ -224,7 +224,12 @@ export async function registerForEvent(req, res) {
     phone = "",
     member2Phone = "",
     member2_phone = "",
+    member2Email = "",
+    member2_email = "",
+    member2RollNumber = "",
+    member2_roll_number = "",
     department = "",
+    section = "",
     college = "",
     rollNumber = "",
     year = "",
@@ -237,28 +242,35 @@ export async function registerForEvent(req, res) {
   const tName = (teamName || "").trim();
   const p1 = String(phone || "").trim();
   const p2 = String(member2Phone || member2_phone || "").trim();
+  const m2Email = String(member2Email || member2_email || "").trim().toLowerCase();
+  const m2Roll = String(member2RollNumber || member2_roll_number || "").trim();
   const dept = String(department || college || "Artificial Intelligence and Data Science").trim();
+  const sec = String(section || "").trim();
+  const roll = String(rollNumber || "").trim();
 
   if (!leadName) throw new ApiError(400, "Member 1 (or Full Name) is required.");
   if (!email || !email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-    throw new ApiError(400, "A valid email address is required (e.g. user@domain.edu).");
+    throw new ApiError(400, "A valid email address for Participant 1 is required (e.g. user@domain.edu).");
   }
 
   // 3. Check for Duplicate Registration
-  const existing = db.prepare("SELECT id FROM event_registrations WHERE event_id = ? AND LOWER(email) = ?").get(eventId, email.trim().toLowerCase());
+  const existing = db.prepare("SELECT id FROM event_registrations WHERE event_id = ? AND (LOWER(email) = ? OR (member2_email != '' AND LOWER(member2_email) = ?))").get(eventId, email.trim().toLowerCase(), email.trim().toLowerCase());
   if (existing) {
     return res.json({
       success: true,
-      message: "You are already registered for this event!",
+      message: "This email is already registered for this event!",
       data: { registrationId: `AIF-${eventId}-${existing.id}`, alreadyRegistered: true }
     });
   }
 
   // 4. Insert registration response
   const result = db.prepare(`
-    INSERT INTO event_registrations (event_id, team_name, member1, member2, name, email, phone, member2_phone, department, college, roll_number, year, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(eventId, tName, m1, m2, leadName, email.trim().toLowerCase(), p1, p2, dept, dept, rollNumber.trim(), year.trim(), notes.trim());
+    INSERT INTO event_registrations (
+      event_id, team_name, member1, member2, name, email, phone, member2_phone,
+      department, college, roll_number, section, year, notes, member2_email, member2_roll_number
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(eventId, tName, m1, m2, leadName, email.trim().toLowerCase(), p1, p2, dept, dept, roll, sec, year.trim(), notes.trim(), m2Email, m2Roll);
 
   const regId = result.lastInsertRowid;
   const registrationCode = `AIF-${eventId}-${regId}`;
@@ -273,10 +285,14 @@ export async function registerForEvent(req, res) {
     email: email.trim().toLowerCase(),
     phone: p1,
     member2_phone: p2,
-    member2Email: p2,
+    member2Email: m2Email,
+    member2_email: m2Email,
+    member2RollNumber: m2Roll,
+    member2_roll_number: m2Roll,
     department: dept,
     college: dept,
-    rollNumber: rollNumber.trim(),
+    rollNumber: roll,
+    section: sec,
     year: year.trim(),
     notes: notes.trim(),
     created_at: new Date().toISOString()
@@ -325,9 +341,9 @@ export async function lookupTicket(req, res) {
     SELECT r.*, e.title as event_title, e.date as event_date, e.venue as event_venue
     FROM event_registrations r
     JOIN events e ON r.event_id = e.id
-    WHERE LOWER(r.email) = ? OR LOWER(r.member2_phone) = ?
+    WHERE LOWER(r.email) = ? OR LOWER(r.member2_email) = ? OR LOWER(r.member2_phone) = ?
   `;
-  const params = [cleanEmail, cleanEmail];
+  const params = [cleanEmail, cleanEmail, cleanEmail];
 
   if (eventId) {
     sql += " AND r.event_id = ?";
@@ -352,8 +368,12 @@ export async function lookupTicket(req, res) {
     member1: r.member1 || r.name,
     member2: r.member2,
     email: r.email,
-    member2Email: r.member2_phone,
+    rollNumber: r.roll_number,
+    member2Email: r.member2_email || r.member2_phone,
+    member2RollNumber: r.member2_roll_number,
     department: r.department || r.college,
+    section: r.section,
+    phone: r.phone,
     year: r.year,
     eventTitle: r.event_title,
     eventDate: r.event_date,
