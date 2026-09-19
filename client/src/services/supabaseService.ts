@@ -220,7 +220,12 @@ export interface RegistrationInput {
   phone?: string;
   member2Phone?: string;
   member2_phone?: string;
+  member2Email?: string;
+  member2_email?: string;
+  member2RollNumber?: string;
+  member2_roll_number?: string;
   department?: string;
+  section?: string;
   college?: string;
   rollNumber?: string;
   year?: string;
@@ -275,30 +280,32 @@ export async function registerForEvent(eventId: number | string, input: Registra
     const regCode = `AIF-${numericId}-${existing.id}`;
 
     // Re-dispatch confirmation pass to participant
-    const recipientEmails = [existing.email, existing.member2_phone].filter(
+    const recipientEmails = [existing.email, existing.member2_email, existing.member2_phone].filter(
       (e) => e && e.includes("@")
     );
     if (recipientEmails.length > 0) {
-      fetch("/api/send-confirmation", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: recipientEmails,
-          email: existing.email,
-          member2Email: existing.member2_phone,
-          eventTitle: event.title,
-          eventDate: event.date,
-          venue: event.venue,
-          registrationCode: regCode,
-          name: existing.name || existing.member1,
-          teamName: existing.team_name,
-          member1: existing.member1,
-          member2: existing.member2,
-          department: existing.department,
-          year: existing.year,
-          ...getStoredEmailCredentials(),
-        }),
-      }).catch((err) => console.warn("[Email Dispatch]", err.message));
+      try {
+        fetch("/api/send-confirmation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: recipientEmails,
+            email: existing.email,
+            member2Email: existing.member2_email || existing.member2_phone,
+            eventTitle: event.title,
+            eventDate: event.date,
+            venue: event.venue,
+            registrationCode: regCode,
+            name: existing.name || existing.member1,
+            teamName: existing.team_name,
+            member1: existing.member1,
+            member2: existing.member2,
+            department: existing.department,
+            year: existing.year,
+            ...getStoredEmailCredentials(),
+          }),
+        }).catch(() => {});
+      } catch {}
     }
 
     return {
@@ -336,41 +343,85 @@ export async function registerForEvent(eventId: number | string, input: Registra
     department: String(input.department || input.college || "AI & Data Science").trim(),
     college: String(input.college || input.department || "AI & Data Science").trim(),
     roll_number: String(input.rollNumber || "").trim(),
+    section: String(input.section || "").trim(),
+    member2_email: String(input.member2Email || input.member2_email || "").trim().toLowerCase(),
+    member2_roll_number: String(input.member2RollNumber || input.member2_roll_number || "").trim(),
     year: String(input.year || "").trim(),
     notes: String(input.notes || "").trim(),
     attended: 0,
     created_at: new Date().toISOString(),
   };
 
+  let insertedData: any = null;
   const { data, error } = await supabase.from("event_registrations").insert(payload).select().single();
-  if (error) throw error;
 
-  const regCode = `AIF-${numericId}-${data.id}`;
+  if (error) {
+    console.warn("[Register Fallback] Full payload insert failed:", error.message, "- Retrying with core schema...");
+    const extraDetails = [
+      input.section ? `Section: ${input.section}` : null,
+      (input.member2Email || input.member2_email) ? `Member 2 Email: ${input.member2Email || input.member2_email}` : null,
+      (input.member2RollNumber || input.member2_roll_number) ? `Member 2 Roll: ${input.member2RollNumber || input.member2_roll_number}` : null,
+      input.notes ? input.notes : null,
+    ].filter(Boolean).join(" | ");
+
+    const corePayload = {
+      event_id: numericId,
+      team_name: (input.teamName || "").trim(),
+      member1: (input.member1 || "").trim(),
+      member2: (input.member2 || "").trim(),
+      name: (input.member1 || "").trim(),
+      email: cleanEmail,
+      phone: String(input.phone || "").trim(),
+      member2_phone: String(input.member2Phone || input.member2_phone || input.member2Email || input.member2_email || "").trim(),
+      department: String(input.department || input.college || "AI & Data Science").trim(),
+      college: String(input.college || input.department || "AI & Data Science").trim(),
+      roll_number: String(input.rollNumber || "").trim(),
+      year: String(input.year || "").trim(),
+      notes: extraDetails,
+      attended: 0,
+      created_at: new Date().toISOString(),
+    };
+
+    const fallbackRes = await supabase.from("event_registrations").insert(corePayload).select().single();
+    if (fallbackRes.error) {
+      console.error("[Register Error]", fallbackRes.error);
+      throw fallbackRes.error;
+    }
+    insertedData = fallbackRes.data;
+  } else {
+    insertedData = data;
+  }
+
+  const regCode = `AIF-${numericId}-${insertedData.id}`;
 
   // Trigger official confirmation email via serverless dispatcher (background non-blocking)
-  const recipientEmails = [payload.email, payload.member2_phone].filter(
+  const recipientEmails = [payload.email, payload.member2_email, payload.member2_phone].filter(
     (e) => e && e.includes("@")
   );
-  fetch("/api/send-confirmation", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      to: recipientEmails,
-      email: payload.email,
-      member2Email: payload.member2_phone,
-      eventTitle: event.title,
-      eventDate: event.date,
-      venue: event.venue,
-      registrationCode: regCode,
-      name: payload.name,
-      teamName: payload.team_name,
-      member1: payload.member1,
-      member2: payload.member2,
-      department: payload.department,
-      year: payload.year,
-      ...getStoredEmailCredentials(),
-    }),
-  }).catch((err) => console.warn("[Email Dispatch]", err.message));
+  if (recipientEmails.length > 0) {
+    try {
+      fetch("/api/send-confirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: recipientEmails,
+          email: payload.email,
+          member2Email: payload.member2_email || payload.member2_phone,
+          eventTitle: event.title,
+          eventDate: event.date,
+          venue: event.venue,
+          registrationCode: regCode,
+          name: payload.name,
+          teamName: payload.team_name,
+          member1: payload.member1,
+          member2: payload.member2,
+          department: payload.department,
+          year: payload.year,
+          ...getStoredEmailCredentials(),
+        }),
+      }).catch(() => {});
+    } catch {}
+  }
 
   // Google Sheets automatic real-time live sync (background non-blocking)
   syncSingleRegistrationToGoogleSheet(event, {
