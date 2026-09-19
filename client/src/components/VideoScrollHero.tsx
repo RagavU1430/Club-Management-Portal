@@ -11,10 +11,24 @@ export default function VideoScrollHero() {
 
   return (
     <div className="relative min-h-screen flex flex-col justify-between items-center text-center px-6 pt-32 pb-16 z-10">
-      {/* Top Badge */}
-      <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#833ab4]/12 via-[#e1306c]/12 to-[#fcb045]/12 dark:bg-cyan-400/10 border border-[#e1306c]/35 dark:border-cyan-400/30 px-4 py-1.5 text-xs font-mono tracking-widest text-[#c13584] dark:text-cyan-300 backdrop-blur-md shadow-sm dark:shadow-[0_0_20px_rgba(0,240,255,0.2)] font-semibold">
-        <Cpu className="h-3.5 w-3.5 text-[#e1306c] dark:text-cyan-400" />
-        DEPARTMENT OF ARTIFICIAL INTELLIGENCE & DATA SCIENCE
+      {/* Top Badge: Highlighted in both Light (Instagram gradient & white glass) and Dark (Cyber cyan neon glow) */}
+      <div className="relative group inline-flex items-center gap-2.5 rounded-full px-5 py-2 text-xs font-mono tracking-widest font-extrabold backdrop-blur-xl transition-all duration-300 hover:scale-[1.03]
+        bg-white/95 text-slate-900 border border-[#e1306c]/50 shadow-[0_4px_20px_rgba(225,48,108,0.25)] hover:shadow-[0_6px_25px_rgba(225,48,108,0.35)]
+        dark:bg-[#060c1b]/95 dark:border-cyan-400/80 dark:shadow-[0_0_25px_rgba(0,240,255,0.4),inset_0_0_12px_rgba(0,240,255,0.12)] dark:hover:shadow-[0_0_35px_rgba(0,240,255,0.6)] cursor-default"
+      >
+        {/* Pulsing Live Beacon */}
+        <span className="relative flex h-2.5 w-2.5 shrink-0">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#e1306c] dark:bg-cyan-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#e1306c] dark:bg-cyan-400"></span>
+        </span>
+
+        {/* CPU Hardware Icon */}
+        <Cpu className="h-4 w-4 text-[#e1306c] dark:text-cyan-300 shrink-0 transition-transform duration-300 group-hover:rotate-12" />
+
+        {/* Text with high contrast in Light and Neon Glow in Dark */}
+        <span className="bg-gradient-to-r from-[#7b1fa2] via-[#e91e63] to-[#e65100] bg-clip-text text-transparent font-black tracking-wider sm:tracking-widest dark:bg-none dark:text-cyan-200 dark:drop-shadow-[0_0_12px_rgba(0,240,255,0.7)]">
+          DEPARTMENT OF ARTIFICIAL INTELLIGENCE & DATA SCIENCE
+        </span>
       </div>
 
       {/* Headline & Subtitle with refined frosted glass backing and Instagram top accent */}
