@@ -34,7 +34,8 @@ export default function GlobalVideoBackground() {
   const drawImageOnCanvas = (
     canvas: HTMLCanvasElement | null,
     cache: (HTMLImageElement | null)[],
-    frameIndex: number
+    frameIndex: number,
+    isDarkTheme: boolean = false
   ) => {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -63,7 +64,15 @@ export default function GlobalVideoBackground() {
     const iWidth = img.naturalWidth || 960;
     const iHeight = img.naturalHeight || 540;
 
-    const scale = Math.max(cWidth / iWidth, cHeight / iHeight);
+    let scale = Math.max(cWidth / iWidth, cHeight / iHeight);
+
+    // In dark mode on the first frame (hero initial state), keep the club logo slightly back (depth perspective)
+    // smoothly scaling from 0.85 at frame 0 up to 1.0 as the user scrolls into the video sequence
+    if (isDarkTheme) {
+      const depthFactor = Math.min(1, 0.85 + (frameIndex / 25) * 0.15);
+      scale *= depthFactor;
+    }
+
     const x = (cWidth - iWidth * scale) / 2;
     const y = (cHeight - iHeight * scale) / 2;
 
@@ -73,8 +82,8 @@ export default function GlobalVideoBackground() {
 
   // Render current frame onto BOTH canvases so theme switching cross-fades seamlessly
   const renderFrame = useCallback((frameIndex: number) => {
-    drawImageOnCanvas(darkCanvasRef.current, imagesRef.current, frameIndex);
-    drawImageOnCanvas(lightCanvasRef.current, whiteImagesRef.current, frameIndex);
+    drawImageOnCanvas(darkCanvasRef.current, imagesRef.current, frameIndex, true);
+    drawImageOnCanvas(lightCanvasRef.current, whiteImagesRef.current, frameIndex, false);
   }, []);
 
   // Preload all 180 frames for both themes aggressively
@@ -89,7 +98,7 @@ export default function GlobalVideoBackground() {
         img.onload = () => {
           imagesRef.current[index] = img;
           if (index === 0) {
-            drawImageOnCanvas(darkCanvasRef.current, imagesRef.current, 0);
+            drawImageOnCanvas(darkCanvasRef.current, imagesRef.current, 0, true);
           }
           resolve();
         };
@@ -104,7 +113,7 @@ export default function GlobalVideoBackground() {
         img.onload = () => {
           whiteImagesRef.current[index] = img;
           if (index === 0) {
-            drawImageOnCanvas(lightCanvasRef.current, whiteImagesRef.current, 0);
+            drawImageOnCanvas(lightCanvasRef.current, whiteImagesRef.current, 0, false);
           }
           resolve();
         };
@@ -177,7 +186,7 @@ export default function GlobalVideoBackground() {
       if (isAdmin) {
         setMatrixOpacity(0);
       } else {
-        const fade = Math.max(0, 1 - scrollY / 120);
+        const fade = Math.max(0, 1 - scrollY / 260);
         setMatrixOpacity(fade);
       }
     };
@@ -234,7 +243,9 @@ export default function GlobalVideoBackground() {
     let lastTime = performance.now();
     let drops: number[] = [];
     let speeds: number[] = [];
-    let fontSize = 16;
+    let secondaryDrops: number[] = [];
+    let secondarySpeeds: number[] = [];
+    let fontSize = 15;
 
     const updateDimensions = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -246,35 +257,88 @@ export default function GlobalVideoBackground() {
         canvas.height = h;
       }
 
-      fontSize = Math.max(14, Math.round(16 * dpr));
-      const neededCols = Math.ceil(canvas.width / fontSize) + 4;
+      fontSize = Math.max(13, Math.round(15 * dpr));
+      const neededCols = Math.ceil(canvas.width / fontSize) + 6;
 
-      // Expand drops array if new columns are needed (e.g. wide screens or right-side coverage)
       while (drops.length < neededCols) {
         drops.push(Math.floor(Math.random() * (canvas.height / fontSize)));
-        speeds.push(0.75 + Math.random() * 1.25);
+        speeds.push(1.1 + Math.random() * 2.2);
+        secondaryDrops.push(-Math.floor(Math.random() * (canvas.height / fontSize)));
+        secondarySpeeds.push(1.3 + Math.random() * 2.0);
       }
     };
 
     updateDimensions();
     window.addEventListener("resize", updateDimensions);
 
+    const drawStream = (
+      colIdx: number,
+      dropArray: number[],
+      speedArray: number[]
+    ) => {
+      if (dropArray[colIdx] === undefined) {
+        dropArray[colIdx] = -Math.floor(Math.random() * 20);
+        speedArray[colIdx] = 1.1 + Math.random() * 2.2;
+      }
+
+      const x = colIdx * fontSize;
+      const y = dropArray[colIdx] * fontSize;
+
+      if (y >= -fontSize && y <= canvas.height + fontSize * 4) {
+        const char = MATRIX_CHARS[Math.floor(Math.random() * MATRIX_CHARS.length)];
+
+        // 1. Ultra-bright glowing white/cyan leading hack glyph tip
+        ctx.fillStyle = "rgba(240, 255, 255, 0.98)";
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "#00f0ff";
+        ctx.fillText(char, x, y);
+
+        // 2. Primary neon cyan & matrix green trailing glyph
+        ctx.fillStyle =
+          colIdx % 3 === 0
+            ? "rgba(0, 240, 255, 0.85)"
+            : colIdx % 5 === 0
+            ? "rgba(16, 185, 129, 0.85)"
+            : "rgba(0, 220, 255, 0.75)";
+        ctx.shadowBlur = 4;
+        ctx.shadowColor = "rgba(0, 240, 255, 0.5)";
+        const prevChar1 = MATRIX_CHARS[Math.floor(Math.random() * MATRIX_CHARS.length)];
+        ctx.fillText(prevChar1, x, y - fontSize);
+
+        // 3. Deep ambient phosphorescent trailing glyph
+        ctx.fillStyle =
+          colIdx % 2 === 0
+            ? "rgba(168, 85, 247, 0.5)"
+            : "rgba(0, 180, 216, 0.45)";
+        ctx.shadowBlur = 0;
+        const prevChar2 = MATRIX_CHARS[Math.floor(Math.random() * MATRIX_CHARS.length)];
+        ctx.fillText(prevChar2, x, y - fontSize * 2);
+      }
+
+      // Reset drop once it crosses bottom or randomly for rich cascade waterfall
+      if (y > canvas.height && Math.random() > 0.95) {
+        dropArray[colIdx] = -Math.floor(Math.random() * 15);
+        speedArray[colIdx] = 1.1 + Math.random() * 2.2;
+      }
+
+      dropArray[colIdx] += speedArray[colIdx];
+    };
+
     const drawMatrix = (currentTime: number) => {
       if (!active) return;
 
       const elapsed = currentTime - lastTime;
-      if (elapsed > 33) { // ~30 FPS terminal cadence
+      if (elapsed > 16) { // Fluid 60 FPS falling hack rain
         lastTime = currentTime;
 
-        // Ensure canvas width & columns stay synchronized to the full viewport
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
         const w = window.innerWidth * dpr;
         if (canvas.width !== w) {
           updateDimensions();
         }
 
-        // Semi-transparent fade background for phosphorescent trailing glow
-        ctx.fillStyle = "rgba(5, 8, 17, 0.24)";
+        // Phosphorescent fade trails
+        ctx.fillStyle = "rgba(5, 8, 17, 0.18)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         ctx.font = `bold ${fontSize}px "JetBrains Mono", monospace, monospace`;
@@ -282,37 +346,8 @@ export default function GlobalVideoBackground() {
         const totalCols = Math.ceil(canvas.width / fontSize);
 
         for (let i = 0; i < totalCols; i++) {
-          if (drops[i] === undefined) {
-            drops[i] = Math.floor(Math.random() * (canvas.height / fontSize));
-            speeds[i] = 0.75 + Math.random() * 1.25;
-          }
-
-          const char = MATRIX_CHARS[Math.floor(Math.random() * MATRIX_CHARS.length)];
-          const x = i * fontSize;
-          const y = drops[i] * fontSize;
-
-          // Softer, balanced leading glyph
-          ctx.fillStyle = "rgba(220, 245, 255, 0.75)";
-          ctx.shadowBlur = 4;
-          ctx.shadowColor = "rgba(0, 240, 255, 0.35)";
-          ctx.fillText(char, x, y);
-
-          // Subtle ambient trailing glyphs without harsh glare
-          ctx.fillStyle = i % 3 === 0
-            ? "rgba(0, 220, 255, 0.4)"
-            : i % 5 === 0
-            ? "rgba(168, 85, 247, 0.35)"
-            : "rgba(16, 185, 129, 0.4)";
-          ctx.shadowBlur = 0;
-          ctx.fillText(char, x, y - fontSize);
-
-          // Reset drop once it crosses the bottom of the screen
-          if (y > canvas.height && Math.random() > 0.972) {
-            drops[i] = 0;
-            speeds[i] = 0.75 + Math.random() * 1.25;
-          }
-
-          drops[i] += speeds[i];
+          drawStream(i, drops, speeds);
+          drawStream(i, secondaryDrops, secondarySpeeds);
         }
       }
 
@@ -355,7 +390,7 @@ export default function GlobalVideoBackground() {
         }}
       />
 
-      {/* ── Dark Mode: Cyber Matrix Rain Overlay ── */}
+      {/* ── Dark Mode: Cyber Matrix Rain Overlay (High Intensity & Increased Falling Code Streams) ── */}
       {!isAdmin && (
         <canvas
           ref={matrixCanvasRef}
@@ -363,7 +398,7 @@ export default function GlobalVideoBackground() {
           style={{
             width: "100%",
             height: "100%",
-            opacity: isDark ? matrixOpacity * 0.42 : 0,
+            opacity: isDark ? matrixOpacity * 0.92 : 0,
           }}
         />
       )}
