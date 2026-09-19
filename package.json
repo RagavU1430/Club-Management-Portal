@@ -12,6 +12,7 @@
     "start": "npm --prefix client run preview"
   },
   "dependencies": {
+    "dotenv": "^16.4.7",
     "nodemailer": "^10.0.10"
   }
 }

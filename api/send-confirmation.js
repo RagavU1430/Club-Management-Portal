@@ -1,21 +1,9 @@
 import nodemailer from "nodemailer";
-import dotenv from "dotenv";
-import fs from "fs";
-
-try {
-  if (fs.existsSync("./server/.env")) {
-    dotenv.config({ path: "./server/.env" });
-  } else if (fs.existsSync(".env")) {
-    dotenv.config({ path: ".env" });
-  } else {
-    dotenv.config();
-  }
-} catch {}
 
 /**
  * Vercel Serverless Function: /api/send-confirmation
  * Automatically sends official event confirmation passes to participant emails.
- * Powered by Gmail SMTP (ragavkrr14@gmail.com).
+ * Powered by Gmail SMTP (aifrontierclub@gmail.com).
  */
 export default async function handler(req, res) {
   // Set CORS headers for Vercel
