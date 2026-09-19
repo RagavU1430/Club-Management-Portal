@@ -388,7 +388,6 @@ function TeamCard({
   member: TeamMember;
   category?: "hod" | "overall" | "student" | "digital";
 }) {
-  const [isHovered, setIsHovered] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const catKey = category || getTeamCategory(member.role, member.department);
@@ -408,31 +407,25 @@ function TeamCard({
 
   return (
     <div
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className={`group relative rounded-3xl glass border transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden ${
-        isHovered
-          ? `-translate-y-1.5 ${catConfig.glowBorder}`
-          : "border-slate-200/80 dark:border-white/10 shadow-lg shadow-slate-200/50 dark:shadow-black/40 hover:border-slate-300 dark:hover:border-white/20"
-      }`}
+      className={`group relative rounded-3xl glass border border-slate-200/80 dark:border-white/10 ${catConfig.glowBorder}
+        transform-gpu transition-[transform,box-shadow,border-color,background-color] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]
+        hover:-translate-y-2 overflow-hidden shadow-lg shadow-slate-200/40 dark:shadow-black/40 will-change-transform cursor-pointer`}
+      style={{ backfaceVisibility: "hidden" }}
     >
-      {/* Ambient Neon Glows */}
+      {/* Hit-area extension buffer below to completely eliminate hover fluttering */}
+      <div className="absolute -bottom-4 left-0 right-0 h-4 pointer-events-auto" />
+
+      {/* Ambient Neon Glows (Ultra-smooth GPU opacity & scale interpolation) */}
       <div
-        className={`pointer-events-none absolute -top-14 -right-14 h-48 w-48 rounded-full bg-cyan-500/15 blur-3xl transition-all duration-700 ease-out ${
-          isHovered ? "opacity-100 scale-125" : "opacity-25 scale-100"
-        }`}
+        className="pointer-events-none absolute -top-14 -right-14 h-48 w-48 rounded-full bg-cyan-500/15 blur-3xl transition-all duration-700 ease-out opacity-25 scale-100 group-hover:opacity-100 group-hover:scale-125 will-change-[transform,opacity]"
       />
       <div
-        className={`pointer-events-none absolute -bottom-14 -left-14 h-48 w-48 rounded-full bg-purple-600/15 blur-3xl transition-all duration-700 ease-out ${
-          isHovered ? "opacity-100 scale-125" : "opacity-25 scale-100"
-        }`}
+        className="pointer-events-none absolute -bottom-14 -left-14 h-48 w-48 rounded-full bg-purple-600/15 blur-3xl transition-all duration-700 ease-out opacity-25 scale-100 group-hover:opacity-100 group-hover:scale-125 will-change-[transform,opacity]"
       />
 
       {/* Top Cyber Accent Line */}
       <div
-        className={`pointer-events-none absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent ${catConfig.cardTopAccent} to-transparent transition-opacity duration-500 ease-out ${
-          isHovered ? "opacity-100" : "opacity-0"
-        }`}
+        className={`pointer-events-none absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent ${catConfig.cardTopAccent} to-transparent transition-opacity duration-500 ease-out opacity-0 group-hover:opacity-100`}
       />
 
       {/* Card Content Container */}
@@ -478,16 +471,10 @@ function TeamCard({
           {member.bio || "Leading AI innovation, research projects, and student learning at AI Frontier Club."}
         </p>
 
-        {/* ── Collapsible Resting Bar (When NOT hovered) ── */}
-        <div
-          className={`grid transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-            !isHovered
-              ? "grid-rows-[1fr] opacity-100 mt-4 pt-3 border-t border-slate-200 dark:border-white/10"
-              : "grid-rows-[0fr] opacity-0 mt-0 pt-0 border-t-0 border-transparent"
-          }`}
-        >
+        {/* ── Collapsible Resting Hint (Fades out when hovered) ── */}
+        <div className="grid grid-rows-[1fr] group-hover:grid-rows-[0fr] transition-[grid-template-rows,opacity] duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:opacity-0">
           <div className="overflow-hidden min-h-0">
-            <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-slate-400">
+            <div className="pt-3 mt-4 border-t border-slate-200 dark:border-white/10 flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-slate-400">
               <div className="flex items-center gap-2">
                 {member.email && (
                   <span title="Email available" className="text-cyan-600 dark:text-cyan-400/80">
@@ -512,26 +499,16 @@ function TeamCard({
               </div>
               <span className="flex items-center gap-1.5 text-cyan-700 dark:text-cyan-300 group-hover:text-cyan-600 dark:group-hover:text-cyan-200 transition-colors font-semibold">
                 <span>Hover for Details</span>
-                <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition-transform duration-300" />
+                <ArrowRight className="h-3 w-3 group-hover:translate-x-1.5 transition-transform duration-300" />
               </span>
             </div>
           </div>
         </div>
 
-        {/* ── Expandable Details Section (When hovered) ── */}
-        <div
-          className={`grid transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-            isHovered
-              ? "grid-rows-[1fr] opacity-100 mt-4 pt-3 border-t border-slate-200 dark:border-white/10"
-              : "grid-rows-[0fr] opacity-0 mt-0 pt-0 border-t-0 border-transparent"
-          }`}
-        >
+        {/* ── Ultra-Smooth Accordion Details Drawer (Expands smoothly on hover) ── */}
+        <div className="grid grid-rows-[0fr] group-hover:grid-rows-[1fr] transition-[grid-template-rows] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]">
           <div className="overflow-hidden min-h-0">
-            <div
-              className={`space-y-2.5 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                isHovered ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0"
-              }`}
-            >
+            <div className="pt-3 mt-3 border-t border-slate-200 dark:border-white/10 opacity-0 group-hover:opacity-100 transition-all duration-400 delay-75 space-y-2.5">
               {/* Email Card */}
               <div className="rounded-xl bg-slate-100/80 dark:bg-white/5 p-2.5 border border-slate-200 dark:border-white/10 hover:border-cyan-500/40 dark:hover:border-cyan-400/40 transition-colors duration-300">
                 <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 dark:text-slate-400 mb-1">
