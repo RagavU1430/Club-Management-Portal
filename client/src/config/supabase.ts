@@ -21,4 +21,20 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     detectSessionInUrl: true,
   },
+  global: {
+    fetch: async (url, options = {}) => {
+      let retries = 2;
+      let lastErr: any;
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+          return await fetch(url, options);
+        } catch (err: any) {
+          lastErr = err;
+          if (attempt === retries) break;
+          await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
+        }
+      }
+      throw lastErr;
+    },
+  },
 });
