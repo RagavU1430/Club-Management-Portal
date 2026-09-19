@@ -183,43 +183,47 @@ ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, description = EXCLUDED.de
 -- Team Members Seed
 INSERT INTO team_members (id, name, role, department, photo, email, phone, linkedin, github, bio, "order", active)
 VALUES (1, 'Dr. K. Manivannan', 'Coordinator', 'HoD, AI&DS', '', 'hod.aids@college.edu', '', '', '', 'Head of Department guiding academic innovation, research projects, and student learning at AI Frontier Club.', 1, 1)
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, department = EXCLUDED.department, bio = EXCLUDED.bio;
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, department = EXCLUDED.department, bio = EXCLUDED.bio, "order" = EXCLUDED."order";
 
 INSERT INTO team_members (id, name, role, department, photo, email, phone, linkedin, github, bio, "order", active)
-VALUES (2, 'Mrs. B. Bharathi', 'Assistant Coordinator', 'AP / AI&DS', '', 'bharathi.aids@college.edu', '', '', '', 'Assistant Professor mentoring technical workshops, project exhibitions, and departmental club activities.', 2, 1)
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, department = EXCLUDED.department, bio = EXCLUDED.bio;
+VALUES (2, 'Mrs. V. Kavitha', 'Coordinator', 'HoD, AI&DS', '', 'kavitha.aids@college.edu', '', '', '', 'Head of Department guiding academic innovation, research projects, and student learning at AI Frontier Club.', 2, 1)
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, department = EXCLUDED.department, bio = EXCLUDED.bio, "order" = EXCLUDED."order";
 
 INSERT INTO team_members (id, name, role, department, photo, email, phone, linkedin, github, bio, "order", active)
-VALUES (3, 'Ram Pradeep R P', 'Students Overall Coordinator', 'III - AI&DS', '', 'rampradeep@aifrontierclub.org', '63797 52463', 'https://www.linkedin.com/in/r-p-ram-pradeep', 'https://github.com/Rampradeep31', 'Leading overall club initiatives, hackathon delegations, and student technical chapters.', 3, 1)
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, department = EXCLUDED.department, bio = EXCLUDED.bio;
+VALUES (3, 'Mrs. B. Bharathi', 'Assistant Coordinator', 'AP / AI&DS', '', 'bharathi.aids@college.edu', '', '', '', 'Assistant Professor mentoring technical workshops, project exhibitions, and departmental club activities.', 3, 1)
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, department = EXCLUDED.department, bio = EXCLUDED.bio, "order" = EXCLUDED."order";
 
 INSERT INTO team_members (id, name, role, department, photo, email, phone, linkedin, github, bio, "order", active)
-VALUES (4, 'Ragav U', 'Students Overall Coordinator', 'III - AI&DS', '', 'coordinator@aifrontierclub.org', '+919360376757', 'https://www.linkedin.com/in/ragav-u/', 'https://github.com/RagavU1430', 'Leading full-stack AI development, community initiatives, and competitive coding.', 4, 1)
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, department = EXCLUDED.department, bio = EXCLUDED.bio;
+VALUES (4, 'Ram Pradeep R P', 'Students Overall Coordinator', 'III - AI&DS', '', 'rampradeep@aifrontierclub.org', '63797 52463', 'https://www.linkedin.com/in/r-p-ram-pradeep', 'https://github.com/Rampradeep31', 'Leading overall club initiatives, hackathon delegations, and student technical chapters.', 4, 1)
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, department = EXCLUDED.department, bio = EXCLUDED.bio, "order" = EXCLUDED."order";
 
 INSERT INTO team_members (id, name, role, department, photo, email, phone, linkedin, github, bio, "order", active)
-VALUES (5, 'Keerthana B', 'Third Year Coordinator', 'III - AI&DS', '', '', '', '', '', 'Coordinating third-year student programs, technical bootcamps, and club project tracks.', 5, 1)
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, department = EXCLUDED.department, bio = EXCLUDED.bio;
+VALUES (5, 'Ragav U', 'Students Overall Coordinator', 'III - AI&DS', '', 'coordinator@aifrontierclub.org', '+919360376757', 'https://www.linkedin.com/in/ragav-u/', 'https://github.com/RagavU1430', 'Leading full-stack AI development, community initiatives, and competitive coding.', 5, 1)
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, department = EXCLUDED.department, bio = EXCLUDED.bio, "order" = EXCLUDED."order";
 
 INSERT INTO team_members (id, name, role, department, photo, email, phone, linkedin, github, bio, "order", active)
-VALUES (6, 'Ragul M', 'Third Year Coordinator', 'III - AI&DS', '', '', '96004 21157', 'https://www.linkedin.com/in/ragul-m-354a49339/', '', 'Coordinating third-year student initiatives, hands-on lab sessions, and digital events.', 6, 1)
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, department = EXCLUDED.department, bio = EXCLUDED.bio;
+VALUES (6, 'Keerthana B', 'Third Year Coordinator', 'III - AI&DS', '', '', '', '', '', 'Coordinating third-year student programs, technical bootcamps, and club project tracks.', 6, 1)
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, department = EXCLUDED.department, bio = EXCLUDED.bio, "order" = EXCLUDED."order";
 
 INSERT INTO team_members (id, name, role, department, photo, email, phone, linkedin, github, bio, "order", active)
-VALUES (7, 'Suriya R', 'Second Year Coordinator', 'II - AI&DS', '', '', '', '', '', 'Facilitating second-year student engagement, workshops, and AI project teams.', 7, 1)
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, department = EXCLUDED.department, bio = EXCLUDED.bio;
+VALUES (7, 'Ragul M', 'Third Year Coordinator', 'III - AI&DS', '', '', '96004 21157', 'https://www.linkedin.com/in/ragul-m-354a49339/', '', 'Coordinating third-year student initiatives, hands-on lab sessions, and digital events.', 7, 1)
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, department = EXCLUDED.department, bio = EXCLUDED.bio, "order" = EXCLUDED."order";
 
 INSERT INTO team_members (id, name, role, department, photo, email, phone, linkedin, github, bio, "order", active)
-VALUES (8, 'Keerthi Dharani G', 'Second Year Coordinator', 'II - AI&DS', '', '', '', '', '', 'Managing second-year coordinator outreach, peer learning sessions, and club activities.', 8, 1)
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, department = EXCLUDED.department, bio = EXCLUDED.bio;
+VALUES (8, 'Suriya R', 'Second Year Coordinator', 'II - AI&DS', '', '', '', '', '', 'Facilitating second-year student engagement, workshops, and AI project teams.', 8, 1)
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, department = EXCLUDED.department, bio = EXCLUDED.bio, "order" = EXCLUDED."order";
 
 INSERT INTO team_members (id, name, role, department, photo, email, phone, linkedin, github, bio, "order", active)
-VALUES (9, 'Nithya Shree C', 'First Year Coordinator', 'I - AI&DS', '', '', '', '', '', 'Welcoming first-year students, introducing AI fundamentals, and coordinating junior hackathon teams.', 9, 1)
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, department = EXCLUDED.department, bio = EXCLUDED.bio;
+VALUES (9, 'Keerthi Dharani G', 'Second Year Coordinator', 'II - AI&DS', '', '', '', '', '', 'Managing second-year coordinator outreach, peer learning sessions, and club activities.', 9, 1)
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, department = EXCLUDED.department, bio = EXCLUDED.bio, "order" = EXCLUDED."order";
 
 INSERT INTO team_members (id, name, role, department, photo, email, phone, linkedin, github, bio, "order", active)
-VALUES (10, 'Dhakshina Moorthy M', 'First Year Coordinator', 'I - AI&DS', '', '', '', '', '', 'Coordinating first-year student onboarding, coding sessions, and event participation.', 10, 1)
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, department = EXCLUDED.department, bio = EXCLUDED.bio;
+VALUES (10, 'Nithya Shree C', 'First Year Coordinator', 'I - AI&DS', '', '', '', '', '', 'Welcoming first-year students, introducing AI fundamentals, and coordinating junior hackathon teams.', 10, 1)
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, department = EXCLUDED.department, bio = EXCLUDED.bio, "order" = EXCLUDED."order";
+
+INSERT INTO team_members (id, name, role, department, photo, email, phone, linkedin, github, bio, "order", active)
+VALUES (11, 'Dhakshina Moorthy M', 'First Year Coordinator', 'I - AI&DS', '', '', '', '', '', 'Coordinating first-year student onboarding, coding sessions, and event participation.', 11, 1)
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, department = EXCLUDED.department, bio = EXCLUDED.bio, "order" = EXCLUDED."order";
 
 -- Club Details Seed
 INSERT INTO club_details (id, name, department, tagline, description, vision, mission, founded_year, email, phone, location, social_links)

@@ -317,15 +317,17 @@ export default function Team() {
               .filter((m) => getTeamCategory(m.role, m.department) === catKey)
               .sort((a, b) => {
                 if (catKey === "hod") {
-                  const aIsMani = a.name.toLowerCase().includes("manivannan");
-                  const bIsMani = b.name.toLowerCase().includes("manivannan");
-                  if (aIsMani && !bIsMani) return -1;
-                  if (!aIsMani && bIsMani) return 1;
+                  const getHodRank = (name: string) => {
+                    const n = (name || "").toLowerCase();
+                    if (n.includes("manivannan")) return 1;
+                    if (n.includes("kavitha")) return 2;
+                    if (n.includes("bharathi")) return 3;
+                    return 99;
+                  };
 
-                  const aIsKavi = a.name.toLowerCase().includes("kavitha");
-                  const bIsKavi = b.name.toLowerCase().includes("kavitha");
-                  if (aIsKavi && !bIsKavi) return 1;
-                  if (!aIsKavi && bIsKavi) return -1;
+                  const rankA = getHodRank(a.name);
+                  const rankB = getHodRank(b.name);
+                  if (rankA !== rankB) return rankA - rankB;
                 }
 
                 const orderA = typeof a.order === "number" ? a.order : 999;
