@@ -300,7 +300,7 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
         return jsonResponse({
           success: true,
           data: stored || {
-            gmailUser: "ragavkrr14@gmail.com",
+            gmailUser: "",
             hasAppPassword: true,
             senderName: "AI Frontier Club",
             isConfigured: true,
@@ -316,9 +316,9 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
         } catch {}
 
         const newSettings = {
-          gmailUser: body.gmailUser || prevSettings.gmailUser || "ragavkrr14@gmail.com",
-          gmailAppPassword: body.gmailAppPassword || prevSettings.gmailAppPassword || "qzkuhlklzhijrlob",
-          hasAppPassword: true,
+          gmailUser: body.gmailUser || prevSettings.gmailUser || "",
+          gmailAppPassword: body.gmailAppPassword || prevSettings.gmailAppPassword || "",
+          hasAppPassword: Boolean(body.gmailAppPassword || prevSettings.gmailAppPassword),
           senderName: body.senderName || prevSettings.senderName || "AI Frontier Club",
           isConfigured: true,
         };
@@ -351,8 +351,8 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
               venue: "Campus AI Lab",
               registrationCode: "TEST-LIVE",
               member1: "Club Member",
-              gmailUser: savedSettings.gmailUser || "ragavkrr14@gmail.com",
-              gmailAppPassword: savedSettings.gmailAppPassword || "qzkuhlklzhijrlob",
+              gmailUser: savedSettings.gmailUser || undefined,
+              gmailAppPassword: savedSettings.gmailAppPassword || undefined,
             }),
           });
           const testData = await testRes.json();

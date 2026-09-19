@@ -164,7 +164,7 @@ ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title;
 
 -- Team Members Seed
 INSERT INTO team_members (id, name, role, department, photo, email, phone, linkedin, github, bio, "order", active)
-VALUES (2, 'Ragav U', 'Co Ordinator', 'Artificial Intelligence & Data Science', '', 'ragavkrr14@gmail.com', '+919360376757', 'https://www.linkedin.com/in/ragav-u/', 'https://github.com/RagavU1430', '', 0, 1)
+VALUES (2, 'Ragav U', 'Co Ordinator', 'Artificial Intelligence & Data Science', '', 'coordinator@aifrontierclub.org', '+919360376757', 'https://www.linkedin.com/in/ragav-u/', 'https://github.com/RagavU1430', '', 0, 1)
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
 INSERT INTO team_members (id, name, role, department, photo, email, phone, linkedin, github, bio, "order", active)
 VALUES (3, 'Nithish Kumar M', 'Coordinator', 'Artificial Intelligence & Data Science', '', 'kongunithishkumar0607@gmail.com', '9042850607', '', '', '', 0, 1)
@@ -192,10 +192,10 @@ INSERT INTO settings (key, value)
 VALUES ('google_sheet_webhook_url', 'https://script.google.com/macros/s/AKfycbwM2P5GG8BQP-OWEZHo3IMlYHoD5NVCUJeZclRWeR_Q6u8V4fGno1xb3tMLg6tJRh3m/exec')
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 INSERT INTO settings (key, value)
-VALUES ('gmail_user', 'ragavkrr14@gmail.com')
+VALUES ('gmail_user', '')
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 INSERT INTO settings (key, value)
-VALUES ('gmail_app_password', 'qzkuhlklzhijrlob')
+VALUES ('gmail_app_password', '')
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 INSERT INTO settings (key, value)
 VALUES ('email_sender_name', 'AI Frontier Club')
@@ -203,7 +203,7 @@ ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 
 -- Event Registrations Seed
 INSERT INTO event_registrations (id, event_id, team_name, member1, member2, name, email, phone, member2_phone, department, college, roll_number, year, notes, attended, checked_in_at)
-VALUES (9, 4, 'TEST TEAM', 'TEST NAME 1', 'TEST NAME 2', 'TEST NAME 1', 'ragavkrr14@gmail.com', '', 'kalpanaragav091@gmail.com', 'Artificial Intelligence and Data Science', 'Artificial Intelligence and Data Science', '', '2nd Year', '', 1, '2026-09-18T04:58:27.130Z'::timestamptz)
+VALUES (9, 4, 'TEST TEAM', 'TEST NAME 1', 'TEST NAME 2', 'TEST NAME 1', 'lead@example.com', '', 'member2@example.com', 'Artificial Intelligence and Data Science', 'Artificial Intelligence and Data Science', '', '2nd Year', '', 1, '2026-09-18T04:58:27.130Z'::timestamptz)
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO event_registrations (id, event_id, team_name, member1, member2, name, email, phone, member2_phone, department, college, roll_number, year, notes, attended, checked_in_at)
 VALUES (10, 4, 'Neural Knights', 'Sabesh E', 'Ram Pradeep RP', 'Sabesh E', 'sabeshsabesh082007@gmail.com', '', 'rampradeep4858@gmail.com', 'Artificial Intelligence and Data Science', 'Artificial Intelligence and Data Science', '', '3rd Year', '', 1, '2026-09-18T04:58:34.889Z'::timestamptz)

@@ -209,32 +209,23 @@ export default async function handler(req, res) {
   const customUser = body.gmailUser;
   const customPass = body.gmailAppPassword;
 
-  let gmailUser = (customUser || process.env.GMAIL_USER || "ragavkrr14@gmail.com").trim();
-  let gmailPass = (
-    customPass ||
-    process.env.GMAIL_APP_PASSWORD ||
-    process.env.GMAIL_PASSWORD ||
-    "qzkuhlklzhijrlob"
-  )
-    .replace(/\s+/g, "")
-    .trim();
+  const envUser = (process.env.GMAIL_USER || "").trim();
+  const envPass = (process.env.GMAIL_APP_PASSWORD || process.env.GMAIL_PASSWORD || "").replace(/\s+/g, "").trim();
 
-  // If using the known verified App Password, always authenticate as ragavkrr14@gmail.com
-  if (gmailPass.toLowerCase() === "qzkuhlklzhijrlob") {
-    gmailUser = "ragavkrr14@gmail.com";
-  }
+  let gmailUser = (customUser || envUser).trim();
+  let gmailPass = (customPass || envPass).replace(/\s+/g, "").trim();
 
   if (!gmailUser || !gmailPass) {
     return res.status(500).json({
       success: false,
-      error: "GMAIL_USER or GMAIL_APP_PASSWORD is not configured.",
+      error: "GMAIL_USER or GMAIL_APP_PASSWORD is not configured in .env",
       preview: textContent,
     });
   }
 
   const mailOptions = {
     from: `"${senderName}" <${gmailUser}>`,
-    replyTo: "aifrontierclub@gmail.com",
+    replyTo: clubEmail,
     to: uniqueRecipients.join(", "),
     subject,
     html: htmlContent,
@@ -269,16 +260,16 @@ export default async function handler(req, res) {
   } catch (err) {
     console.warn("[Email] Primary Gmail SMTP delivery error:", err.message);
 
-    // Fallback: If primary credentials failed (e.g. BadCredentials 535), retry with verified system credentials
-    if (gmailUser !== "ragavkrr14@gmail.com" || gmailPass !== "qzkuhlklzhijrlob") {
+    // Fallback: If custom credentials failed, retry using environment credentials (.env)
+    if (envUser && envPass && (gmailUser !== envUser || gmailPass !== envPass)) {
       try {
         const fallbackTransporter = nodemailer.createTransport({
           host: "smtp.gmail.com",
           port: 465,
           secure: true,
           auth: {
-            user: "ragavkrr14@gmail.com",
-            pass: "qzkuhlklzhijrlob",
+            user: envUser,
+            pass: envPass,
           },
           tls: {
             rejectUnauthorized: false,
@@ -289,14 +280,14 @@ export default async function handler(req, res) {
 
         const fallbackInfo = await fallbackTransporter.sendMail({
           ...mailOptions,
-          from: `"${senderName}" <ragavkrr14@gmail.com>`,
+          from: `"${senderName}" <${envUser}>`,
         });
 
         return res.json({
           success: true,
           provider: "gmail-smtp-fallback",
           id: fallbackInfo.messageId,
-          sender: "ragavkrr14@gmail.com",
+          sender: envUser,
           recipients: uniqueRecipients,
         });
       } catch (fbErr) {
