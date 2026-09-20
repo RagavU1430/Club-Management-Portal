@@ -4,6 +4,11 @@ import { createEventSheet, recordRegistration } from "../services/googleSheets.j
 import { sendRegistrationEmail, notifySubscribersNewEvent } from "../services/emailService.js";
 import XLSX from "xlsx";
 
+const EVENT_FIELDS = new Set([
+  "title", "venue", "description", "summary", "image", "status", "date",
+  "end_date", "registration_link", "webhook_url", "capacity", "featured", "tags",
+]);
+
 function pickBody(body = {}) {
   const out = {};
 
@@ -16,19 +21,15 @@ function pickBody(body = {}) {
 
   // date & end_date
   if (body.date) {
-    try {
-      out.date = new Date(body.date).toISOString();
-    } catch {
-      out.date = String(body.date);
-    }
+    const parsedDate = new Date(body.date);
+    if (Number.isNaN(parsedDate.getTime())) throw new ApiError(400, "Event date must be valid.");
+    out.date = parsedDate.toISOString();
   }
   const rawEndDate = body.endDate !== undefined ? body.endDate : body.end_date;
   if (rawEndDate) {
-    try {
-      out.end_date = new Date(rawEndDate).toISOString();
-    } catch {
-      out.end_date = String(rawEndDate);
-    }
+    const parsedEndDate = new Date(rawEndDate);
+    if (Number.isNaN(parsedEndDate.getTime())) throw new ApiError(400, "Event end date must be valid.");
+    out.end_date = parsedEndDate.toISOString();
   } else if (rawEndDate === null || rawEndDate === "") {
     out.end_date = null;
   }
@@ -142,7 +143,7 @@ export async function create(req, res) {
   let n = 2;
   while (db.prepare("SELECT id FROM events WHERE slug = ?").get(slug)) slug = `${slug}-${n++}`;
   body.slug = slug;
-  const cols = Object.keys(body);
+  const cols = Object.keys(body).filter((key) => EVENT_FIELDS.has(key));
   const vals = Object.values(body);
   const placeholders = cols.map(() => "?").join(", ");
   const colNames = cols.join(", ");
@@ -168,6 +169,7 @@ export async function update(req, res) {
     body.slug = slug;
   }
   const entries = Object.entries(body).filter(([k]) => k !== "endDate");
+  if (entries.length === 0) return res.json({ success: true, data: decorate(existing) });
   const set = entries.map(([k]) => `${k} = ?`).join(", ");
   const vals = entries.map(([, v]) => v);
   vals.push(id);
@@ -432,7 +434,7 @@ export async function exportEventRegistrationsExcel(req, res) {
       "Member 1 (Lead)": r.member1 || r.name || "",
       "Lead Email": r.email || "",
       "Member 2": r.member2 || "",
-      "Member 2 Email": r.member2_phone || r.member2Phone || "",
+      "Member 2 Email": r.member2_email || "",
       "Department": r.department || r.college || "",
       "Year of Study": r.year || "",
       "Notes / Requirements": r.notes || "",
@@ -507,7 +509,7 @@ export async function exportEventRegistrationsCSV(req, res) {
       r.member1 || r.name || "",
       r.email || "",
       r.member2 || "",
-      r.member2_phone || "",
+      r.member2_email || "",
       r.department || r.college || "",
       r.year || "",
       r.notes || "",

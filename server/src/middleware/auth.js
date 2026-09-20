@@ -1,3 +1,4 @@
+import "dotenv/config";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { ApiError, asyncHandler } from "../utils/http.js";

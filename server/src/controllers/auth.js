@@ -1,3 +1,4 @@
+import "dotenv/config";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { db, rowToJSON } from "../config/db.js";
@@ -56,6 +57,13 @@ const SEED = [
 ];
 
 export function seed() {
+  if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
+    throw new Error("JWT_SECRET must be configured in production.");
+  }
+  if (process.env.NODE_ENV === "production") {
+    console.log("[seed] production mode: default admin seed skipped.");
+    return;
+  }
   for (const s of SEED) {
     if (!db.prepare("SELECT id FROM users WHERE email = ?").get(s.email)) {
       db.prepare("INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)").run(s.name, s.email, bcrypt.hashSync(s.password, 12), s.role);

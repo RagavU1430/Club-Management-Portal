@@ -1,4 +1,4 @@
-import { isSupabaseConfigured } from "../config/supabase";
+import { supabase, isSupabaseConfigured } from "../config/supabase";
 import * as sb from "../services/supabaseService";
 
 /**
@@ -72,7 +72,7 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
 
       if (pathname === "/api/events/lookup-ticket" && method === "POST") {
         const body = init?.body ? JSON.parse(init.body as string) : {};
-        const res = await sb.lookupTicket(body.identifier || body.email || body.ticketCode);
+        const res = await sb.lookupTicket(body.identifier || body.email || body.ticketCode, body.eventId);
         return jsonResponse(res);
       }
 
@@ -204,52 +204,38 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
           return jsonResponse({ success: false, error: "Password is required." }, 400);
         }
 
-        const validCredentials =
-          (email === "aifrontierclub@gmail.com" && (password === "AiFrontierClub123" || password === "aifrontierclub123")) ||
-          password === "AiFrontierClub123" ||
-          password === "aifrontierclub123" ||
-          (email === "admin@localhost" && (password === "admin123" || password === "admin123!@#"));
-
-        if (!validCredentials) {
-          return jsonResponse({ success: false, error: "Invalid email or password." }, 401);
-        }
-
-        const user = {
-          id: 1,
-          email: "aifrontierclub@gmail.com",
-          name: "AI Frontier Administrator",
-          role: "admin",
-        };
-        const token = "supabase_admin_session_token_" + Date.now();
-        localStorage.setItem("aif_token", token);
-        localStorage.setItem("aif_user", JSON.stringify(user));
+        const user = await sb.signInAdmin(email, password);
+        localStorage.setItem("aif_token", user.token);
+        localStorage.setItem("aif_user", JSON.stringify({ ...user, token: undefined }));
 
         return jsonResponse({
           success: true,
           data: {
-            token,
-            user,
+            token: user.token,
+            user: { ...user, token: undefined },
           },
         });
       }
 
       if (pathname === "/api/auth/me" && method === "GET") {
-        const stored = localStorage.getItem("aif_user");
-        if (stored) {
-          try {
-            return jsonResponse({ success: true, data: { user: JSON.parse(stored) } });
-          } catch {}
-        }
-        return jsonResponse({ success: false, error: "Not logged in" }, 401);
+        const user = await sb.getAdminUser();
+        return jsonResponse({ success: true, data: { user } });
       }
 
       if (pathname === "/api/auth/logout" && method === "POST") {
+        await supabase.auth.signOut();
         localStorage.removeItem("aif_token");
         localStorage.removeItem("aif_user");
         return jsonResponse({ success: true, data: { message: "Logged out" } });
       }
 
       if (pathname === "/api/auth/change-password" && method === "POST") {
+        const body = init?.body ? JSON.parse(init.body as string) : {};
+        if (!body.newPassword || String(body.newPassword).length < 8) {
+          return jsonResponse({ success: false, error: "New password must be at least 8 characters." }, 400);
+        }
+        const { error } = await supabase.auth.updateUser({ password: String(body.newPassword) });
+        if (error) throw error;
         return jsonResponse({ success: true, data: { message: "Password updated successfully" } });
       }
 

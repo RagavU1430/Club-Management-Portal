@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS event_registrations (
 ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS section TEXT NOT NULL DEFAULT '';
 ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS member2_email TEXT NOT NULL DEFAULT '';
 ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS member2_roll_number TEXT NOT NULL DEFAULT '';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_registrations_event_email ON event_registrations(event_id, lower(email));
 
 
 CREATE TABLE IF NOT EXISTS club_details (
@@ -124,45 +125,76 @@ BEGIN
   -- Events
   DROP POLICY IF EXISTS "Public read events" ON events;
   DROP POLICY IF EXISTS "Anon full access events" ON events;
+  DROP POLICY IF EXISTS "Authenticated manage events" ON events;
   CREATE POLICY "Public read events" ON events FOR SELECT USING (true);
-  CREATE POLICY "Anon full access events" ON events FOR ALL TO anon USING (true) WITH CHECK (true);
+  CREATE POLICY "Authenticated manage events" ON events FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
   -- Team members
   DROP POLICY IF EXISTS "Public read team_members" ON team_members;
   DROP POLICY IF EXISTS "Anon full access team_members" ON team_members;
+  DROP POLICY IF EXISTS "Authenticated manage team_members" ON team_members;
   CREATE POLICY "Public read team_members" ON team_members FOR SELECT USING (true);
-  CREATE POLICY "Anon full access team_members" ON team_members FOR ALL TO anon USING (true) WITH CHECK (true);
+  CREATE POLICY "Authenticated manage team_members" ON team_members FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
   -- Club details
   DROP POLICY IF EXISTS "Public read club_details" ON club_details;
   DROP POLICY IF EXISTS "Anon full access club_details" ON club_details;
+  DROP POLICY IF EXISTS "Authenticated manage club_details" ON club_details;
   CREATE POLICY "Public read club_details" ON club_details FOR SELECT USING (true);
-  CREATE POLICY "Anon full access club_details" ON club_details FOR ALL TO anon USING (true) WITH CHECK (true);
+  CREATE POLICY "Authenticated manage club_details" ON club_details FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
   -- Club activities
   DROP POLICY IF EXISTS "Public read club_activities" ON club_activities;
   DROP POLICY IF EXISTS "Anon full access club_activities" ON club_activities;
+  DROP POLICY IF EXISTS "Authenticated manage club_activities" ON club_activities;
   CREATE POLICY "Public read club_activities" ON club_activities FOR SELECT USING (true);
-  CREATE POLICY "Anon full access club_activities" ON club_activities FOR ALL TO anon USING (true) WITH CHECK (true);
+  CREATE POLICY "Authenticated manage club_activities" ON club_activities FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
   -- Event registrations
   DROP POLICY IF EXISTS "Public register events" ON event_registrations;
   DROP POLICY IF EXISTS "Public lookup ticket" ON event_registrations;
   DROP POLICY IF EXISTS "Anon full access registrations" ON event_registrations;
+  DROP POLICY IF EXISTS "Authenticated manage registrations" ON event_registrations;
   CREATE POLICY "Public register events" ON event_registrations FOR INSERT WITH CHECK (true);
-  CREATE POLICY "Public lookup ticket" ON event_registrations FOR SELECT USING (true);
-  CREATE POLICY "Anon full access registrations" ON event_registrations FOR ALL TO anon USING (true) WITH CHECK (true);
+  CREATE POLICY "Authenticated manage registrations" ON event_registrations FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
   -- Subscribers
   DROP POLICY IF EXISTS "Public subscribe newsletter" ON subscribers;
   DROP POLICY IF EXISTS "Anon full access subscribers" ON subscribers;
+  DROP POLICY IF EXISTS "Authenticated manage subscribers" ON subscribers;
   CREATE POLICY "Public subscribe newsletter" ON subscribers FOR INSERT WITH CHECK (true);
-  CREATE POLICY "Anon full access subscribers" ON subscribers FOR ALL TO anon USING (true) WITH CHECK (true);
+  CREATE POLICY "Authenticated manage subscribers" ON subscribers FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
   -- Settings
   DROP POLICY IF EXISTS "Anon full access settings" ON settings;
-  CREATE POLICY "Anon full access settings" ON settings FOR ALL TO anon USING (true) WITH CHECK (true);
+  DROP POLICY IF EXISTS "Authenticated manage settings" ON settings;
+  CREATE POLICY "Authenticated manage settings" ON settings FOR ALL TO authenticated USING (true) WITH CHECK (true);
 END $$;
+
+-- Public ticket lookup returns only the requested participant's ticket fields.
+CREATE OR REPLACE FUNCTION lookup_registration_tickets(lookup_identifier TEXT, target_event_id BIGINT DEFAULT NULL)
+RETURNS TABLE (
+  id BIGINT, event_id BIGINT, team_name TEXT, member1 TEXT, member2 TEXT, name TEXT,
+  email TEXT, phone TEXT, department TEXT, year TEXT, attended INTEGER,
+  checked_in_at TIMESTAMPTZ, event_title TEXT, event_date TIMESTAMPTZ, event_venue TEXT
+)
+LANGUAGE sql SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT r.id, r.event_id, r.team_name, r.member1, r.member2, r.name, r.email,
+         r.phone, r.department, r.year, r.attended, r.checked_in_at,
+         e.title, e.date, e.venue
+  FROM event_registrations r
+  JOIN events e ON e.id = r.event_id
+  WHERE (lower(r.email) = lower(lookup_identifier)
+         OR lower(r.member2_email) = lower(lookup_identifier)
+         OR (lookup_identifier ~ '^aif-[0-9]+-[0-9]+$'
+             AND r.id = split_part(lookup_identifier, '-', 3)::BIGINT))
+    AND (target_event_id IS NULL OR r.event_id = target_event_id)
+  ORDER BY r.created_at DESC;
+$$;
+
+REVOKE ALL ON FUNCTION lookup_registration_tickets(TEXT, BIGINT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION lookup_registration_tickets(TEXT, BIGINT) TO anon, authenticated;
 
 -- 4. Initial Seed Data
 
@@ -286,25 +318,28 @@ BEGIN
   DROP POLICY IF EXISTS "Public insert club-uploads" ON storage.objects;
   DROP POLICY IF EXISTS "Public update club-uploads" ON storage.objects;
   DROP POLICY IF EXISTS "Public delete club-uploads" ON storage.objects;
+  DROP POLICY IF EXISTS "Authenticated insert club-uploads" ON storage.objects;
+  DROP POLICY IF EXISTS "Authenticated update club-uploads" ON storage.objects;
+  DROP POLICY IF EXISTS "Authenticated delete club-uploads" ON storage.objects;
 
   CREATE POLICY "Public select club-uploads"
     ON storage.objects FOR SELECT
     TO public
     USING (bucket_id = 'club-uploads');
 
-  CREATE POLICY "Public insert club-uploads"
+  CREATE POLICY "Authenticated insert club-uploads"
     ON storage.objects FOR INSERT
-    TO public
+    TO authenticated
     WITH CHECK (bucket_id = 'club-uploads');
 
-  CREATE POLICY "Public update club-uploads"
+  CREATE POLICY "Authenticated update club-uploads"
     ON storage.objects FOR UPDATE
-    TO public
+    TO authenticated
     USING (bucket_id = 'club-uploads');
 
-  CREATE POLICY "Public delete club-uploads"
+  CREATE POLICY "Authenticated delete club-uploads"
     ON storage.objects FOR DELETE
-    TO public
+    TO authenticated
     USING (bucket_id = 'club-uploads');
 END $$;
 

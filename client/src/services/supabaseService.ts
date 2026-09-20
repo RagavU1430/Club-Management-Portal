@@ -42,6 +42,29 @@ function parseTags(tags: unknown): string[] {
   return [];
 }
 
+export async function signInAdmin(email: string, password: string) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error || !data.user || !data.session) throw new Error(error?.message || "Invalid email or password.");
+  return {
+    id: data.user.id,
+    email: data.user.email || email,
+    name: String(data.user.user_metadata?.name || data.user.email || "Administrator"),
+    role: String(data.user.user_metadata?.role || "admin"),
+    token: data.session.access_token,
+  };
+}
+
+export async function getAdminUser() {
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user) throw new Error("Not logged in.");
+  return {
+    id: data.user.id,
+    email: data.user.email || "",
+    name: String(data.user.user_metadata?.name || data.user.email || "Administrator"),
+    role: String(data.user.user_metadata?.role || "admin"),
+  };
+}
+
 export async function getEvents(options: { scope?: string; limit?: number } = {}) {
   if (!isSupabaseConfigured) return { success: true, data: [] };
 
@@ -480,7 +503,7 @@ export async function registerForEvent(eventId: number | string, input: Registra
     const regCode = `AIF-${numericId}-${existing.id}`;
 
     // Re-dispatch confirmation pass to participant
-    const recipientEmails = [existing.email, existing.member2_email, existing.member2_phone].filter(
+    const recipientEmails = [existing.email, existing.member2_email].filter(
       (e) => e && e.includes("@")
     );
     if (recipientEmails.length > 0) {
@@ -491,7 +514,7 @@ export async function registerForEvent(eventId: number | string, input: Registra
           body: JSON.stringify({
             to: recipientEmails,
             email: existing.email,
-            member2Email: existing.member2_email || existing.member2_phone,
+            member2Email: existing.member2_email,
             eventTitle: event.title,
             eventDate: event.date,
             venue: event.venue,
@@ -572,7 +595,9 @@ export async function registerForEvent(eventId: number | string, input: Registra
       name: (input.member1 || "").trim(),
       email: cleanEmail,
       phone: String(input.phone || "").trim(),
-      member2_phone: String(input.member2Phone || input.member2_phone || input.member2Email || input.member2_email || "").trim(),
+      member2_phone: String(input.member2Phone || input.member2_phone || "").trim(),
+      member2_email: String(input.member2Email || input.member2_email || "").trim().toLowerCase(),
+      member2_roll_number: String(input.member2RollNumber || input.member2_roll_number || "").trim(),
       department: String(input.department || input.college || "AI & Data Science").trim(),
       college: String(input.college || input.department || "AI & Data Science").trim(),
       roll_number: String(input.rollNumber || "").trim(),
@@ -595,7 +620,7 @@ export async function registerForEvent(eventId: number | string, input: Registra
   const regCode = `AIF-${numericId}-${insertedData.id}`;
 
   // Trigger official confirmation email via serverless dispatcher (background non-blocking)
-  const recipientEmails = [payload.email, payload.member2_email, payload.member2_phone].filter(
+  const recipientEmails = [payload.email, payload.member2_email].filter(
     (e) => e && e.includes("@")
   );
   if (recipientEmails.length > 0) {
@@ -606,7 +631,7 @@ export async function registerForEvent(eventId: number | string, input: Registra
         body: JSON.stringify({
           to: recipientEmails,
           email: payload.email,
-          member2Email: payload.member2_email || payload.member2_phone,
+          member2Email: payload.member2_email,
           eventTitle: event.title,
           eventDate: event.date,
           venue: event.venue,
@@ -626,7 +651,7 @@ export async function registerForEvent(eventId: number | string, input: Registra
   // Google Sheets automatic real-time live sync (background non-blocking)
   syncSingleRegistrationToGoogleSheet(event, {
     ...payload,
-    id: data.id,
+    id: insertedData.id,
     registrationCode: regCode,
   }).catch((err) => console.warn("[Google Sheets Live Sync]", err?.message));
 
@@ -634,7 +659,7 @@ export async function registerForEvent(eventId: number | string, input: Registra
     success: true,
     message: `Registration confirmed for ${event.title}!`,
     data: {
-      id: data.id,
+      id: insertedData.id,
       registrationId: regCode,
       teamName: payload.team_name,
       member1: payload.member1,
@@ -651,27 +676,20 @@ export async function registerForEvent(eventId: number | string, input: Registra
   };
 }
 
-export async function lookupTicket(identifier: string) {
+export async function lookupTicket(identifier: string, eventId?: number | string) {
   const clean = String(identifier || "").trim().toLowerCase();
   if (!clean) throw new Error("Please enter your Registration ID or Email Address.");
 
-  let query = supabase
-    .from("event_registrations")
-    .select("*, events (title, date, venue)");
-
-  if (clean.startsWith("aif-")) {
-    const parts = clean.split("-");
-    const id = Number(parts[parts.length - 1]);
-    if (!isNaN(id)) query = query.eq("id", id);
-    else query = query.ilike("email", clean);
-  } else {
-    query = query.ilike("email", clean);
-  }
-
-  const { data, error } = await query;
+  const numericEventId = eventId !== undefined && eventId !== null && String(eventId).trim() !== ""
+    ? await resolveNumericEventId(eventId)
+    : null;
+  const { data, error } = await supabase.rpc("lookup_registration_tickets", {
+    lookup_identifier: clean,
+    target_event_id: numericEventId,
+  });
   if (error) throw error;
 
-  const tickets = (data || []).map((r) => ({
+  const tickets = (data || []).map((r: any) => ({
     id: r.id,
     registrationId: `AIF-${r.event_id}-${r.id}`,
     teamName: r.team_name,
@@ -684,9 +702,9 @@ export async function lookupTicket(identifier: string) {
     year: r.year,
     attended: Boolean(r.attended),
     checkedInAt: r.checked_in_at,
-    eventTitle: r.events?.title || "AI Frontier Club Event",
-    eventDate: r.events?.date,
-    venue: r.events?.venue,
+    eventTitle: r.event_title || "AI Frontier Club Event",
+    eventDate: r.event_date,
+    venue: r.event_venue,
   }));
 
   return { success: true, count: tickets.length, tickets };
@@ -701,7 +719,7 @@ export async function resolveNumericEventId(eventId: number | string): Promise<n
     .eq("slug", String(eventId))
     .maybeSingle();
   if (ev?.id) return ev.id;
-  return 4; // default event ID fallback if nothing matches
+  throw new Error("Event not found.");
 }
 
 export async function getEventRegistrations(eventId: number | string) {
@@ -716,19 +734,9 @@ export async function getEventRegistrations(eventId: number | string) {
     console.warn("[Supabase] getEventRegistrations error:", error.message);
   }
 
-  if (!data || data.length === 0) {
-    const { data: fallbackList } = await supabase
-      .from("event_registrations")
-      .select("*")
-      .order("id", { ascending: true });
-    if (fallbackList && fallbackList.length > 0) {
-      data = fallbackList;
-    }
-  }
-
   const list = (data || []).map((r) => ({
     ...r,
-    registrationCode: `AIF-${numericId || r.event_id || 4}-${r.id}`,
+    registrationCode: `AIF-${numericId}-${r.id}`,
     attended: Boolean(r.attended),
     checked_in_at: r.checked_in_at || "",
   }));
@@ -754,16 +762,6 @@ export async function getAttendance(eventId: number | string) {
 
   if (error) {
     console.warn("[Supabase] getAttendance registrations query error:", error.message);
-  }
-
-  if (!list || list.length === 0) {
-    const { data: fallbackList } = await supabase
-      .from("event_registrations")
-      .select("*")
-      .order("id", { ascending: true });
-    if (fallbackList && fallbackList.length > 0) {
-      list = fallbackList;
-    }
   }
 
   const regs = list || [];

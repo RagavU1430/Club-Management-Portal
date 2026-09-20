@@ -127,6 +127,7 @@ try { db.exec("ALTER TABLE event_registrations ADD COLUMN checked_in_at TEXT DEF
 try { db.exec("ALTER TABLE event_registrations ADD COLUMN section TEXT DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE event_registrations ADD COLUMN member2_email TEXT DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE event_registrations ADD COLUMN member2_roll_number TEXT DEFAULT ''"); } catch {}
+try { db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_registrations_event_email ON event_registrations(event_id, email COLLATE NOCASE)"); } catch {}
 
 // Settings table for global configs (e.g. Google Sheets webhook)
 db.exec(`
