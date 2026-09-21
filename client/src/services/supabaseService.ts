@@ -680,34 +680,113 @@ export async function lookupTicket(identifier: string, eventId?: number | string
   const clean = String(identifier || "").trim().toLowerCase();
   if (!clean) throw new Error("Please enter your Registration ID or Email Address.");
 
-  const numericEventId = eventId !== undefined && eventId !== null && String(eventId).trim() !== ""
-    ? await resolveNumericEventId(eventId)
-    : null;
-  const { data, error } = await supabase.rpc("lookup_registration_tickets", {
-    lookup_identifier: clean,
-    target_event_id: numericEventId,
-  });
-  if (error) throw error;
+  let numericEventId: number | null = null;
+  if (eventId !== undefined && eventId !== null && String(eventId).trim() !== "") {
+    try {
+      numericEventId = await resolveNumericEventId(eventId);
+    } catch {
+      numericEventId = null;
+    }
+  }
 
-  const tickets = (data || []).map((r: any) => ({
+  let rawList: any[] = [];
+  let rpcSuccess = false;
+
+  // 1. Try RPC function if present in Supabase
+  try {
+    const { data, error } = await supabase.rpc("lookup_registration_tickets", {
+      lookup_identifier: clean,
+      target_event_id: numericEventId,
+    });
+    if (!error && Array.isArray(data) && data.length > 0) {
+      rawList = data;
+      rpcSuccess = true;
+    }
+  } catch {
+    // Ignore RPC failure and proceed with direct query fallback
+  }
+
+  // 2. Direct Supabase query fallback (handles case where RPC is missing from schema cache)
+  if (!rpcSuccess) {
+    const aifMatch = clean.match(/^aif-(?:\d+-)?(\d+)$/i);
+
+    const queryRegistrations = async (targetId: number | null) => {
+      let q = supabase
+        .from("event_registrations")
+        .select("*, events(id, title, date, venue)");
+
+      if (targetId) {
+        q = q.eq("event_id", targetId);
+      }
+
+      if (aifMatch) {
+        q = q.eq("id", Number(aifMatch[1]));
+      } else {
+        q = q.or(`email.ilike.${clean},member2_email.ilike.${clean},roll_number.ilike.${clean},phone.ilike.${clean}`);
+      }
+
+      const { data, error } = await q.order("created_at", { ascending: false });
+      if (error) {
+        console.warn("[lookupTicket direct query warning]", error.message);
+        return [];
+      }
+      return data || [];
+    };
+
+    if (numericEventId) {
+      rawList = await queryRegistrations(numericEventId);
+      // If none found for specific event, also look across all events
+      if (rawList.length === 0) {
+        rawList = await queryRegistrations(null);
+      }
+    } else {
+      rawList = await queryRegistrations(null);
+    }
+  }
+
+  const tickets = (rawList || []).map((r: any) => ({
     id: r.id,
-    registrationId: `AIF-${r.event_id}-${r.id}`,
-    teamName: r.team_name,
-    member1: r.member1,
-    member2: r.member2,
-    name: r.name,
-    email: r.email,
-    phone: r.phone,
-    department: r.department,
-    year: r.year,
+    registrationId: `AIF-${r.event_id || numericEventId || ""}-${r.id}`,
+    teamName: r.team_name || r.teamName || "Team",
+    team_name: r.team_name || r.teamName || "Team",
+    member1: r.member1 || r.name || "",
+    member2: r.member2 || "",
+    name: r.name || r.member1 || "",
+    email: r.email || "",
+    phone: r.phone || "",
+    member2Phone: r.member2_phone || "",
+    member2Email: r.member2_email || "",
+    member2_email: r.member2_email || "",
+    department: r.department || r.college || "",
+    college: r.college || r.department || "",
+    rollNumber: r.roll_number || r.rollNumber || "",
+    roll_number: r.roll_number || r.rollNumber || "",
+    member2RollNumber: r.member2_roll_number || r.member2RollNumber || "",
+    member2_roll_number: r.member2_roll_number || r.member2RollNumber || "",
+    section: r.section || "",
+    year: r.year || "",
+    notes: r.notes || "",
     attended: Boolean(r.attended),
-    checkedInAt: r.checked_in_at,
-    eventTitle: r.event_title || "AI Frontier Club Event",
-    eventDate: r.event_date,
-    venue: r.event_venue,
+    checkedInAt: r.checked_in_at || "",
+    checked_in_at: r.checked_in_at || "",
+    event_id: r.event_id || numericEventId,
+    eventId: r.event_id || numericEventId,
+    eventTitle: r.event_title || r.events?.title || "AI Frontier Club Event",
+    eventDate: r.event_date || r.events?.date,
+    venue: r.event_venue || r.events?.venue,
+    registeredAt: r.created_at,
   }));
 
-  return { success: true, count: tickets.length, tickets };
+  return {
+    success: true,
+    found: tickets.length > 0,
+    count: tickets.length,
+    data: tickets,
+    tickets,
+    message: tickets.length > 0
+      ? `Found ${tickets.length} registration ticket(s)!`
+      : `No registered tickets found for "${clean}".`,
+  };
 }
 
 export async function resolveNumericEventId(eventId: number | string): Promise<number> {

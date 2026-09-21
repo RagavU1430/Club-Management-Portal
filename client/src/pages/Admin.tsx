@@ -1431,18 +1431,18 @@ function AttendanceGeneratorModal({
 
   return createPortal(
     <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-6xl rounded-3xl glass border border-cyan-400/20 shadow-2xl p-5 sm:p-8 max-h-[92vh] flex flex-col bg-[#070b16]/95">
+      <div className="relative w-full max-w-6xl rounded-3xl glass border border-cyan-400/20 shadow-2xl p-5 sm:p-8 max-h-[92vh] flex flex-col bg-white/95 dark:bg-[#070b16]/95">
         {/* Top Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between pb-5 border-b border-white/10 gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between pb-5 border-b border-slate-200 dark:border-white/10 gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="h-2 w-2 rounded-full bg-cyan-400 animate-ping" />
               <span className="text-xs font-mono text-cyan-300 font-bold uppercase tracking-wider">ATTENDANCE GENERATOR & LIVE CHECK-IN</span>
             </div>
-            <h3 className="text-2xl font-bold text-white font-display flex items-center gap-2">
+            <h3 className="text-2xl font-bold text-slate-900 dark:text-white font-display flex items-center gap-2">
               {event.title}
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Live check-in tracking & automated college attendance sheets
             </p>
           </div>
@@ -1474,7 +1474,7 @@ function AttendanceGeneratorModal({
             {/* Print Sheet */}
             <button
               onClick={() => window.print()}
-              className="flex items-center gap-1.5 rounded-xl glass border border-white/10 px-3 py-2 text-xs font-mono text-slate-300 hover:text-white hover:border-white/20 transition cursor-pointer"
+              className="flex items-center gap-1.5 rounded-xl glass border border-slate-200 dark:border-white/10 px-3 py-2 text-xs font-mono text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-white/20 transition cursor-pointer"
               title="Print attendance hardcopy"
             >
               <Printer className="h-3.5 w-3.5" />
@@ -1484,7 +1484,7 @@ function AttendanceGeneratorModal({
             {/* Close */}
             <button
               onClick={onClose}
-              className="rounded-xl p-2 text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+              className="rounded-xl p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition cursor-pointer"
             >
               <X className="h-5 w-5" />
             </button>
@@ -1493,47 +1493,47 @@ function AttendanceGeneratorModal({
 
         {/* Live Attendance Statistics Ribbon */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
-          <div className="glass rounded-2xl p-3.5 border border-white/10 flex flex-col justify-between">
-            <span className="text-[11px] font-mono text-slate-400 uppercase">Total Teams Registered</span>
+          <div className="glass rounded-2xl p-3.5 border border-slate-200 dark:border-white/10 flex flex-col justify-between">
+            <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 uppercase">Total Teams Registered</span>
             <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-black text-white font-display">{stats.total}</span>
-              <span className="text-[11px] font-mono text-cyan-400 font-semibold">
+              <span className="text-2xl font-black text-slate-900 dark:text-white font-display">{stats.total}</span>
+              <span className="text-[11px] font-mono text-cyan-700 dark:text-cyan-400 font-semibold">
                 {stats.total === 1 ? "Team" : "Teams"}
                 {stats.totalParticipants ? ` (${stats.totalParticipants} Members)` : ""}
               </span>
             </div>
           </div>
 
-          <div className="glass rounded-2xl p-3.5 border border-emerald-500/30 bg-emerald-950/20 flex flex-col justify-between">
-            <span className="text-[11px] font-mono text-emerald-400 uppercase flex items-center gap-1">
+          <div className="glass rounded-2xl p-3.5 border border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-950/20 flex flex-col justify-between">
+            <span className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 uppercase flex items-center gap-1">
               <CheckCircle2 className="h-3 w-3" /> Present / Checked In
             </span>
             <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-black text-emerald-300 font-display">{stats.present}</span>
-              <span className="text-[11px] font-mono text-emerald-400 font-semibold">
+              <span className="text-2xl font-black text-emerald-700 dark:text-emerald-300 font-display">{stats.present}</span>
+              <span className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 font-semibold">
                 {stats.present === 1 ? "Team" : "Teams"}
                 {stats.presentParticipants ? ` (${stats.presentParticipants} Members)` : ""}
               </span>
             </div>
           </div>
 
-          <div className="glass rounded-2xl p-3.5 border border-rose-500/30 bg-rose-950/20 flex flex-col justify-between">
-            <span className="text-[11px] font-mono text-rose-400 uppercase flex items-center gap-1">
+          <div className="glass rounded-2xl p-3.5 border border-rose-500/30 bg-rose-500/5 dark:bg-rose-950/20 flex flex-col justify-between">
+            <span className="text-[11px] font-mono text-rose-700 dark:text-rose-400 uppercase flex items-center gap-1">
               <XCircle className="h-3 w-3" /> Absent
             </span>
             <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-black text-rose-300 font-display">{stats.absent}</span>
-              <span className="text-[11px] font-mono text-rose-400 font-semibold">
+              <span className="text-2xl font-black text-rose-700 dark:text-rose-300 font-display">{stats.absent}</span>
+              <span className="text-[11px] font-mono text-rose-700 dark:text-rose-400 font-semibold">
                 {stats.absent === 1 ? "Team" : "Teams"}
               </span>
             </div>
           </div>
 
-          <div className="glass rounded-2xl p-3.5 border border-cyan-500/30 bg-cyan-950/20 flex flex-col justify-between">
-            <span className="text-[11px] font-mono text-cyan-300 uppercase">Turnout Rate</span>
+          <div className="glass rounded-2xl p-3.5 border border-cyan-500/30 bg-cyan-500/5 dark:bg-cyan-950/20 flex flex-col justify-between">
+            <span className="text-[11px] font-mono text-cyan-700 dark:text-cyan-300 uppercase">Turnout Rate</span>
             <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-black text-cyan-300 font-display">{stats.percentage}%</span>
-              <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
+              <span className="text-2xl font-black text-cyan-700 dark:text-cyan-300 font-display">{stats.percentage}%</span>
+              <div className="flex-1 h-2 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-500"
                   style={{ width: `${stats.percentage}%` }}
@@ -1544,16 +1544,16 @@ function AttendanceGeneratorModal({
         </div>
 
         {/* Quick Check-In Bar & Scanner Input */}
-        <form onSubmit={handleQuickCheckIn} className="mb-4 glass rounded-2xl p-3 border border-cyan-400/30 bg-cyan-950/10">
+        <form onSubmit={handleQuickCheckIn} className="mb-4 glass rounded-2xl p-3 border border-cyan-400/30 bg-cyan-500/5 dark:bg-cyan-950/10">
           <div className="flex flex-col sm:flex-row items-center gap-2">
             <div className="relative flex-1 w-full">
-              <QrCode className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-cyan-400" />
+              <QrCode className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-cyan-600 dark:text-cyan-400" />
               <input
                 ref={inputRef}
                 placeholder="Scan or type Ticket ID (e.g. AIF-4-9), Email, or Name for instant check-in..."
                 value={quickInput}
                 onChange={(e) => setQuickInput(e.target.value)}
-                className="w-full rounded-xl border border-cyan-400/20 bg-black/50 py-2.5 pl-10 pr-4 text-xs font-mono text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                className="w-full rounded-xl border border-slate-200 dark:border-cyan-400/20 bg-white dark:bg-black/50 py-2.5 pl-10 pr-4 text-xs font-mono text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400"
               />
             </div>
             <button
@@ -1592,8 +1592,8 @@ function AttendanceGeneratorModal({
               onClick={() => setFilter("all")}
               className={`px-3 py-1.5 rounded-xl text-xs font-mono transition cursor-pointer ${
                 filter === "all"
-                  ? "bg-white/15 text-white font-bold border border-white/20"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-slate-900/5 text-slate-900 font-bold border border-slate-300 dark:bg-white/15 dark:text-white dark:border-white/20"
+                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
               }`}
             >
               All Teams ({stats.total})
@@ -1603,8 +1603,8 @@ function AttendanceGeneratorModal({
               onClick={() => setFilter("present")}
               className={`px-3 py-1.5 rounded-xl text-xs font-mono transition cursor-pointer flex items-center gap-1 ${
                 filter === "present"
-                  ? "bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30"
-                  : "text-slate-400 hover:text-emerald-300"
+                  ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-500/30"
+                  : "text-slate-500 hover:text-emerald-700 dark:text-slate-400 dark:hover:text-emerald-300"
               }`}
             >
               <CheckCircle2 className="h-3 w-3" /> Present ({stats.present})
@@ -1614,8 +1614,8 @@ function AttendanceGeneratorModal({
               onClick={() => setFilter("absent")}
               className={`px-3 py-1.5 rounded-xl text-xs font-mono transition cursor-pointer flex items-center gap-1 ${
                 filter === "absent"
-                  ? "bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30"
-                  : "text-slate-400 hover:text-rose-300"
+                  ? "bg-rose-500/20 text-rose-700 dark:text-rose-300 font-bold border border-rose-500/30"
+                  : "text-slate-500 hover:text-rose-700 dark:text-slate-400 dark:hover:text-rose-300"
               }`}
             >
               <XCircle className="h-3 w-3" /> Absent ({stats.absent})
@@ -1629,7 +1629,7 @@ function AttendanceGeneratorModal({
                 placeholder="Filter attendees..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-white/5 py-1.5 pl-9 pr-4 text-xs text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
+                className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 py-1.5 pl-9 pr-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
               />
             </div>
 
@@ -1654,10 +1654,10 @@ function AttendanceGeneratorModal({
         </div>
 
         {/* Attendance Table */}
-        <div className="flex-1 overflow-auto rounded-2xl border border-white/10 bg-black/40">
+        <div className="flex-1 overflow-auto rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-black/40">
           {loading ? (
-            <div className="p-12 text-center text-slate-400 text-xs font-mono">
-              <Loader2 className="mx-auto h-6 w-6 animate-spin text-cyan-400 mb-2" />
+            <div className="p-12 text-center text-slate-500 dark:text-slate-400 text-xs font-mono">
+              <Loader2 className="mx-auto h-6 w-6 animate-spin text-cyan-600 dark:text-cyan-400 mb-2" />
               Loading attendance records...
             </div>
           ) : filtered.length === 0 ? (
@@ -1666,7 +1666,7 @@ function AttendanceGeneratorModal({
             </div>
           ) : (
             <table className="w-full text-left text-xs">
-              <thead className="bg-white/5 text-slate-400 font-mono border-b border-white/10 uppercase tracking-wider sticky top-0 backdrop-blur-md">
+              <thead className="bg-slate-100/90 dark:bg-white/5 text-slate-500 dark:text-slate-400 font-mono border-b border-slate-200 dark:border-white/10 uppercase tracking-wider sticky top-0 backdrop-blur-md">
                 <tr>
                   <th className="p-3 w-12 text-center">#</th>
                   <th className="p-3">Ticket ID</th>
@@ -1677,7 +1677,7 @@ function AttendanceGeneratorModal({
                   <th className="p-3 text-right">Attendance Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5 text-slate-200">
+              <tbody className="divide-y divide-slate-100 dark:divide-white/5 text-slate-700 dark:text-slate-200">
                 {filtered.map((r, idx) => {
                   let checkInStr = "—";
                   if (r.attended && r.checked_in_at) {
@@ -1695,45 +1695,45 @@ function AttendanceGeneratorModal({
                   return (
                     <tr
                       key={r.id}
-                      className={`hover:bg-white/5 transition ${
-                        r.attended ? "bg-emerald-950/10" : ""
+                      className={`hover:bg-slate-50 dark:hover:bg-white/5 transition ${
+                        r.attended ? "bg-emerald-50 dark:bg-emerald-950/10" : ""
                       }`}
                     >
-                      <td className="p-3 text-center font-mono text-slate-500 text-[11px]">{idx + 1}</td>
-                      <td className="p-3 font-mono text-cyan-400 font-bold">{r.registrationCode || `AIF-${event.id}-${r.id}`}</td>
+                      <td className="p-3 text-center font-mono text-slate-400 dark:text-slate-500 text-[11px]">{idx + 1}</td>
+                      <td className="p-3 font-mono text-cyan-700 dark:text-cyan-400 font-bold">{r.registrationCode || `AIF-${event.id}-${r.id}`}</td>
                       <td className="p-3">
                         {r.team_name && (
-                          <span className="inline-block rounded bg-cyan-400/10 border border-cyan-400/20 px-2 py-0.5 text-[10px] font-mono text-cyan-300 font-bold mb-0.5">
+                          <span className="inline-block rounded bg-cyan-500/10 border border-cyan-500/25 dark:border-cyan-400/20 px-2 py-0.5 text-[10px] font-mono text-cyan-700 dark:text-cyan-300 font-bold mb-0.5">
                             {r.team_name}
                           </span>
                         )}
-                        <div className="font-semibold text-white">
-                          <span className="text-slate-400 font-normal text-[11px]">M1: </span>
+                        <div className="font-semibold text-slate-900 dark:text-white">
+                          <span className="text-slate-500 dark:text-slate-400 font-normal text-[11px]">M1: </span>
                           {r.member1 || r.name}
                         </div>
                         {r.member2 && (
-                          <div className="text-[11px] text-purple-300">
-                            <span className="text-slate-400 font-normal">M2: </span>
+                          <div className="text-[11px] text-purple-700 dark:text-purple-300">
+                            <span className="text-slate-500 dark:text-slate-400 font-normal">M2: </span>
                             {r.member2}
                           </div>
                         )}
-                        <div className="text-[10px] text-slate-400 font-mono mt-0.5">{r.email}</div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">{r.email}</div>
                       </td>
                       <td className="p-3">
-                        <div className="text-white font-medium">{r.department || r.college || "—"}</div>
-                        <div className="text-[11px] text-slate-400">{r.year || "—"}</div>
+                        <div className="text-slate-900 dark:text-white font-medium">{r.department || r.college || "—"}</div>
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400">{r.year || "—"}</div>
                       </td>
-                      <td className="p-3 font-mono text-[11px] text-slate-300">
+                      <td className="p-3 font-mono text-[11px] text-slate-600 dark:text-slate-300">
                         {checkInStr}
                       </td>
                       <td className="p-3 text-center">
                         {r.attended ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 px-2.5 py-1 text-[10px] font-mono font-bold text-emerald-300 shadow-sm shadow-emerald-500/20">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 dark:border-emerald-400/40 px-2.5 py-1 text-[10px] font-mono font-bold text-emerald-700 dark:text-emerald-300 shadow-sm shadow-emerald-500/20">
                             <CheckCircle2 className="h-3 w-3" /> PRESENT
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-white/5 border border-white/10 px-2.5 py-1 text-[10px] font-mono text-slate-400">
-                            <XCircle className="h-3 w-3 text-slate-500" /> ABSENT
+                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 px-2.5 py-1 text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                            <XCircle className="h-3 w-3 text-slate-400 dark:text-slate-500" /> ABSENT
                           </span>
                         )}
                       </td>

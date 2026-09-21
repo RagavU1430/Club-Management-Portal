@@ -196,17 +196,19 @@ export default function RegistrationModal({
     setLookingUp(true);
     setLookupResults(null);
     try {
+      const trimmed = lookupEmail.trim();
       const res = await apiFetch("/api/events/lookup-ticket", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: lookupEmail, eventId: event.id }),
+        body: JSON.stringify({ email: trimmed, identifier: trimmed, eventId: event.id }),
       });
       const d = await res.json();
+      const list = Array.isArray(d?.data) ? d.data : Array.isArray(d?.tickets) ? d.tickets : [];
       if (d.success) {
-        if (d.found && d.data?.length > 0) {
-          setLookupResults(d.data);
+        if (list.length > 0) {
+          setLookupResults(list);
         } else {
-          setLookupMsg(d.message || "No registered tickets found for this mail ID.");
+          setLookupMsg(d.message || "No registered tickets found for this query.");
         }
       } else {
         setLookupMsg(d.message || "Lookup failed.");
@@ -736,17 +738,17 @@ export default function RegistrationModal({
             <form onSubmit={handleLookup} className="space-y-3">
               <div>
                 <label className="block text-xs font-mono text-slate-500 dark:text-slate-400 mb-1">
-                  REGISTERED MAIL ID
+                  REGISTERED MAIL ID OR PASS ID
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
-                    type="email"
+                    type="text"
                     required
-                    placeholder="Enter your registered email"
+                    placeholder="Enter registered email or Reg ID (e.g. ragavkrr14@gmail.com or AIF-7-14)"
                     value={lookupEmail}
                     onChange={(e) => setLookupEmail(e.target.value)}
-                    className="w-full rounded-xl border border-slate-300 dark:border-white/10 bg-white dark:bg-white/5 py-2.5 pl-10 pr-4 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-cyan-500 focus:outline-none"
+                    className="w-full rounded-xl border border-slate-300 dark:border-white/10 bg-white dark:bg-white/5 py-2.5 pl-10 pr-4 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-cyan-500 focus:outline-none font-mono"
                   />
                 </div>
               </div>
@@ -787,6 +789,11 @@ export default function RegistrationModal({
                         {t.registrationId || `AIF-${event.id}-${t.id}`}
                       </span>
                     </div>
+                    {t.eventTitle && (
+                      <div className="text-[11px] text-cyan-600 dark:text-cyan-400 font-semibold">
+                        Event: {t.eventTitle} {t.venue ? `• Venue: ${t.venue}` : ""}
+                      </div>
+                    )}
                     <div className="text-slate-600 dark:text-slate-300 space-y-1">
                       <div>
                         Participant 1: <strong className="text-slate-900 dark:text-white">{t.member1 || t.name}</strong> ({t.rollNumber || t.roll_number || "—"}) &bull; {t.email}
