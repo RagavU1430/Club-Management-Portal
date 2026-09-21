@@ -333,10 +333,15 @@ export async function updateEvent(id: number, eventData: Record<string, any>) {
 }
 
 export async function deleteEvent(id: number) {
-  const { error } = await supabase.from("events").delete().eq("id", id);
+  // NOTE: .select("id") is required — without it Supabase reports success
+  // even when RLS blocks the delete (0 rows), and the event "comes back".
+  const { data, error } = await supabase.from("events").delete().eq("id", id).select("id");
   if (error) {
     console.error("[Supabase deleteEvent Error]", error);
     throw new Error(error.message || "Failed to delete event in Supabase.");
+  }
+  if (!data || data.length === 0) {
+    throw new Error("Delete was blocked (access denied or session expired). Sign out and back into the admin portal, then try again.");
   }
   return { success: true, data: { id, deleted: true } };
 }
@@ -423,10 +428,13 @@ export async function updateTeamMember(id: number, memberData: Partial<TeamMembe
 }
 
 export async function deleteTeamMember(id: number) {
-  const { error } = await supabase.from("team_members").delete().eq("id", id);
+  const { data, error } = await supabase.from("team_members").delete().eq("id", id).select("id");
   if (error) {
     console.error("[Supabase deleteTeamMember Error]", error);
     throw new Error(error.message || "Failed to delete coordinator in Supabase.");
+  }
+  if (!data || data.length === 0) {
+    throw new Error("Delete was blocked (access denied or session expired). Sign out and back into the admin portal, then try again.");
   }
   return { success: true, data: { id, deleted: true } };
 }
@@ -1020,8 +1028,11 @@ export async function bulkAttendance(eventId: number | string, payload: any) {
 }
 
 export async function deleteEventRegistration(regId: number) {
-  const { error } = await supabase.from("event_registrations").delete().eq("id", regId);
+  const { data, error } = await supabase.from("event_registrations").delete().eq("id", regId).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Delete was blocked (access denied or session expired). Sign out and back into the admin portal, then try again.");
+  }
   return { success: true, data: { id: regId, deleted: true } };
 }
 
@@ -1074,8 +1085,11 @@ export async function updateActivity(id: number, payload: Record<string, unknown
 }
 
 export async function deleteActivity(id: number) {
-  const { error } = await supabase.from("club_activities").delete().eq("id", id);
+  const { data, error } = await supabase.from("club_activities").delete().eq("id", id).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Delete was blocked (access denied or session expired). Sign out and back into the admin portal, then try again.");
+  }
   return { success: true, data: { id, deleted: true } };
 }
 
@@ -1127,8 +1141,11 @@ export async function updateGame(id: number, payload: Record<string, unknown>) {
 }
 
 export async function deleteGame(id: number) {
-  const { error } = await supabase.from("games").delete().eq("id", id);
+  const { data, error } = await supabase.from("games").delete().eq("id", id).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Delete was blocked (access denied or session expired). Sign out and back into the admin portal, then try again.");
+  }
   return { success: true, data: { id, deleted: true } };
 }
 
