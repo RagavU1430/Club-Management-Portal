@@ -83,7 +83,7 @@ function isUpcoming(e) {
   if (typeof e.date === "string" && !e.date.includes("T") && !e.date.includes(":") && !e.end_date) {
     end.setHours(23, 59, 59, 999);
   }
-  return (e.status === "published" || !e.status) && end.getTime() >= Date.now();
+  return (e.status === "published" || e.status === "registration_paused" || !e.status) && end.getTime() >= Date.now();
 }
 
 function decorate(event) {
@@ -204,6 +204,10 @@ export async function registerForEvent(req, res) {
   const eventId = Number(req.params.id);
   const event = db.prepare("SELECT * FROM events WHERE id = ?").get(eventId);
   if (!event) throw new ApiError(404, "Event not found.");
+
+  if (String(event.status || "").toLowerCase() === "registration_paused") {
+    throw new ApiError(400, "Registration is temporarily paused. Existing registrations remain valid.");
+  }
 
   // 1. Check Event Deadline (Past event check)
   if (event.date) {

@@ -106,6 +106,7 @@ export default function RegistrationModal({
   const [lookupMsg, setLookupMsg] = useState("");
 
   const isFull = Boolean(event.capacity && event.capacity > 0 && (event.registrationCount || 0) >= event.capacity);
+  const isRegistrationPaused = String(event.status || "").toLowerCase() === "registration_paused";
   const isPast = event.computedStatus === "past";
 
   // Prevent background scroll
@@ -253,12 +254,14 @@ export default function RegistrationModal({
                 className={`rounded-full px-2.5 py-0.5 text-[11px] font-mono capitalize ${
                   isPast
                     ? "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                    : isRegistrationPaused
+                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30"
                     : isFull
                     ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30"
                     : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 font-bold"
                 }`}
               >
-                {isPast ? "Concluded" : isFull ? "Capacity Full" : "Seats Open"}
+                {isPast ? "Concluded" : isRegistrationPaused ? "Registration Paused" : isFull ? "Capacity Full" : "Seats Open"}
               </span>
             </div>
 
@@ -399,6 +402,15 @@ export default function RegistrationModal({
                 </div>
               </div>
             )}
+            {isRegistrationPaused && (
+              <div className="rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-500/30 p-4 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 shrink-0 text-amber-500" />
+                <div>
+                  <strong className="font-bold">Registration Temporarily Paused</strong>
+                  <p className="mt-0.5 text-amber-700 dark:text-amber-300/80">New registrations are currently paused. Existing registrations remain valid.</p>
+                </div>
+              </div>
+            )}
 
             {/* ─── BOTTOM ACTION: REGISTER NOW TO SECURE YOUR SEAT ─── */}
             <div className="pt-3 border-t border-slate-200 dark:border-white/10 space-y-3">
@@ -416,12 +428,14 @@ export default function RegistrationModal({
               )}
               <button
                 type="button"
-                disabled={isFull || isPast}
+                disabled={isFull || isPast || isRegistrationPaused}
                 onClick={() => setView("register")}
                 className="w-full flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 py-3.5 px-6 text-sm sm:text-base font-bold text-white shadow-xl shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:scale-[1.01] transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isFull ? (
                   <span>Registrations Closed (Capacity Full)</span>
+                ) : isRegistrationPaused ? (
+                  <span>Registrations Paused</span>
                 ) : isPast ? (
                   <span>Event Has Concluded</span>
                 ) : (

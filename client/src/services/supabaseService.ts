@@ -324,20 +324,29 @@ export async function updateEvent(id: number, eventData: Record<string, any>) {
     payload.tags = tags;
   }
 
-  const { data, error } = await supabase.from("events").update(payload).eq("id", id).select().single();
+  const { error } = await supabase.from("events").update(payload).eq("id", id);
   if (error) {
     console.error("[Supabase updateEvent Error]", error);
     throw new Error(error.message || "Failed to update event in Supabase.");
   }
+  const { data: updated, error: fetchError } = await supabase
+    .from("events")
+    .select("*")
+    .eq("id", id)
+    .single();
+  if (fetchError || !updated) {
+    console.error("[Supabase updateEvent Verify Error]", fetchError);
+    throw new Error(fetchError?.message || "Event update could not be verified.");
+  }
   return {
     success: true,
     data: {
-      ...data,
-      tags: parseTags(data.tags),
-      webhookUrl: data.webhook_url || "",
-      registrationLink: data.registration_link || "",
-      agendaUrl: data.agenda_url || "",
-      endDate: data.end_date || null,
+      ...updated,
+      tags: parseTags(updated.tags),
+      webhookUrl: updated.webhook_url || "",
+      registrationLink: updated.registration_link || "",
+      agendaUrl: updated.agenda_url || "",
+      endDate: updated.end_date || null,
     },
   };
 }
@@ -483,6 +492,10 @@ export async function registerForEvent(eventId: number | string, input: Registra
   // 1. Check event capacity & status
   const { data: event, error: eventErr } = await supabase.from("events").select("*").eq("id", numericId).single();
   if (eventErr || !event) throw new Error("Event not found.");
+
+  if (String(event.status || "").toLowerCase() === "registration_paused") {
+    throw new Error("Registration is temporarily paused. Existing registrations remain valid.");
+  }
 
   if (event.capacity && event.capacity > 0) {
     const { count } = await supabase

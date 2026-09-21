@@ -18,6 +18,8 @@ import {
   Copy,
   Check,
   RefreshCw,
+  PauseCircle,
+  PlayCircle,
   Edit3,
   User,
   Phone,
@@ -604,6 +606,35 @@ function EventManager() {
     }
   }
 
+  async function handleToggleRegistrationPause(event: any) {
+    const isPaused = String(event.status || "").toLowerCase() === "registration_paused";
+    const nextStatus = isPaused ? "published" : "registration_paused";
+    const action = isPaused ? "resume" : "pause";
+    setActionMsg("");
+    setActionErr("");
+    try {
+      const token = localStorage.getItem("aif_token");
+      const res = await apiFetch(`/api/events/${event.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || data.message || `Could not ${action} registrations.`);
+      }
+      setEvents((prev) => prev.map((item: any) =>
+        String(item.id) === String(event.id) ? { ...item, status: nextStatus } : item
+      ));
+      setActionMsg(isPaused ? `Registrations resumed for "${event.title}".` : `Registrations paused for "${event.title}".`);
+    } catch (err: any) {
+      setActionErr(err?.message || `Could not ${action} registrations.`);
+    }
+  }
+
   function downloadExcel(eventId: string | number) {
     const ev = events.find((e: any) => String(e.id) === String(eventId));
     fetchAndExportRegistrations(ev || { id: eventId, title: `Event_${eventId}` });
@@ -1109,6 +1140,20 @@ function EventManager() {
                   >
                     <RefreshCw className={`h-3 w-3 ${syncingEventId === ev.id ? "animate-spin text-emerald-400" : "text-slate-400"}`} />
                     <span>{syncingEventId === ev.id ? "Syncing..." : "Sync"}</span>
+                  </button>
+
+                  {/* Pause / Resume New Registrations */}
+                  <button
+                    onClick={() => handleToggleRegistrationPause(ev)}
+                    className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-mono transition ${
+                      String(ev.status || "").toLowerCase() === "registration_paused"
+                        ? "bg-amber-500/15 border border-amber-400/30 text-amber-300 hover:bg-amber-500/25"
+                        : "glass text-slate-300 hover:text-amber-300 hover:border-amber-400/30"
+                    }`}
+                    title={String(ev.status || "").toLowerCase() === "registration_paused" ? "Resume new registrations" : "Pause new registrations"}
+                  >
+                    {String(ev.status || "").toLowerCase() === "registration_paused" ? <PlayCircle className="h-3.5 w-3.5" /> : <PauseCircle className="h-3.5 w-3.5" />}
+                    <span>{String(ev.status || "").toLowerCase() === "registration_paused" ? "Resume" : "Pause"}</span>
                   </button>
 
                   {/* Direct Excel (.xlsx) Download */}
