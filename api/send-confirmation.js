@@ -42,8 +42,12 @@ export default async function handler(req, res) {
     member1 = "Participant",
     member2 = "",
     department = "Artificial Intelligence and Data Science",
-    year = "3rd Year",
+    year = "",
   } = body;
+
+  // Year may arrive as "" for older registrations — never render empty "()"
+  const safeYear = String(year || "").trim();
+  const deptLabel = safeYear ? `${department} (${safeYear})` : String(department || "").trim();
 
   const rawRecipients = body.to || body.email || body.recipient || [];
   const recipients = (Array.isArray(rawRecipients) ? rawRecipients : [rawRecipients])
@@ -61,19 +65,23 @@ export default async function handler(req, res) {
 
   const greeting = member2 ? `${member1} & ${member2}` : member1;
   const fullNameField = member2 ? `${member1} (Lead) & ${member2}` : member1;
-  const categoryField = `${teamName ? `Team: ${teamName} • ` : ""}${department} (${year})`;
+  const categoryField = `${teamName ? `Team: ${teamName} • ` : ""}${deptLabel}`;
 
+  // Event times are Asia/Kolkata wall-clock. toLocaleDateString drops time
+  // fields and serverless hosts run on UTC, so format explicitly in IST.
   let dateFormatted = eventDate;
   try {
     const d = new Date(eventDate);
     if (!isNaN(d.getTime())) {
-      dateFormatted = d.toLocaleDateString("en-US", {
+      dateFormatted = d.toLocaleString("en-US", {
         weekday: "short",
         month: "short",
         day: "numeric",
         year: "numeric",
         hour: "2-digit",
         minute: "2-digit",
+        hour12: true,
+        timeZone: "Asia/Kolkata",
       });
     }
   } catch {}
@@ -138,7 +146,7 @@ export default async function handler(req, res) {
             </tr>
             <tr>
               <td style="padding: 6px 0; font-size: 12px; color: #64748b; font-family: monospace;">DEPARTMENT</td>
-              <td style="padding: 6px 0; font-size: 13px; color: #cbd5e1; text-align: right;">${department} (${year})</td>
+              <td style="padding: 6px 0; font-size: 13px; color: #cbd5e1; text-align: right;">${deptLabel}</td>
             </tr>
             <tr>
               <td style="padding: 6px 0; font-size: 12px; color: #64748b; font-family: monospace;">DATE & TIME</td>

@@ -25,6 +25,7 @@ export interface EventRecord {
   featured?: number | boolean;
   capacity?: number;
   webhook_url?: string;
+  agenda_url?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -113,6 +114,7 @@ export async function getEvents(options: { scope?: string; limit?: number } = {}
       registration_count: regCount,
       webhookUrl: e.webhook_url || "",
       registrationLink: e.registration_link || "",
+      agendaUrl: e.agenda_url || "",
       endDate: e.end_date || null,
     };
   });
@@ -145,6 +147,7 @@ export async function getEventByIdOrSlug(idOrSlug: string | number) {
       registration_count: count || 0,
       webhookUrl: data.webhook_url || "",
       registrationLink: data.registration_link || "",
+      agendaUrl: data.agenda_url || "",
       endDate: data.end_date || null,
     },
   };
@@ -214,6 +217,7 @@ export async function createEvent(eventData: Record<string, any>) {
 
   const rawWebhook = eventData.webhookUrl !== undefined ? eventData.webhookUrl : eventData.webhook_url;
   const rawReg = eventData.registrationLink !== undefined ? eventData.registrationLink : eventData.registration_link;
+  const rawAgenda = eventData.agendaUrl !== undefined ? eventData.agendaUrl : eventData.agenda_url;
 
   const payload: Record<string, any> = {
     title: String(eventData.title).trim(),
@@ -230,6 +234,7 @@ export async function createEvent(eventData: Record<string, any>) {
     featured: eventData.featured ? 1 : 0,
     capacity: Number(eventData.capacity) || 0,
     webhook_url: String(rawWebhook || "").trim(),
+    agenda_url: String(rawAgenda || "").trim(),
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -263,6 +268,7 @@ export async function createEvent(eventData: Record<string, any>) {
       registration_count: 0,
       webhookUrl: data.webhook_url || "",
       registrationLink: data.registration_link || "",
+      agendaUrl: data.agenda_url || "",
       endDate: data.end_date || null,
     },
   };
@@ -307,6 +313,9 @@ export async function updateEvent(id: number, eventData: Record<string, any>) {
   const rawWebhook = eventData.webhookUrl !== undefined ? eventData.webhookUrl : eventData.webhook_url;
   if (rawWebhook !== undefined) payload.webhook_url = String(rawWebhook).trim();
 
+  const rawAgenda = eventData.agendaUrl !== undefined ? eventData.agendaUrl : eventData.agenda_url;
+  if (rawAgenda !== undefined) payload.agenda_url = String(rawAgenda).trim();
+
   if (eventData.tags !== undefined) {
     let tags = Array.isArray(eventData.tags) ? [...eventData.tags] : parseTags(eventData.tags);
     if (eventData.category && typeof eventData.category === "string" && !tags.includes(eventData.category)) {
@@ -327,6 +336,7 @@ export async function updateEvent(id: number, eventData: Record<string, any>) {
       tags: parseTags(data.tags),
       webhookUrl: data.webhook_url || "",
       registrationLink: data.registration_link || "",
+      agendaUrl: data.agenda_url || "",
       endDate: data.end_date || null,
     },
   };

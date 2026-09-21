@@ -65,16 +65,19 @@ export function generateEmailContent({ event, registration }) {
   try {
     const d = new Date(event.date);
     if (!isNaN(d.getTime())) {
+      // Event times are Asia/Kolkata wall-clock; servers run on UTC.
       dateOnly = d.toLocaleDateString("en-US", {
         weekday: "short",
         month: "short",
         day: "numeric",
         year: "numeric",
+        timeZone: "Asia/Kolkata",
       });
       timeOnly = d.toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit",
         hour12: true,
+        timeZone: "Asia/Kolkata",
       });
     }
   } catch {}
@@ -85,7 +88,7 @@ export function generateEmailContent({ event, registration }) {
   const venue = event.venue || "Campus AI Lab & Auditorium";
   const regCode = registration.registrationCode || `AIF-${event.id}-${registration.id || ""}`;
   const department = registration.department || registration.college || "Artificial Intelligence and Data Science";
-  const year = registration.year || "3rd Year";
+  const year = String(registration.year || "").trim();
 
   let clubName = "AI Frontier Club";
   let clubDept = "Department of Artificial Intelligence & Data Science";
@@ -105,7 +108,7 @@ export function generateEmailContent({ event, registration }) {
 
   const participantGreeting = member2 ? `${member1} & ${member2}` : member1;
   const fullNameField = member2 ? `${member1} (Lead) & ${member2}` : member1;
-  const categoryField = `${event.category || "Hackathon / Competition"}${teamName ? ` • Team: ${teamName}` : ""} • ${department} (${year})`;
+  const categoryField = `${event.category || "Hackathon / Competition"}${teamName ? ` • Team: ${teamName}` : ""} • ${department}${year ? ` (${year})` : ""}`;
 
   const subject = `🎉 Participation Confirmed: ${eventTitle} (${regCode})`;
 
@@ -302,8 +305,8 @@ export async function notifySubscribersNewEvent(event) {
   try {
     const d = new Date(event.date);
     if (!isNaN(d.getTime())) {
-      dateStr = d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric" });
-      timeStr = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+      dateStr = d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Kolkata" });
+      timeStr = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" });
     }
   } catch {}
 

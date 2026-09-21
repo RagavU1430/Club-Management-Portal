@@ -6,7 +6,7 @@ import XLSX from "xlsx";
 
 const EVENT_FIELDS = new Set([
   "title", "venue", "description", "summary", "image", "status", "date",
-  "end_date", "registration_link", "webhook_url", "capacity", "featured", "tags",
+  "end_date", "registration_link", "webhook_url", "agenda_url", "capacity", "featured", "tags",
 ]);
 
 function pickBody(body = {}) {
@@ -41,6 +41,10 @@ function pickBody(body = {}) {
   // webhook_url
   const rawWebhook = body.webhookUrl !== undefined ? body.webhookUrl : body.webhook_url;
   if (rawWebhook !== undefined) out.webhook_url = String(rawWebhook).trim();
+
+  // agenda_url (agenda file opened in a new tab on the site)
+  const rawAgenda = body.agendaUrl !== undefined ? body.agendaUrl : body.agenda_url;
+  if (rawAgenda !== undefined) out.agenda_url = String(rawAgenda).trim();
 
   // capacity & featured
   if (body.capacity !== undefined) out.capacity = Number(body.capacity) || 0;
@@ -87,6 +91,7 @@ function decorate(event) {
   json.id = json.id;
   json.computedStatus = isUpcoming(json) ? "upcoming" : "past";
   json.webhookUrl = json.webhook_url || "";
+  json.agendaUrl = json.agenda_url || "";
   json.registrationLink = json.registration_link || "";
   json.endDate = json.end_date || null;
   try {

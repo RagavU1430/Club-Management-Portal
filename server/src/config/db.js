@@ -118,6 +118,7 @@ db.exec(`
 
 // Safe migrations
 try { db.exec("ALTER TABLE events ADD COLUMN webhook_url TEXT DEFAULT ''"); } catch {}
+try { db.exec("ALTER TABLE events ADD COLUMN agenda_url TEXT DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE event_registrations ADD COLUMN team_name TEXT DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE event_registrations ADD COLUMN member1 TEXT DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE event_registrations ADD COLUMN member2 TEXT DEFAULT ''"); } catch {}

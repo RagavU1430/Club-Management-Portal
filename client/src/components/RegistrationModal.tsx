@@ -39,7 +39,9 @@ export const DEPARTMENTS = [
   "Science & Humanities",
 ];
 
-export const SECTIONS = ["A", "B", "C", "D", "E", "F"];
+export const SECTIONS = ["A", "B", "C", "D", "E", "F", "G", "H", "I"];
+
+export const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
 
 export interface EventItem {
   id: string | number;
@@ -52,6 +54,8 @@ export interface EventItem {
   image?: string;
   slug?: string;
   registrationLink?: string;
+  agendaUrl?: string;
+  agenda_url?: string;
   status?: string;
   computedStatus?: string;
   category?: string;
@@ -87,6 +91,7 @@ export default function RegistrationModal({
     member2Email: "",
     department: "",
     section: "",
+    year: "",
     phone: "",
   });
 
@@ -176,6 +181,7 @@ export default function RegistrationModal({
           name: form.member1,
           department: form.department,
           section: form.section,
+          year: form.year,
           phone: form.phone,
         }),
       });
@@ -396,6 +402,18 @@ export default function RegistrationModal({
 
             {/* ─── BOTTOM ACTION: REGISTER NOW TO SECURE YOUR SEAT ─── */}
             <div className="pt-3 border-t border-slate-200 dark:border-white/10 space-y-3">
+              {(event.agendaUrl || event.agenda_url) && (
+                <a
+                  href={event.agendaUrl || event.agenda_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl border border-cyan-500/40 dark:border-cyan-400/40 bg-cyan-500/10 dark:bg-cyan-400/10 py-3 px-6 text-sm font-bold text-cyan-700 dark:text-cyan-300 transition hover:bg-cyan-500/20 dark:hover:bg-cyan-400/20"
+                >
+                  <BookOpen className="h-4 w-4" />
+                  <span>View Full Agenda (opens in new tab)</span>
+                  <ArrowRight className="h-4 w-4" />
+                </a>
+              )}
               <button
                 type="button"
                 disabled={isFull || isPast}
@@ -614,7 +632,7 @@ export default function RegistrationModal({
               </div>
 
               {/* 4. Academic & Contact Details */}
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label className="block text-xs font-mono text-slate-700 dark:text-slate-300 font-semibold mb-1">
                     DEPARTMENT *
@@ -655,6 +673,29 @@ export default function RegistrationModal({
                       {SECTIONS.map((sec) => (
                         <option key={sec} value={sec} className="bg-white dark:bg-[#0d1321] text-slate-900 dark:text-white">
                           Section {sec}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                    YEAR OF STUDY *
+                  </label>
+                  <div className="relative">
+                    <select
+                      required
+                      value={form.year}
+                      onChange={(e) => setForm({ ...form, year: e.target.value })}
+                      className="w-full rounded-xl border border-slate-300 dark:border-white/10 bg-white dark:bg-[#0d1321] py-2.5 px-3 text-xs text-slate-900 dark:text-white focus:border-cyan-500 focus:outline-none"
+                    >
+                      <option value="" disabled className="bg-white dark:bg-[#0d1321] text-slate-400">
+                        Select Year
+                      </option>
+                      {YEARS.map((yr) => (
+                        <option key={yr} value={yr} className="bg-white dark:bg-[#0d1321] text-slate-900 dark:text-white">
+                          {yr}
                         </option>
                       ))}
                     </select>
@@ -805,7 +846,7 @@ export default function RegistrationModal({
                       )}
                     </div>
                     <div className="text-slate-500 pt-1 border-t border-slate-200 dark:border-white/5">
-                      {t.department} &bull; Section: {t.section || "A"} &bull; Contact: {t.phone || "—"}
+                      {t.department}{t.year ? ` • ${t.year}` : ""} &bull; Section: {t.section || "—"} &bull; Contact: {t.phone || "—"}
                     </div>
                   </div>
                 ))}
@@ -869,7 +910,7 @@ export default function RegistrationModal({
                 <div className="sm:col-span-2">
                   <span className="text-slate-500 text-[10px]">DEPARTMENT &bull; SECTION</span>
                   <div className="font-bold text-slate-900 dark:text-white break-words">
-                    {form.department} &bull; Section {form.section}
+                    {form.department}{form.year ? ` • ${form.year}` : ""} &bull; Section {form.section}
                   </div>
                 </div>
               </div>

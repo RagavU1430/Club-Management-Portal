@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS events (
   featured INTEGER NOT NULL DEFAULT 0,
   capacity INTEGER NOT NULL DEFAULT 0,
   webhook_url TEXT DEFAULT '',
+  agenda_url TEXT DEFAULT '',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -64,6 +65,7 @@ CREATE TABLE IF NOT EXISTS event_registrations (
 );
 
 -- Ensure newly added columns exist if table was already created
+ALTER TABLE events ADD COLUMN IF NOT EXISTS agenda_url TEXT DEFAULT '';
 ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS section TEXT NOT NULL DEFAULT '';
 ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS member2_email TEXT NOT NULL DEFAULT '';
 ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS member2_roll_number TEXT NOT NULL DEFAULT '';
@@ -314,8 +316,8 @@ END $$;
 
 -- 6. Supabase Storage: Public Bucket & RLS Policies for club-uploads
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES ('club-uploads', 'club-uploads', true, 10485760, ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
-ON CONFLICT (id) DO UPDATE SET public = true;
+VALUES ('club-uploads', 'club-uploads', true, 10485760, ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'])
+ON CONFLICT (id) DO UPDATE SET public = true, allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
 
 DO $$
 BEGIN

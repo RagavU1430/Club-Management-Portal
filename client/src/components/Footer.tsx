@@ -50,7 +50,7 @@ export default function Footer() {
           <div className="md:col-span-4 flex flex-col items-start">
             <Link to="/" className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 dark:from-cyan-500/20 dark:to-purple-600/20 border border-purple-400/30 dark:border-cyan-400/30 overflow-hidden shadow-sm">
-                <img src="/poster_end.jpg" alt="Logo" className="h-full w-full object-cover scale-110" />
+                <img src="/poster_end.jpg" alt="Logo" loading="lazy" decoding="async" className="h-full w-full object-cover scale-110" />
               </div>
               <span className="font-display text-lg font-extrabold tracking-wider text-[#262626] dark:text-white">
                 AI FRONTIER <span className="text-[#833ab4] dark:text-cyan-400">CLUB</span>

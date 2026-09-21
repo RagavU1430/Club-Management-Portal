@@ -445,7 +445,7 @@ function TeamCard({
               className={`relative h-16 w-16 rounded-[14px] bg-white dark:bg-[#050811] flex items-center justify-center font-display text-2xl font-bold shadow-inner overflow-hidden ${catConfig.avatarBorder}`}
             >
               {member.photo ? (
-                <img src={member.photo} alt={member.name} className="h-full w-full object-cover" />
+                <img src={member.photo} alt={member.name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
               ) : (
                 member.name.charAt(0).toUpperCase()
               )}

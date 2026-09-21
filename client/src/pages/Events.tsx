@@ -9,12 +9,22 @@ export default function Events() {
   const [scope, setScope] = useState("all");
   const [q, setQ] = useState("");
   const [registerEvent, setRegisterEvent] = useState<EventItem | null>(null);
+  // Debounce search so typing doesn't fire a network request per keystroke
+  const [debouncedQ, setDebouncedQ] = useState("");
 
   useEffect(() => {
-    const params = new URLSearchParams({ scope, ...(q && { q }) });
+    const t = setTimeout(() => setDebouncedQ(q.trim()), 400);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  useEffect(() => {
+    const params = new URLSearchParams({ scope, ...(debouncedQ && { q: debouncedQ }) });
+    let cancelled = false;
+    setLoading(true);
     apiFetch(`/api/events?${params}`)
       .then((r) => r.json())
       .then((d) => {
+        if (cancelled) return;
         if (d.success && Array.isArray(d.data)) {
           setEvents(d.data);
         } else {
@@ -22,10 +32,15 @@ export default function Events() {
         }
       })
       .catch(() => {
-        setEvents([]);
+        if (!cancelled) setEvents([]);
       })
-      .finally(() => setLoading(false));
-  }, [scope, q]);
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [scope, debouncedQ]);
 
   const filteredEvents = useMemo(() => {
     return events.filter((e) => {

@@ -246,6 +246,7 @@ const defaultEventForm = {
   description: "",
   tags: "AI, Hackathon, Coding",
   webhookUrl: "",
+  agendaUrl: "",
 };
 
 /* ── 1. Event Manager with Registration Responses & Excel Export ── */
@@ -287,10 +288,17 @@ function EventManager() {
     return defaultEventForm;
   });
 
+  // Non-null while editing an existing event (PUT) instead of creating (POST)
+  const [editingId, setEditingId] = useState<string | number | null>(null);
+
   const agendaFileInputRef = useRef<HTMLInputElement>(null);
   const [parsingAgenda, setParsingAgenda] = useState(false);
   const [agendaParseResult, setAgendaParseResult] = useState<ExtractedAgendaResult | null>(null);
   const [agendaParseError, setAgendaParseError] = useState<string | null>(null);
+
+  const agendaAttachInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingAgendaFile, setUploadingAgendaFile] = useState(false);
+  const [agendaFileError, setAgendaFileError] = useState("");
 
   async function handleAgendaFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -313,6 +321,33 @@ function EventManager() {
       setAgendaParseError(err.message || "Failed to extract agenda from document.");
     } finally {
       setParsingAgenda(false);
+      if (e.target) e.target.value = "";
+    }
+  }
+
+  // Attach the agenda FILE itself (opens in a new tab for participants)
+  async function handleAgendaFileAttach(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAgendaFile(true);
+    setAgendaFileError("");
+    try {
+      const token = localStorage.getItem("aif_token");
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await apiFetch("/api/upload", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const d = await res.json();
+      const url = d?.url || d?.data?.url;
+      if (!res.ok || !d.success || !url) throw new Error(d.error || d.message || "Agenda upload failed.");
+      setForm((prev: any) => ({ ...prev, agendaUrl: url }));
+    } catch (err: any) {
+      setAgendaFileError(err.message || "Failed to attach agenda file.");
+    } finally {
+      setUploadingAgendaFile(false);
       if (e.target) e.target.value = "";
     }
   }
@@ -465,32 +500,86 @@ function EventManager() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
+    setActionMsg("");
+    setActionErr("");
     try {
       const token = localStorage.getItem("aif_token");
-      const res = await apiFetch("/api/events", {
-        method: "POST",
+      const isEditing = editingId !== null && editingId !== undefined;
+      const res = await apiFetch(isEditing ? `/api/events/${editingId}` : "/api/events", {
+        method: isEditing ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(form),
       });
-      if (res.ok) {
+      const d = await res.json().catch(() => ({}));
+      if (res.ok && (d.success || !d.error)) {
         setForm(defaultEventForm);
+        setEditingId(null);
         setShowCreate(false);
         try {
           localStorage.removeItem(FORM_STORAGE_KEY);
           localStorage.removeItem(SHOW_CREATE_KEY);
         } catch {}
+        setActionMsg(isEditing ? "Event updated successfully." : "Event published successfully.");
         await load();
       } else {
-        const err = await res.json();
-        alert(err.message || "Failed to create event");
+        const err = d as any;
+        alert(err.message || err.error || (isEditing ? "Failed to update event" : "Failed to create event"));
       }
     } catch (e: any) {
       alert(e.message || "Network error");
     }
     setSaving(false);
+  }
+
+  // Prefill the form to edit an existing event (title, date, venue, agenda file…)
+  function handleEdit(ev: any) {
+    const toLocalInput = (iso: string) => {
+      try {
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return "";
+        return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+      } catch {
+        return "";
+      }
+    };
+    const tagsArr: string[] = Array.isArray(ev.tags)
+      ? ev.tags
+      : typeof ev.tags === "string"
+        ? (() => { try { const p = JSON.parse(ev.tags); return Array.isArray(p) ? p : []; } catch { return String(ev.tags).split(",").map((s: string) => s.trim()).filter(Boolean); } })()
+        : [];
+    setForm({
+      title: ev.title || "",
+      date: toLocalInput(ev.date || ""),
+      venue: ev.venue || "",
+      category: ev.category || tagsArr[0] || "Hackathon",
+      capacity: Number(ev.capacity) || 0,
+      summary: ev.summary || "",
+      description: ev.description || "",
+      tags: tagsArr.join(", "),
+      webhookUrl: ev.webhookUrl || ev.webhook_url || "",
+      agendaUrl: ev.agendaUrl || ev.agenda_url || "",
+    });
+    setEditingId(ev.id);
+    setShowCreate(true);
+    try {
+      localStorage.setItem(SHOW_CREATE_KEY, "true");
+    } catch {}
+    requestAnimationFrame(() => {
+      document.getElementById("event-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  function handleCancelEdit() {
+    setEditingId(null);
+    setForm(defaultEventForm);
+    setShowCreate(false);
+    try {
+      localStorage.removeItem(FORM_STORAGE_KEY);
+      localStorage.removeItem(SHOW_CREATE_KEY);
+    } catch {}
   }
 
   async function handleDelete(id: string | number) {
@@ -532,7 +621,16 @@ function EventManager() {
         </div>
 
         <button
-          onClick={() => setShowCreate(!showCreate)}
+          onClick={() => {
+            if (showCreate) {
+              setShowCreate(false);
+              setEditingId(null);
+            } else {
+              setForm(defaultEventForm);
+              setEditingId(null);
+              setShowCreate(true);
+            }
+          }}
           className="flex items-center gap-2 rounded-xl bg-cyan-500 dark:bg-cyan-400 px-4 py-2.5 text-xs font-mono font-bold text-white dark:text-black hover:bg-cyan-600 dark:hover:bg-cyan-300 transition shadow-[0_0_20px_rgba(2,132,199,0.25)] dark:shadow-[0_0_20px_rgba(0,240,255,0.3)] cursor-pointer"
         >
           {showCreate ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
@@ -624,11 +722,11 @@ function EventManager() {
 
       {/* Event Creation Form */}
       {showCreate && (
-        <form onSubmit={handleSubmit} className="glass rounded-2xl p-6 sm:p-8 border border-cyan-400/30 shadow-2xl">
+        <form id="event-form" onSubmit={handleSubmit} className="glass rounded-2xl p-6 sm:p-8 border border-cyan-400/30 shadow-2xl scroll-mt-24">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-6">
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
-              <h3 className="font-display text-lg font-bold text-white">Event & Registration Form Setup</h3>
+              <h3 className="font-display text-lg font-bold text-white">{editingId !== null ? "Edit Event & Registration Form" : "Event & Registration Form Setup"}</h3>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-[11px] font-mono text-emerald-400/90 flex items-center gap-1.5 bg-emerald-950/40 border border-emerald-500/20 px-2.5 py-1 rounded-full">
@@ -715,6 +813,67 @@ function EventManager() {
                 onChange={(e) => setForm({ ...form, summary: e.target.value })}
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
               />
+            </div>
+
+            <div className="sm:col-span-2 lg:col-span-3">
+              <label className="block text-xs font-mono text-slate-400 mb-1">
+                AGENDA FILE (PDF — OPENS IN NEW TAB FOR PARTICIPANTS)
+              </label>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <input
+                  type="file"
+                  ref={agendaAttachInputRef}
+                  onChange={handleAgendaFileAttach}
+                  accept=".pdf,.docx,.txt,.md"
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => agendaAttachInputRef.current?.click()}
+                  disabled={uploadingAgendaFile}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-400/30 px-3 py-2 text-xs font-mono font-semibold transition cursor-pointer disabled:opacity-50"
+                >
+                  {uploadingAgendaFile ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Uploading Agenda...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="h-3.5 w-3.5" />
+                      <span>{form.agendaUrl ? "Replace Agenda File" : "Attach Agenda File"}</span>
+                    </>
+                  )}
+                </button>
+                {form.agendaUrl ? (
+                  <div className="flex items-center gap-2 text-xs font-mono">
+                    <a
+                      href={form.agendaUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-cyan-300 hover:text-white hover:underline flex items-center gap-1"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      <span>View attached agenda (new tab)</span>
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => setForm((prev: any) => ({ ...prev, agendaUrl: "" }))}
+                      className="text-slate-400 hover:text-red-400 transition cursor-pointer"
+                      title="Remove agenda file"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-[11px] font-mono text-slate-500">
+                    Optional — participants get a “View Full Agenda” button opening this file in a new tab.
+                  </span>
+                )}
+              </div>
+              {agendaFileError && (
+                <p className="mt-1.5 text-[11px] font-mono text-red-400">{agendaFileError}</p>
+              )}
             </div>
 
             <div className="sm:col-span-2 lg:col-span-3">
@@ -828,7 +987,7 @@ function EventManager() {
           <div className="mt-6 flex justify-end gap-3">
             <button
               type="button"
-              onClick={() => setShowCreate(false)}
+              onClick={editingId !== null ? handleCancelEdit : () => setShowCreate(false)}
               className="rounded-xl glass px-5 py-2.5 text-xs font-mono text-slate-300 hover:text-white"
             >
               Cancel
@@ -838,7 +997,7 @@ function EventManager() {
               disabled={saving}
               className="rounded-xl bg-cyan-400 px-6 py-2.5 text-xs font-mono font-bold text-black hover:bg-cyan-300 transition shadow-[0_0_15px_rgba(0,240,255,0.4)] disabled:opacity-50"
             >
-              {saving ? "Creating Event..." : "Publish Event & Registration Form"}
+              {saving ? (editingId !== null ? "Saving Changes..." : "Creating Event...") : editingId !== null ? "Save Changes" : "Publish Event & Registration Form"}
             </button>
           </div>
         </form>
@@ -888,6 +1047,19 @@ function EventManager() {
                   </div>
 
                   <h3 className="text-lg font-bold text-white font-display">{ev.title}</h3>
+                  {(ev.agendaUrl || ev.agenda_url) && (
+                    <a
+                      href={ev.agendaUrl || ev.agenda_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1 text-[11px] font-mono text-cyan-300 hover:text-white hover:underline"
+                    >
+                      <FileText className="h-3 w-3" />
+                      <span>View attached agenda (new tab)</span>
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
                   <p className="text-xs text-slate-300 line-clamp-1">{ev.summary || ev.description}</p>
                 </div>
 
@@ -947,6 +1119,15 @@ function EventManager() {
                   >
                     <Download className="h-3.5 w-3.5" />
                     <span>Excel</span>
+                  </button>
+
+                  {/* Edit Event */}
+                  <button
+                    onClick={() => handleEdit(ev)}
+                    className="p-2 rounded-xl text-slate-500 hover:text-cyan-400 hover:bg-cyan-950/30 transition"
+                    title="Edit event details"
+                  >
+                    <Edit3 className="h-4 w-4" />
                   </button>
 
                   {/* Delete Event */}

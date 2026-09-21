@@ -1,9 +1,11 @@
-import * as mammoth from "mammoth";
-import * as pdfjsLib from "pdfjs-dist";
+// NOTE: mammoth + pdfjs-dist are lazy-loaded inside the extract functions
+// so the public site bundle never pays for them (only the Admin chunk does).
+type PdfJsLib = typeof import("pdfjs-dist");
 
-// Initialize PDF.js worker using Vite's native URL resolver with CDN fallback
-try {
-  if (typeof window !== "undefined") {
+let pdfWorkerConfigured = false;
+async function loadPdfJs(): Promise<PdfJsLib> {
+  const pdfjsLib = await import("pdfjs-dist");
+  if (!pdfWorkerConfigured && typeof window !== "undefined") {
     try {
       pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
         "pdfjs-dist/build/pdf.worker.mjs",
@@ -12,9 +14,9 @@ try {
     } catch {
       pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
     }
+    pdfWorkerConfigured = true;
   }
-} catch (e) {
-  console.warn("Failed to set PDF.js worker path:", e);
+  return pdfjsLib as unknown as PdfJsLib;
 }
 
 export interface ExtractedAgendaResult {
@@ -47,6 +49,7 @@ export function cleanExtractedText(raw: string): string {
  * Extracts raw text from a Word (.docx) document ArrayBuffer.
  */
 export async function extractTextFromDocx(arrayBuffer: ArrayBuffer): Promise<string> {
+  const mammoth = await import("mammoth");
   const result = await mammoth.extractRawText({ arrayBuffer });
   return cleanExtractedText(result.value || "");
 }
@@ -56,6 +59,7 @@ export async function extractTextFromDocx(arrayBuffer: ArrayBuffer): Promise<str
  */
 export async function extractTextFromPdf(arrayBuffer: ArrayBuffer): Promise<string> {
   try {
+    const pdfjsLib = await loadPdfJs();
     const loadingTask = pdfjsLib.getDocument({
       data: new Uint8Array(arrayBuffer),
       useSystemFonts: true,

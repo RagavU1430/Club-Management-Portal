@@ -14,6 +14,9 @@ export default defineConfig({
           }
           if (id.includes("node_modules/framer-motion")) return "motion";
           if (id.includes("node_modules/lucide-react")) return "icons";
+          if (id.includes("node_modules/@supabase")) return "supabase";
+          if (id.includes("node_modules/pdfjs-dist") || id.includes("node_modules/mammoth")) return "docparse";
+          if (id.includes("node_modules/xlsx")) return "xlsx";
         },
       },
     },

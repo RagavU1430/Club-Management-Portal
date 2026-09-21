@@ -8,6 +8,14 @@ const FRAME_PATH = (i: number) =>
 const WHITE_FRAME_PATH = (i: number) =>
   `/white_frames/frame_${String(i).padStart(4, "0")}.jpg`;
 
+// Keep background canvases cheap: full DPR is wasted on a blurred backdrop.
+const MAX_BG_DPR = 1.25;
+// Frames needed instantly for first paint; the rest streams in when idle.
+const EAGER_FRAMES = 12;
+// Max parallel image downloads for the background (avoids network contention
+// with API calls and content images on slow mobile connections).
+const BG_LOAD_CONCURRENCY = 3;
+
 const MATRIX_CHARS = "0101010101ABCDEF0123456789λ∇θΣ⚡⌘{}</>[]AI_FRONTIER_CORE_SYS_NET_SYNAPSE_TENSOR_NODE";
 
 /**
@@ -78,8 +86,12 @@ export default function GlobalVideoBackground() {
     drawImageOnCanvas(lightCanvasRef.current, whiteImagesRef.current, frameIndex);
   }, []);
 
-  // Preload all 180 frames for both themes aggressively
+  // Preload frames lazily: eager first chunk, rest streams in when idle.
+  // Skipped entirely on admin (no backdrop needed) and capped on small
+  // screens / save-data to keep mobile fast.
+  const isAdminRoute = pathname.startsWith("/admin");
   useEffect(() => {
+    if (isAdminRoute) return;
     imagesRef.current = new Array(TOTAL_FRAMES).fill(null);
     whiteImagesRef.current = new Array(TOTAL_FRAMES).fill(null);
 
@@ -113,28 +125,48 @@ export default function GlobalVideoBackground() {
       });
     };
 
-    // Immediate priority chunk: first 35 frames for both themes
-    const priorityIndices = Array.from({ length: 35 }, (_, i) => i);
+    // Immediate priority chunk: first frames for both themes
+    const priorityIndices = Array.from({ length: EAGER_FRAMES }, (_, i) => i);
     Promise.all([
       ...priorityIndices.map(loadSingleDark),
       ...priorityIndices.map(loadSingleWhite),
     ]).then(() => {
-      // Remaining frames in fast background batches
+      // Skip bulk preload on tiny screens / data-saver: scrub reuses nearest frame
+      const tinyScreen = typeof window !== "undefined" && window.innerWidth < 640;
+      const saveData =
+        typeof navigator !== "undefined" &&
+        (navigator as any).connection?.saveData === true;
+      if (tinyScreen || saveData) return;
+      // Remaining frames stream in background with limited concurrency
       const remainingIndices = Array.from(
-        { length: TOTAL_FRAMES - 35 },
-        (_, i) => i + 35
+        { length: TOTAL_FRAMES - EAGER_FRAMES },
+        (_, i) => i + EAGER_FRAMES
       );
-      remainingIndices.forEach((idx) => {
-        loadSingleDark(idx);
-        loadSingleWhite(idx);
-      });
+      let cursor = 0;
+      const pump = () => {
+        if (cursor >= remainingIndices.length) return;
+        const batch = remainingIndices.slice(cursor, cursor + BG_LOAD_CONCURRENCY);
+        cursor += BG_LOAD_CONCURRENCY;
+        Promise.all(batch.flatMap((idx) => [loadSingleDark(idx), loadSingleWhite(idx)])).then(() => {
+          const schedule =
+            typeof requestIdleCallback !== "undefined"
+              ? requestIdleCallback
+              : (cb: () => void) => setTimeout(cb, 300);
+          (schedule as any)(pump);
+        });
+      };
+      const kickoff =
+        typeof requestIdleCallback !== "undefined"
+          ? requestIdleCallback
+          : (cb: () => void) => setTimeout(cb, 800);
+      (kickoff as any)(pump);
     });
-  }, []);
+  }, [isAdminRoute]);
 
   // Window resize handler for both canvases
   useEffect(() => {
     const handleResize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const dpr = Math.min(window.devicePixelRatio || 1, MAX_BG_DPR);
       const w = window.innerWidth * dpr;
       const h = window.innerHeight * dpr;
 
@@ -160,27 +192,36 @@ export default function GlobalVideoBackground() {
 
   const isAdmin = pathname.startsWith("/admin");
 
-  // Scroll mapping: maps scroll depth to video frames & fades matrix rain on first frame
+  // Scroll mapping: maps scroll depth to video frames & fades matrix rain on first frame.
+  // rAF-throttled and state updates are bucketed so scrolling never re-renders per pixel.
   useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      const scrollY = window.scrollY;
-      const scrollableHeight = document.documentElement.scrollHeight - window.innerHeight;
-      const maxScroll = Math.max(window.innerHeight * 0.4, scrollableHeight * 0.9);
-      const progress = Math.max(0, Math.min(1, scrollY / maxScroll));
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        ticking = false;
+        const scrollY = window.scrollY;
+        const scrollableHeight = document.documentElement.scrollHeight - window.innerHeight;
+        const maxScroll = Math.max(window.innerHeight * 0.4, scrollableHeight * 0.9);
+        const progress = Math.max(0, Math.min(1, scrollY / maxScroll));
 
-      const target = Math.min(
-        TOTAL_FRAMES - 1,
-        Math.max(0, Math.round(progress * (TOTAL_FRAMES - 1)))
-      );
-      targetFrameRef.current = target;
+        const target = Math.min(
+          TOTAL_FRAMES - 1,
+          Math.max(0, Math.round(progress * (TOTAL_FRAMES - 1)))
+        );
+        targetFrameRef.current = target;
 
-      // Matrix rain is only active on non-admin pages on first frame (scrollY = 0)
-      if (isAdmin) {
-        setMatrixOpacity(0);
-      } else {
-        const fade = Math.max(0, 1 - scrollY / 260);
-        setMatrixOpacity(fade);
-      }
+        // Matrix rain is only active on non-admin pages on first frame (scrollY = 0)
+        if (isAdmin) {
+          setMatrixOpacity((v) => (v === 0 ? v : 0));
+        } else {
+          const fade = Math.max(0, 1 - scrollY / 260);
+          // Bucket to 0.05 steps to avoid a re-render on every scrolled pixel
+          const bucketed = Math.round(fade * 20) / 20;
+          setMatrixOpacity((v) => (Math.abs(v - bucketed) < 0.001 ? v : bucketed));
+        }
+      });
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -195,7 +236,9 @@ export default function GlobalVideoBackground() {
   }, [pathname, isAdmin]);
 
   // Butter-smooth video frame lerp loop (hardware-accelerated canvas for 60-120 FPS on both themes)
+  // Fully idle on admin pages (no backdrop rendered there).
   useEffect(() => {
+    if (isAdmin) return;
     let active = true;
     let lastRenderedFrame = -1;
 
@@ -220,11 +263,16 @@ export default function GlobalVideoBackground() {
       active = false;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [renderFrame]);
+  }, [renderFrame, isAdmin]);
+
+  // Don't mount heavy fixed canvases on admin at all
+  if (isAdmin) return null;
 
   // Cyber Matrix Rain Animation Loop (Active on First Frame, Full-Width Edge-to-Edge, skipped on Admin)
+  // Lightweight: no per-glyph shadows, ~20fps cadence, skipped on small screens.
   useEffect(() => {
     if (isAdmin) return;
+    if (typeof window !== "undefined" && window.innerWidth < 640) return;
 
     const canvas = matrixCanvasRef.current;
     if (!canvas) return;
@@ -238,7 +286,7 @@ export default function GlobalVideoBackground() {
     let fontSize = 16;
 
     const updateDimensions = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const dpr = Math.min(window.devicePixelRatio || 1, MAX_BG_DPR);
       const w = window.innerWidth * dpr;
       const h = window.innerHeight * dpr;
 
@@ -264,10 +312,10 @@ export default function GlobalVideoBackground() {
       if (!active) return;
 
       const elapsed = currentTime - lastTime;
-      if (elapsed > 28) { // Balanced medium ~35 FPS cadence
+      if (elapsed > 48) { // ~20fps is plenty for ambient rain, halves canvas CPU
         lastTime = currentTime;
 
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const dpr = Math.min(window.devicePixelRatio || 1, MAX_BG_DPR);
         const w = window.innerWidth * dpr;
         if (canvas.width !== w) {
           updateDimensions();
@@ -291,10 +339,8 @@ export default function GlobalVideoBackground() {
           const x = i * fontSize;
           const y = drops[i] * fontSize;
 
-          // Medium glowing leading glyph tip
+          // Leading glyph tip (flat fill — no shadowBlur, which is very costly per glyph)
           ctx.fillStyle = "rgba(230, 250, 255, 0.88)";
-          ctx.shadowBlur = 6;
-          ctx.shadowColor = "rgba(0, 240, 255, 0.45)";
           ctx.fillText(char, x, y);
 
           // Medium trailing glyph
@@ -304,7 +350,6 @@ export default function GlobalVideoBackground() {
               : i % 5 === 0
               ? "rgba(16, 185, 129, 0.48)"
               : "rgba(168, 85, 247, 0.42)";
-          ctx.shadowBlur = 0;
           ctx.fillText(char, x, y - fontSize);
 
           // Reset drop once it crosses the bottom at a steady medium rate

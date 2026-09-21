@@ -198,6 +198,8 @@ export default function About() {
                     <img
                       src={act.photo}
                       alt={act.name}
+                      loading="lazy"
+                      decoding="async"
                       className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                     />
                   ) : (
