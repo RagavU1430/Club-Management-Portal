@@ -6,7 +6,6 @@ import {
   ShieldCheck,
   Play,
   ArrowLeft,
-  LogOut,
   Loader2,
   Trophy,
   Maximize2,
@@ -109,17 +108,6 @@ export default function Games() {
     } finally {
       setVerifying(false);
     }
-  }
-
-  function handleSignOut() {
-    try {
-      sessionStorage.removeItem(ACCESS_KEY);
-    } catch {}
-    setAccess(null);
-    setGames([]);
-    setTeamName("");
-    setEmail("");
-    setActiveGame(null);
   }
 
   const visibleGames = games.filter((g) => {
@@ -241,13 +229,6 @@ export default function Games() {
                 </p>
               </div>
             </div>
-            <button
-              onClick={handleSignOut}
-              className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-xl glass px-4 py-2 text-xs font-mono text-slate-600 dark:text-slate-300 hover:text-red-500 transition border border-slate-200 dark:border-white/10 cursor-pointer"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              Switch Team
-            </button>
           </div>
 
           {loadingGames && (
