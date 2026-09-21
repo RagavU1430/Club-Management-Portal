@@ -498,6 +498,125 @@ export async function registerForEvent(eventId: number | string, input: Registra
     }
   }
 
+  // 1b. Preferred path: secure RPC (works for anon despite strict RLS).
+  // Direct INSERT...SELECT fails for anon with "violates row-level security"
+  // because anon has INSERT but no SELECT policy. RPC bypasses RLS safely.
+  const rpcPayload = {
+    p_event_id: numericId,
+    p_team_name: (input.teamName || "").trim(),
+    p_member1: (input.member1 || "").trim(),
+    p_member2: (input.member2 || "").trim(),
+    p_email: input.email.trim().toLowerCase(),
+    p_phone: String(input.phone || "").trim(),
+    p_department: String(input.department || input.college || "AI & Data Science").trim(),
+    p_college: String(input.college || input.department || "AI & Data Science").trim(),
+    p_roll_number: String(input.rollNumber || "").trim(),
+    p_section: String(input.section || "").trim(),
+    p_member2_email: String(input.member2Email || input.member2_email || "").trim().toLowerCase(),
+    p_member2_roll_number: String(input.member2RollNumber || input.member2_roll_number || "").trim(),
+    p_year: String(input.year || "").trim(),
+    p_notes: String(input.notes || "").trim(),
+  };
+  try {
+    const { data: rpcData, error: rpcError } = await supabase.rpc("register_for_event", rpcPayload);
+    if (rpcError) {
+      const msg = String(rpcError.message || "");
+      // Function not yet deployed -> fall through to legacy direct-insert path
+      if (rpcError.code !== "42883" && !msg.includes("Could not find the function") && !(rpcError as any)?.hint?.includes?.("No function")) {
+        throw new Error(msg || "Registration failed.");
+      }
+    } else if (rpcData) {
+      const reg = (rpcData as any).registration || {};
+      const already = Boolean((rpcData as any).alreadyRegistered);
+      const regCode = `AIF-${numericId}-${reg.id}`;
+      if (already) {
+        const existingTeam = String(reg.team_name || "").trim();
+        const submittedTeam = String(input.teamName || "").trim();
+        if (submittedTeam && existingTeam && submittedTeam.toLowerCase() !== existingTeam.toLowerCase()) {
+          throw new Error(
+            `This mail ID is already registered under team "${existingTeam}" for this event. One mail ID can register only one team per event — please use a different mail ID for the new team, or open your existing ticket.`
+          );
+        }
+        const recipientEmails = [reg.email, reg.member2_email].filter((e: string) => e && e.includes("@"));
+        if (recipientEmails.length > 0) {
+          try {
+            fetch("/api/send-confirmation", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                to: recipientEmails, email: reg.email, member2Email: reg.member2_email,
+                eventTitle: (rpcData as any).eventTitle || event.title,
+                eventDate: (rpcData as any).eventDate || event.date,
+                venue: (rpcData as any).venue || event.venue,
+                registrationCode: regCode, name: reg.name || reg.member1,
+                teamName: reg.team_name, member1: reg.member1, member2: reg.member2,
+                department: reg.department, year: reg.year, ...getStoredEmailCredentials(),
+              }),
+            }).catch(() => {});
+          } catch {}
+        }
+        return {
+          success: true,
+          message: "You are already registered for this event! Ticket pass retrieved.",
+          data: {
+            id: reg.id, registrationId: regCode, teamName: reg.team_name,
+            member1: reg.member1, member2: reg.member2, name: reg.name || reg.member1,
+            email: reg.email, phone: reg.phone, department: reg.department, year: reg.year,
+            eventTitle: (rpcData as any).eventTitle || event.title,
+            eventDate: (rpcData as any).eventDate || event.date,
+            venue: (rpcData as any).venue || event.venue, alreadyRegistered: true,
+          },
+        };
+      }
+      const payload = {
+        event_id: numericId, team_name: String(reg.team_name || "").trim(),
+        member1: String(reg.member1 || "").trim(), member2: String(reg.member2 || "").trim(),
+        name: String(reg.name || reg.member1 || "").trim(), email: String(reg.email || "").trim(),
+        phone: String(reg.phone || "").trim(), member2_email: String(reg.member2_email || "").trim(),
+        department: String(reg.department || "").trim(), year: String(reg.year || "").trim(),
+      };
+      const recipientEmails = [payload.email, payload.member2_email].filter((e) => e && e.includes("@"));
+      if (recipientEmails.length > 0) {
+        try {
+          fetch("/api/send-confirmation", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              to: recipientEmails, email: payload.email, member2Email: payload.member2_email,
+              eventTitle: (rpcData as any).eventTitle || event.title,
+              eventDate: (rpcData as any).eventDate || event.date,
+              venue: (rpcData as any).venue || event.venue,
+              registrationCode: regCode, name: payload.name, teamName: payload.team_name,
+              member1: payload.member1, member2: payload.member2,
+              department: payload.department, year: payload.year, ...getStoredEmailCredentials(),
+            }),
+          }).catch(() => {});
+        } catch {}
+      }
+      syncSingleRegistrationToGoogleSheet(event, { ...reg, id: reg.id, registrationCode: regCode }).catch((err) =>
+        console.warn("[Google Sheets Live Sync]", err?.message)
+      );
+      return {
+        success: true,
+        message: `Registration confirmed for ${((rpcData as any).eventTitle || event.title)}!`,
+        data: {
+          id: reg.id, registrationId: regCode, teamName: payload.team_name,
+          member1: payload.member1, member2: payload.member2, name: payload.name,
+          email: payload.email, phone: payload.phone, department: payload.department, year: payload.year,
+          eventTitle: (rpcData as any).eventTitle || event.title,
+          eventDate: (rpcData as any).eventDate || event.date,
+          venue: (rpcData as any).venue || event.venue,
+        },
+      };
+    }
+  } catch (rpcErr: any) {
+    // Business errors (full / duplicate-team / bad email) -> surface directly
+    if (rpcErr?.message && !String(rpcErr.message).includes("Could not find the function")) throw rpcErr;
+  }
+
+  // Legacy fallback (only works when the RPC above isn't deployed yet,
+  // or for authenticated admins who have SELECT permission).
+
   // 2. Duplicate check
   const cleanEmail = input.email.trim().toLowerCase();
   const { data: existing } = await supabase
@@ -1296,27 +1415,37 @@ function doPost(e) {
     var headers = [
       "Registration ID",
       "Team Name",
-      "Department",
       "Member 1 (Lead)",
-      "Lead Email",
-      "Year of Study",
-      "Notes / Queries",
+      "Member 1 Roll No",
+      "Member 1 Email",
+      "Member 2",
+      "Member 2 Roll No",
+      "Member 2 Email",
+      "Department",
+      "Section",
+      "Phone / Contact",
       "Registered At"
     ];
+
+    function normId(v) {
+      return String(v || "").replace(/^'/, "").trim().toLowerCase();
+    }
 
     function ensureHeaders(targetSheet) {
       var lastCol = targetSheet.getLastColumn();
       var needHeaders = false;
-      if (lastCol < headers.length) {
+      if (lastCol !== headers.length) {
         needHeaders = true;
       } else {
-        var firstRow = targetSheet.getRange(1, 1, 1, Math.min(headers.length, lastCol)).getValues()[0];
-        if (firstRow[3] !== "Member 1 (Lead)" && firstRow[2] !== "Member 1 (Lead)") {
-          needHeaders = true;
+        var firstRow = targetSheet.getRange(1, 1, 1, headers.length).getValues()[0];
+        for (var h = 0; h < headers.length; h++) {
+          if (String(firstRow[h] || "").trim() !== headers[h]) { needHeaders = true; break; }
         }
       }
 
       if (needHeaders) {
+        // Clear any old header layout (fixes sheets stuck on old columns) then rewrite
+        targetSheet.getRange(1, 1, 1, Math.max(lastCol, headers.length)).clearContent().clearFormat();
         targetSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
         var headerRange = targetSheet.getRange(1, 1, 1, headers.length);
         headerRange.setFontWeight("bold");
@@ -1348,14 +1477,16 @@ function doPost(e) {
 
     if (data.action === "add_registration" || data.name || data.email || data.member1) {
       var regId = String(data.registrationId || "").trim();
-      var leadEmail = String(data.email || "").trim().toLowerCase();
-      var member2Email = String(data.member2Email || data.member2_phone || data.member2Phone || "").trim().toLowerCase();
       var teamName = String(data.teamName || data.team_name || "").trim();
       var member1 = String(data.member1 || data.name || "").trim();
+      var member1Roll = String(data.member1RollNumber || data.member1_roll_number || data.rollNumber || data.roll_number || "").trim();
+      var leadEmail = String(data.member1Email || data.email || "").trim().toLowerCase();
       var member2 = String(data.member2 || "").trim();
+      var member2Roll = String(data.member2RollNumber || data.member2_roll_number || "").trim();
+      var member2Email = String(data.member2Email || data.member2_email || "").trim().toLowerCase();
       var dept = String(data.department || data.college || "").trim();
-      var year = String(data.year || "").trim();
-      var notes = String(data.notes || "").trim();
+      var section = String(data.section || "").trim();
+      var phone = String(data.phone || data.member1Phone || data.contact || "").trim();
       var timestamp = data.timestamp || new Date().toLocaleString();
 
       var regIdStr = regId ? "'" + regId : "";
@@ -1364,8 +1495,7 @@ function doPost(e) {
       if (lastRow > 1 && regId) {
         var values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
         for (var r = 0; r < values.length; r++) {
-          var existingRegId = String(values[r][0] || "").trim();
-          if (existingRegId === regId) {
+          if (normId(values[r][0]) === normId(regId)) {
             return ContentService.createTextOutput(JSON.stringify({
               success: true,
               message: "Already synced: " + regId,
@@ -1376,31 +1506,21 @@ function doPost(e) {
         }
       }
 
-      if (member1) {
-        sheet.appendRow([
-          regIdStr,
-          teamName || (member1 + "'s Team"),
-          dept,
-          member1,
-          leadEmail,
-          year,
-          notes,
-          timestamp
-        ]);
-      }
-
-      if (member2 && member2 !== "-" && member2.toLowerCase() !== "none") {
-        sheet.appendRow([
-          regIdStr,
-          teamName || (member1 + "'s Team"),
-          dept,
-          member2,
-          member2Email || leadEmail || "-",
-          year,
-          notes,
-          timestamp
-        ]);
-      }
+      // Single row per team: Member 1 + Member 2 side-by-side (no duplicate rows)
+      sheet.appendRow([
+        regIdStr,
+        teamName || (member1 ? member1 + "'s Team" : ""),
+        member1,
+        member1Roll,
+        leadEmail,
+        member2,
+        member2Roll,
+        member2Email,
+        dept,
+        section,
+        phone,
+        timestamp
+      ]);
 
       for (var col = 1; col <= headers.length; col++) {
         sheet.autoResizeColumn(col);
@@ -1575,13 +1695,15 @@ export async function syncSingleRegistrationToGoogleSheet(event: any, reg: any) 
     registrationId: registrationCode,
     teamName: String(reg.team_name || reg.teamName || "").trim(),
     member1: String(reg.member1 || reg.name || "").trim(),
-    member2: String(reg.member2 || "").trim(),
-    name: String(reg.member1 || reg.name || "").trim(),
+    member1RollNumber: String(reg.roll_number || reg.rollNumber || reg.member1RollNumber || "").trim(),
+    member1Email: String(reg.email || "").trim().toLowerCase(),
     email: String(reg.email || "").trim().toLowerCase(),
-    member2Email: String(reg.member2_phone || reg.member2Phone || reg.member2Email || "").trim().toLowerCase(),
+    member2: String(reg.member2 || "").trim(),
+    member2RollNumber: String(reg.member2_roll_number || reg.member2RollNumber || "").trim(),
+    member2Email: String(reg.member2_email || reg.member2Email || "").trim().toLowerCase(),
     department: String(reg.department || reg.college || "").trim(),
-    year: String(reg.year || "").trim(),
-    notes: String(reg.notes || "").trim(),
+    section: String(reg.section || "").trim(),
+    phone: String(reg.phone || "").trim(),
     timestamp: formattedDate,
   });
 }
@@ -1641,13 +1763,15 @@ export async function syncEventToGoogleSheet(eventId: number | string) {
       registrationId: regCode,
       teamName: String(reg.team_name || reg.name || "").trim(),
       member1: String(reg.member1 || reg.name || "").trim(),
-      member2: String(reg.member2 || "").trim(),
-      name: String(reg.member1 || reg.name || "").trim(),
+      member1RollNumber: String(reg.roll_number || "").trim(),
+      member1Email: String(reg.email || "").trim().toLowerCase(),
       email: String(reg.email || "").trim().toLowerCase(),
-      member2Email: String(reg.member2_phone || "").trim().toLowerCase(),
+      member2: String(reg.member2 || "").trim(),
+      member2RollNumber: String(reg.member2_roll_number || "").trim(),
+      member2Email: String(reg.member2_email || "").trim().toLowerCase(),
       department: String(reg.department || reg.college || "").trim(),
-      year: String(reg.year || "").trim(),
-      notes: String(reg.notes || "").trim(),
+      section: String(reg.section || "").trim(),
+      phone: String(reg.phone || "").trim(),
       timestamp: formattedDate,
     });
     count++;

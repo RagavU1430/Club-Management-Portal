@@ -137,13 +137,15 @@ export async function recordRegistration(event, reg) {
     registrationId: registrationCode,
     teamName: String(reg.teamName || reg.team_name || "").trim(),
     member1: String(reg.member1 || reg.name || "").trim(),
-    member2: String(reg.member2 || "").trim(),
-    name: String(reg.member1 || reg.name || "").trim(),
+    member1RollNumber: String(reg.roll_number || reg.rollNumber || "").trim(),
+    member1Email: String(reg.email || "").trim().toLowerCase(),
     email: String(reg.email || "").trim().toLowerCase(),
-    member2Email: String(reg.member2_phone || reg.member2Phone || reg.member2Email || "").trim().toLowerCase(),
+    member2: String(reg.member2 || "").trim(),
+    member2RollNumber: String(reg.member2_roll_number || reg.member2RollNumber || "").trim(),
+    member2Email: String(reg.member2_email || reg.member2Email || "").trim().toLowerCase(),
     department: String(reg.department || reg.college || "").trim(),
-    year: String(reg.year || "").trim(),
-    notes: String(reg.notes || "").trim(),
+    section: String(reg.section || "").trim(),
+    phone: String(reg.phone || "").trim(),
     timestamp: formattedDate,
   });
 }
@@ -176,7 +178,8 @@ export async function syncAllToGoogleSheet() {
 
 /**
  * Returns the copy-paste Google Apps Script code customized with the spreadsheet ID.
- * Writes Member 1 (Lead) and Member 2 to Column D (Member 1 / Lead) and Column E (Lead Email / Email).
+ * Writes one row per team: Team, Member 1 + Roll + Email, Member 2 + Roll + Email,
+ * Department, Section, Phone, Timestamp.
  */
 export function getGoogleAppsScriptTemplate(spreadsheetId = DEFAULT_SPREADSHEET_ID) {
   return `/**
@@ -215,27 +218,36 @@ function doPost(e) {
     var headers = [
       "Registration ID",
       "Team Name",
-      "Department",
       "Member 1 (Lead)",
-      "Lead Email",
-      "Year of Study",
-      "Notes / Queries",
+      "Member 1 Roll No",
+      "Member 1 Email",
+      "Member 2",
+      "Member 2 Roll No",
+      "Member 2 Email",
+      "Department",
+      "Section",
+      "Phone / Contact",
       "Registered At"
     ];
+
+    function normId(v) {
+      return String(v || "").replace(/^'/, "").trim().toLowerCase();
+    }
 
     function ensureHeaders(targetSheet) {
       var lastCol = targetSheet.getLastColumn();
       var needHeaders = false;
-      if (lastCol < headers.length) {
+      if (lastCol !== headers.length) {
         needHeaders = true;
       } else {
-        var firstRow = targetSheet.getRange(1, 1, 1, Math.min(headers.length, lastCol)).getValues()[0];
-        if (firstRow[3] !== "Member 1 (Lead)" && firstRow[2] !== "Member 1 (Lead)") {
-          needHeaders = true;
+        var firstRow = targetSheet.getRange(1, 1, 1, headers.length).getValues()[0];
+        for (var h = 0; h < headers.length; h++) {
+          if (String(firstRow[h] || "").trim() !== headers[h]) { needHeaders = true; break; }
         }
       }
 
       if (needHeaders) {
+        targetSheet.getRange(1, 1, 1, Math.max(lastCol, headers.length)).clearContent().clearFormat();
         targetSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
         var headerRange = targetSheet.getRange(1, 1, 1, headers.length);
         headerRange.setFontWeight("bold");
@@ -270,14 +282,16 @@ function doPost(e) {
     // 2. ADD PARTICIPANT REGISTRATION ROW(S)
     if (data.action === "add_registration" || data.name || data.email || data.member1) {
       var regId = String(data.registrationId || "").trim();
-      var leadEmail = String(data.email || "").trim().toLowerCase();
-      var member2Email = String(data.member2Email || data.member2_phone || data.member2Phone || "").trim().toLowerCase();
       var teamName = String(data.teamName || data.team_name || "").trim();
       var member1 = String(data.member1 || data.name || "").trim();
+      var member1Roll = String(data.member1RollNumber || data.member1_roll_number || data.rollNumber || data.roll_number || "").trim();
+      var leadEmail = String(data.member1Email || data.email || "").trim().toLowerCase();
       var member2 = String(data.member2 || "").trim();
+      var member2Roll = String(data.member2RollNumber || data.member2_roll_number || "").trim();
+      var member2Email = String(data.member2Email || data.member2_email || "").trim().toLowerCase();
       var dept = String(data.department || data.college || "").trim();
-      var year = String(data.year || "").trim();
-      var notes = String(data.notes || "").trim();
+      var section = String(data.section || "").trim();
+      var phone = String(data.phone || data.member1Phone || data.contact || "").trim();
       var timestamp = data.timestamp || new Date().toLocaleString();
 
       var regIdStr = regId ? "'" + regId : "";
@@ -287,8 +301,7 @@ function doPost(e) {
       if (lastRow > 1 && regId) {
         var values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
         for (var r = 0; r < values.length; r++) {
-          var existingRegId = String(values[r][0] || "").trim();
-          if (existingRegId === regId) {
+          if (normId(values[r][0]) === normId(regId)) {
             return ContentService.createTextOutput(JSON.stringify({
               success: true,
               message: "Already synced: " + regId,
@@ -299,33 +312,21 @@ function doPost(e) {
         }
       }
 
-      // Append Member 1 (Lead) on Row 1 (Col D = Name, Col E = Email)
-      if (member1) {
-        sheet.appendRow([
-          regIdStr,
-          teamName || (member1 + "'s Team"),
-          dept,
-          member1,
-          leadEmail,
-          year,
-          notes,
-          timestamp
-        ]);
-      }
-
-      // Append Member 2 on Row 2 (Col D = Name, Col E = Email)
-      if (member2 && member2 !== "-" && member2.toLowerCase() !== "none") {
-        sheet.appendRow([
-          regIdStr,
-          teamName || (member1 + "'s Team"),
-          dept,
-          member2,
-          member2Email || leadEmail || "-",
-          year,
-          notes,
-          timestamp
-        ]);
-      }
+      // Single row per team: Member 1 + Member 2 side-by-side (no duplicate rows)
+      sheet.appendRow([
+        regIdStr,
+        teamName || (member1 ? member1 + "'s Team" : ""),
+        member1,
+        member1Roll,
+        leadEmail,
+        member2,
+        member2Roll,
+        member2Email,
+        dept,
+        section,
+        phone,
+        timestamp
+      ]);
 
       // Auto-resize columns so contents are never cut off
       for (var col = 1; col <= headers.length; col++) {
