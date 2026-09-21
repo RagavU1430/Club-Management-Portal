@@ -7,6 +7,7 @@ import {
   Play,
   ArrowLeft,
   Loader2,
+  Hourglass,
   Trophy,
   Maximize2,
 } from "lucide-react";
@@ -42,15 +43,16 @@ export default function Games() {
   const [gamesErr, setGamesErr] = useState("");
   const [activeGame, setActiveGame] = useState<GameRecord | null>(null);
 
-  const fetchGames = useCallback(async () => {
-    setLoadingGames(true);
-    setGamesErr("");
+  const fetchGames = useCallback(async (silent = false) => {
+    if (!silent) setLoadingGames(true);
+    if (!silent) setGamesErr("");
     try {
       const res = await apiFetch("/api/games");
       const d = await res.json();
       if (!res.ok || !d.success) throw new Error(d.error || d.message || "Could not load games.");
       setGames(Array.isArray(d.data) ? d.data : []);
     } catch (err: any) {
+      if (silent) return;
       const msg = String(err?.message || "");
       if (msg.includes("games") && (msg.includes("does not exist") || msg.includes("Could not find") || msg.includes("relation"))) {
         setGamesErr("Games are not set up yet. Please ask the admin to run the latest database migration.");
@@ -59,13 +61,26 @@ export default function Games() {
       }
       setGames([]);
     } finally {
-      setLoadingGames(false);
+      if (!silent) setLoadingGames(false);
     }
   }, []);
 
   useEffect(() => {
-    if (access) fetchGames();
+    if (!access) return;
+    fetchGames();
+    // Poll so players see the moment the host starts a game
+    const poll = setInterval(() => fetchGames(true), 10000);
+    return () => clearInterval(poll);
   }, [access, fetchGames]);
+
+  // If the host stops a game mid-play, return the player to the arena
+  useEffect(() => {
+    if (!activeGame || games.length === 0) return;
+    const current = games.find((g) => g.id === activeGame.id);
+    if (current && Number(current.is_live ?? 0) !== 1) {
+      setActiveGame(null);
+    }
+  }, [games, activeGame]);
 
   async function handleVerify(e: React.FormEvent) {
     e.preventDefault();
@@ -260,7 +275,10 @@ export default function Games() {
 
           {!loadingGames && !gamesErr && visibleGames.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {visibleGames.map((g, idx) => (
+              {visibleGames.map((g, idx) => {
+                const live = Number(g.is_live ?? 0) === 1;
+                const playable = live && g.game_url;
+                return (
                 <div
                   key={g.id}
                   className="group relative rounded-3xl overflow-hidden glass border border-slate-200 dark:border-white/10 hover:border-[#e1306c]/50 dark:hover:border-cyan-400/50 p-6 shadow-lg transition-all duration-300 hover:-translate-y-1"
@@ -270,7 +288,16 @@ export default function Games() {
                     <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-r from-[#833ab4] via-[#e1306c] to-[#f77737] dark:from-cyan-500 dark:to-blue-600 text-white font-display font-black text-lg shadow-md">
                       {String(idx + 1).padStart(2, "0")}
                     </span>
-                    <Gamepad2 className="h-5 w-5 text-slate-300 dark:text-slate-600 group-hover:text-[#e1306c] dark:group-hover:text-cyan-400 transition" />
+                    <div className="flex items-center gap-2">
+                      {live ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/15 border border-red-500/30 px-2.5 py-0.5 text-[10px] font-mono font-bold text-red-600 dark:text-red-300">
+                          <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+                          LIVE
+                        </span>
+                      ) : (
+                        <Gamepad2 className="h-5 w-5 text-slate-300 dark:text-slate-600 group-hover:text-[#e1306c] dark:group-hover:text-cyan-400 transition" />
+                      )}
+                    </div>
                   </div>
                   <h3 className="font-display text-lg font-bold text-slate-900 dark:text-white leading-snug">
                     {g.title}
@@ -280,16 +307,23 @@ export default function Games() {
                       {g.description}
                     </p>
                   )}
-                  <button
-                    onClick={() => setActiveGame(g)}
-                    disabled={!g.game_url}
-                    className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#833ab4] via-[#e1306c] to-[#f77737] dark:from-cyan-500 dark:to-blue-600 py-2.5 text-sm font-bold text-white shadow-md transition hover:scale-[1.02] disabled:opacity-40 cursor-pointer"
-                  >
-                    <Play className="h-4 w-4" />
-                    {g.game_url ? "Play Now" : "Coming Soon"}
-                  </button>
+                  {playable ? (
+                    <button
+                      onClick={() => setActiveGame(g)}
+                      className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#833ab4] via-[#e1306c] to-[#f77737] dark:from-cyan-500 dark:to-blue-600 py-2.5 text-sm font-bold text-white shadow-md transition hover:scale-[1.02] cursor-pointer"
+                    >
+                      <Play className="h-4 w-4" />
+                      Play Now
+                    </button>
+                  ) : (
+                    <div className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-slate-100 dark:bg-white/5 border border-dashed border-slate-300 dark:border-white/15 py-2.5 text-sm font-semibold text-slate-500 dark:text-slate-400">
+                      <Hourglass className="h-4 w-4 animate-pulse" />
+                      {!g.game_url ? "Coming Soon" : "Wait for host to start the game"}
+                    </div>
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

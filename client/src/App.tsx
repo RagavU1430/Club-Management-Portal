@@ -12,6 +12,7 @@ const About = lazy(() => import("./pages/About"));
 const Admin = lazy(() => import("./pages/Admin"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Games = lazy(() => import("./pages/Games"));
+const EventRegister = lazy(() => import("./pages/EventRegister"));
 
 function PageLoader() {
   return (
@@ -56,6 +57,7 @@ export default function App() {
               <Route path="/coordinators" element={<Team />} />
               <Route path="/about" element={<About />} />
               <Route path="/games" element={<Games />} />
+              <Route path="/events/:idOrSlug/register" element={<EventRegister />} />
               <Route path="/admin/*" element={<Admin />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

@@ -5,6 +5,7 @@ function formatGame(row) {
   if (!row) return row;
   const g = rowToJSON(row);
   g.is_active = Number(g.is_active ?? 1);
+  g.is_live = Number(g.is_live ?? 0);
   g.order = Number(g.order ?? 0);
   if (g.event_id !== null && g.event_id !== undefined) g.event_id = Number(g.event_id);
   return g;
@@ -32,12 +33,13 @@ export async function createGame(req, res) {
     game_url: String(body.game_url).trim(),
     event_id: body.event_id === null || body.event_id === undefined || body.event_id === "" ? null : Number(body.event_id),
     is_active: body.is_active === undefined ? 1 : Number(body.is_active) ? 1 : 0,
+    is_live: body.is_live === undefined ? 0 : Number(body.is_live) ? 1 : 0,
     order: Number(body.order) || 0,
   };
 
   const result = db.prepare(`
-    INSERT INTO games (title, description, game_url, event_id, is_active, "order")
-    VALUES (@title, @description, @game_url, @event_id, @is_active, @order)
+    INSERT INTO games (title, description, game_url, event_id, is_active, is_live, "order")
+    VALUES (@title, @description, @game_url, @event_id, @is_active, @is_live, @order)
   `).run(payload);
 
   const inserted = formatGame(db.prepare("SELECT * FROM games WHERE id = ?").get(result.lastInsertRowid));
@@ -67,6 +69,10 @@ export async function updateGame(req, res) {
   if (body.is_active !== undefined) {
     updates.push("is_active = ?");
     vals.push(Number(body.is_active) ? 1 : 0);
+  }
+  if (body.is_live !== undefined) {
+    updates.push("is_live = ?");
+    vals.push(Number(body.is_live) ? 1 : 0);
   }
   if (body.order !== undefined) {
     updates.push(`"order" = ?`);

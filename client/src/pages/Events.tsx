@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Calendar, MapPin, Search, ArrowRight, Sparkles } from "lucide-react";
+import { Calendar, MapPin, Search, ArrowRight, Sparkles, Link2, Check } from "lucide-react";
 import { apiFetch } from "../utils/api";
 import RegistrationModal, { EventItem } from "../components/RegistrationModal";
 
@@ -165,6 +165,24 @@ function EventCard({
     year: "numeric",
   });
   const isPast = event.computedStatus === "past";
+  const [copied, setCopied] = useState(false);
+
+  async function copyRegisterLink(e: React.MouseEvent) {
+    e.stopPropagation();
+    const url = `${window.location.origin}/events/${encodeURIComponent(event.slug || String(event.id))}/register`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   return (
     <div
@@ -230,6 +248,27 @@ function EventCard({
           {isPast ? "View Agenda & Details" : "View Agenda & Register"}
           <ArrowRight className="h-3.5 w-3.5" />
         </button>
+
+        {!isPast && (
+          <button
+            type="button"
+            onClick={copyRegisterLink}
+            title="Copy direct registration link to share"
+            className="w-full flex items-center justify-center gap-2 rounded-xl py-2 text-[11px] font-mono text-slate-500 dark:text-slate-400 hover:text-[#c13584] dark:hover:text-cyan-300 transition cursor-pointer"
+          >
+            {copied ? (
+              <>
+                <Check className="h-3.5 w-3.5 text-emerald-500" />
+                <span className="text-emerald-600 dark:text-emerald-400">Link copied!</span>
+              </>
+            ) : (
+              <>
+                <Link2 className="h-3.5 w-3.5" />
+                Copy registration link
+              </>
+            )}
+          </button>
+        )}
       </div>
     </div>
   );

@@ -256,8 +256,13 @@ export async function registerForEvent(req, res) {
   }
 
   // 3. Check for Duplicate Registration
-  const existing = db.prepare("SELECT id FROM event_registrations WHERE event_id = ? AND (LOWER(email) = ? OR (member2_email != '' AND LOWER(member2_email) = ?))").get(eventId, email.trim().toLowerCase(), email.trim().toLowerCase());
+  const existing = db.prepare("SELECT id, team_name FROM event_registrations WHERE event_id = ? AND (LOWER(email) = ? OR (member2_email != '' AND LOWER(member2_email) = ?))").get(eventId, email.trim().toLowerCase(), email.trim().toLowerCase());
   if (existing) {
+    const existingTeam = String(existing.team_name || "").trim();
+    // Same mail ID, different team name → block clearly (one mail ID = one team per event).
+    if (tName && existingTeam && tName.toLowerCase() !== existingTeam.toLowerCase()) {
+      throw new ApiError(409, `This mail ID is already registered under team "${existingTeam}" for this event. One mail ID can register only one team per event — please use a different mail ID for the new team, or open your existing ticket.`);
+    }
     return res.json({
       success: true,
       message: "This email is already registered for this event!",

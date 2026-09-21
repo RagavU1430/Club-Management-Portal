@@ -266,6 +266,8 @@ function EventManager() {
   const [syncingEventId, setSyncingEventId] = useState<number | null>(null);
   const [copiedScript, setCopiedScript] = useState(false);
   const [sheetMsg, setSheetMsg] = useState("");
+  const [actionMsg, setActionMsg] = useState("");
+  const [actionErr, setActionErr] = useState("");
 
 
 
@@ -338,8 +340,14 @@ function EventManager() {
     try {
       const res = await apiFetch("/api/events?scope=all");
       const d = await res.json();
-      if (d.success) setEvents(d.data);
-    } catch {}
+      if (d.success) {
+        setEvents(d.data);
+      } else {
+        setActionErr(`Could not load events: ${d.error || d.message || "unknown error"}. Try signing out and back in.`);
+      }
+    } catch (err: any) {
+      setActionErr(`Could not load events: ${err?.message || "network error"}.`);
+    }
     setLoading(false);
   }
 
@@ -486,15 +494,25 @@ function EventManager() {
   }
 
   async function handleDelete(id: string | number) {
-    if (!confirm("Are you sure you want to delete this event and all its registrations?")) return;
+    const target = events.find((e: any) => String(e.id) === String(id));
+    if (!confirm(`Are you sure you want to delete "${target?.title || "this event"}" and all its registrations? This cannot be undone.`)) return;
+    setActionMsg("");
+    setActionErr("");
     try {
       const token = localStorage.getItem("aif_token");
-      await apiFetch(`/api/events/${id}`, {
+      const res = await apiFetch(`/api/events/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
-      await load();
-    } catch {}
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.success) {
+        throw new Error(d.error || d.message || "Delete was rejected by the server.");
+      }
+      setEvents((prev) => prev.filter((e: any) => String(e.id) !== String(id)));
+      setActionMsg(`Event "${target?.title || id}" deleted successfully.`);
+    } catch (err: any) {
+      setActionErr(`${err?.message || "Could not delete event."} If this keeps happening, sign out and back into the admin portal.`);
+    }
   }
 
   function downloadExcel(eventId: string | number) {
@@ -522,8 +540,19 @@ function EventManager() {
         </button>
       </div>
 
-      {/* Connected Google Spreadsheet Live Sync Banner */}
-      <div className="glass rounded-2xl p-4 sm:p-5 border border-cyan-500/20 dark:border-cyan-400/20 bg-gradient-to-r from-cyan-500/5 via-slate-50 dark:via-slate-900/40 to-emerald-500/5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+      {/* Action feedback (delete / load errors) */}
+      {actionMsg && (
+        <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 px-4 py-2.5 text-xs font-mono text-emerald-600 dark:text-emerald-300">
+          {actionMsg}
+        </div>
+      )}
+      {actionErr && (
+        <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-2.5 text-xs font-mono text-red-600 dark:text-red-300">
+          {actionErr}
+        </div>
+      )}
+
+      {/* Connected Google Spreadsheet Live Sync Banner */}      <div className="glass rounded-2xl p-4 sm:p-5 border border-cyan-500/20 dark:border-cyan-400/20 bg-gradient-to-r from-cyan-500/5 via-slate-50 dark:via-slate-900/40 to-emerald-500/5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
           <div className="h-11 w-11 rounded-xl bg-emerald-500/10 border border-emerald-500/30 dark:border-emerald-400/30 flex items-center justify-center shrink-0">
             <FileSpreadsheet className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
@@ -1004,17 +1033,25 @@ function ResponsesModal({
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [loadError, setLoadError] = useState("");
 
   const fetchRegistrations = useCallback(async () => {
     setLoading(true);
+    setLoadError("");
     try {
       const token = localStorage.getItem("aif_token");
       const res = await apiFetch(`/api/events/${event.id}/registrations`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const d = await res.json();
-      if (d.success) setRegistrations(d.data);
-    } catch {}
+      if (d.success) {
+        setRegistrations(d.data);
+      } else {
+        setLoadError(d.error || d.message || "Could not load responses.");
+      }
+    } catch (err: any) {
+      setLoadError(err?.message || "Network error while loading responses.");
+    }
     setLoading(false);
   }, [event.id]);
 
@@ -1025,14 +1062,21 @@ function ResponsesModal({
 
   async function handleDeleteReg(_regId: number) {
     if (!confirm("Remove this attendee?")) return;
+    setLoadError("");
     try {
       const token = localStorage.getItem("aif_token");
-      await apiFetch(`/api/events/${event.id}/registrations/${_regId}`, {
+      const res = await apiFetch(`/api/events/${event.id}/registrations/${_regId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.success) {
+        throw new Error(d.error || d.message || "Remove was rejected by the server.");
+      }
       fetchRegistrations();
-    } catch {}
+    } catch (err: any) {
+      setLoadError(`${err?.message || "Could not remove attendee."} (try signing out and back into the admin portal)`);
+    }
   }
 
   const filtered = registrations.filter((r) => {
@@ -1110,19 +1154,30 @@ function ResponsesModal({
         </div>
 
         {/* Table View */}
-        <div className="flex-1 overflow-auto rounded-xl border border-white/10 bg-black/40">
+        {loadError && registrations.length > 0 && (
+          <div className="mb-3 rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-2.5 text-xs font-mono text-red-600 dark:text-red-300">
+            {loadError}
+          </div>
+        )}
+        <div className="flex-1 overflow-auto rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-black/40">
           {loading ? (
-            <div className="p-8 text-center text-slate-400 text-xs font-mono">
-              <Loader2 className="mx-auto h-6 w-6 animate-spin text-cyan-400 mb-2" />
+            <div className="p-8 text-center text-slate-500 dark:text-slate-400 text-xs font-mono">
+              <Loader2 className="mx-auto h-6 w-6 animate-spin text-cyan-600 dark:text-cyan-400 mb-2" />
               Loading records...
             </div>
           ) : filtered.length === 0 ? (
-            <div className="p-8 text-center text-slate-500 text-xs font-mono">
-              No registration responses found.
+            <div className="p-8 text-center text-xs font-mono">
+              {loadError ? (
+                <span className="text-red-500 dark:text-red-300">
+                  Could not load responses: {loadError} (try signing out and back into the admin portal)
+                </span>
+              ) : (
+                <span className="text-slate-500">No registration responses found.</span>
+              )}
             </div>
           ) : (
             <table className="w-full text-left text-xs">
-              <thead className="bg-white/5 text-slate-400 font-mono border-b border-white/10 uppercase tracking-wider sticky top-0">
+              <thead className="bg-slate-100/90 dark:bg-white/5 text-slate-500 dark:text-slate-400 font-mono border-b border-slate-200 dark:border-white/10 uppercase tracking-wider sticky top-0">
                 <tr>
                   <th className="p-3">ID</th>
                   <th className="p-3">Team & Members</th>
@@ -1133,46 +1188,46 @@ function ResponsesModal({
                   <th className="p-3 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5 text-slate-200">
+              <tbody className="divide-y divide-slate-100 dark:divide-white/5 text-slate-700 dark:text-slate-200">
                 {filtered.map((r) => (
-                  <tr key={r.id} className="hover:bg-white/5 transition">
-                    <td className="p-3 font-mono text-[11px] text-cyan-400">{r.registrationCode || r.id}</td>
+                  <tr key={r.id} className="hover:bg-slate-100 dark:hover:bg-white/5 transition">
+                    <td className="p-3 font-mono text-[11px] text-cyan-700 dark:text-cyan-400">{r.registrationCode || r.id}</td>
                     <td className="p-3">
                       {r.team_name && (
-                        <span className="inline-block rounded bg-cyan-400/10 border border-cyan-400/20 px-2 py-0.5 text-[10px] font-mono text-cyan-300 font-bold mb-1">
+                        <span className="inline-block rounded bg-cyan-500/10 border border-cyan-500/25 dark:border-cyan-400/20 px-2 py-0.5 text-[10px] font-mono text-cyan-700 dark:text-cyan-300 font-bold mb-1">
                           {r.team_name}
                         </span>
                       )}
-                      <div className="font-semibold text-white">
-                        <span className="text-slate-400 font-normal text-[11px]">M1: </span>
+                      <div className="font-semibold text-slate-900 dark:text-white">
+                        <span className="text-slate-500 dark:text-slate-400 font-normal text-[11px]">M1: </span>
                         {r.member1 || r.name}
                       </div>
                       {r.member2 && (
-                        <div className="text-[11px] text-purple-300">
-                          <span className="text-slate-400 font-normal">M2: </span>
+                        <div className="text-[11px] text-purple-700 dark:text-purple-300">
+                          <span className="text-slate-500 dark:text-slate-400 font-normal">M2: </span>
                           {r.member2}
                         </div>
                       )}
                     </td>
                     <td className="p-3">
-                      <div className="text-slate-300 font-mono text-[11px]">{r.email}</div>
+                      <div className="text-slate-600 dark:text-slate-300 font-mono text-[11px]">{r.email}</div>
                       {r.member2_phone && (
-                        <div className="text-[10px] text-purple-300 font-mono">
+                        <div className="text-[10px] text-purple-700 dark:text-purple-300 font-mono">
                           <span className="text-slate-500">M2: </span>{r.member2_phone}
                         </div>
                       )}
                     </td>
                     <td className="p-3">
-                      <div className="text-white font-medium">{r.department || r.college || "—"}</div>
+                      <div className="text-slate-900 dark:text-white font-medium">{r.department || r.college || "—"}</div>
                     </td>
                     <td className="p-3">{r.year || "—"}</td>
-                    <td className="p-3 text-slate-400 text-[11px]">
+                    <td className="p-3 text-slate-500 dark:text-slate-400 text-[11px]">
                       {new Date(r.created_at).toLocaleDateString()}
                     </td>
                     <td className="p-3 text-right">
                       <button
                         onClick={() => handleDeleteReg(r.id)}
-                        className="text-slate-500 hover:text-red-400 transition cursor-pointer"
+                        className="text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition cursor-pointer"
                         title="Remove attendee"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -1249,6 +1304,7 @@ function AttendanceGeneratorModal({
       const token = localStorage.getItem("aif_token");
       let list: any[] = [];
       let incomingStats: any = null;
+      let loadFailed = false;
 
       try {
         const res = await apiFetch(`/api/events/${event.id}/attendance`, {
@@ -1258,9 +1314,12 @@ function AttendanceGeneratorModal({
         if (d.success && Array.isArray(d.data) && d.data.length > 0) {
           list = d.data;
           incomingStats = d.stats;
+        } else if (!d.success) {
+          loadFailed = true;
         }
       } catch (e) {
         console.warn("[Attendance] Fetch attendance error:", e);
+        loadFailed = true;
       }
 
       if (list.length === 0) {
@@ -1276,10 +1335,20 @@ function AttendanceGeneratorModal({
               attended: Boolean(r.attended),
               checked_in_at: r.checked_in_at || "",
             }));
+          } else if (!d.success) {
+            loadFailed = true;
           }
         } catch (e) {
           console.warn("[Attendance] Fallback fetch registrations error:", e);
+          loadFailed = true;
         }
+      }
+
+      if (list.length === 0 && loadFailed) {
+        setQuickMsg({
+          type: "error",
+          text: "Could not load attendance records (access denied or network issue). Try signing out and back into the admin portal.",
+        });
       }
 
       if (list.length > 0) {
@@ -4281,6 +4350,28 @@ function GamesManager() {
     }
   }
 
+  async function handleToggleLive(game: any) {
+    const goingLive = Number(game.is_live ?? 0) !== 1;
+    if (goingLive && !confirm(`Start "${game.title}" now? Players will be able to play immediately.`)) return;
+    try {
+      const token = localStorage.getItem("aif_token");
+      const res = await apiFetch(`/api/games/${game.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ is_live: goingLive ? 1 : 0 }),
+      });
+      const d = await res.json();
+      if (!res.ok || !d.success) throw new Error(d.message || d.error || "Failed to update game.");
+      setGames((prev) => prev.map((g) => (g.id === game.id ? d.data : g)));
+      setStatusMsg(goingLive ? `Game "${game.title}" is now LIVE for players.` : `Game "${game.title}" stopped. Players will wait for host.`);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Could not update game.");
+    }
+  }
+
   async function handleDelete(id: number, title: string) {
     if (!confirm(`Are you sure you want to delete game "${title}"?`)) return;
     setStatusMsg("");
@@ -4443,6 +4534,7 @@ function GamesManager() {
         <div className="space-y-4">
           {games.map((g: any) => {
             const active = Number(g.is_active ?? 1) === 1;
+            const live = Number(g.is_live ?? 0) === 1;
             return (
               <div
                 key={g.id}
@@ -4450,6 +4542,12 @@ function GamesManager() {
               >
                 <div className="space-y-1.5 max-w-xl">
                   <div className="flex items-center gap-2 flex-wrap">
+                    {live && (
+                      <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-red-500/15 text-red-600 dark:text-red-300 border border-red-500/30 flex items-center gap-1.5 font-bold">
+                        <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+                        LIVE
+                      </span>
+                    )}
                     <span
                       className={`text-xs font-mono px-2.5 py-0.5 rounded-full border ${
                         active
@@ -4468,6 +4566,18 @@ function GamesManager() {
                   <p className="text-xs text-slate-300 line-clamp-1">{g.description || g.game_url}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                  <button
+                    onClick={() => handleToggleLive(g)}
+                    className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-mono font-bold transition cursor-pointer ${
+                      Number(g.is_live ?? 0) === 1
+                        ? "bg-red-500/15 border border-red-500/40 text-red-600 dark:text-red-300 hover:bg-red-500/25"
+                        : "bg-emerald-500 border border-emerald-400 text-black hover:bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                    }`}
+                    title={Number(g.is_live ?? 0) === 1 ? "Stop the game for players" : "Start the game for players"}
+                  >
+                    <span className={`h-1.5 w-1.5 rounded-full ${Number(g.is_live ?? 0) === 1 ? "bg-red-500 animate-pulse" : "bg-black"}`} />
+                    <span>{Number(g.is_live ?? 0) === 1 ? "Stop" : "Start"}</span>
+                  </button>
                   <a
                     href={g.game_url}
                     target="_blank"

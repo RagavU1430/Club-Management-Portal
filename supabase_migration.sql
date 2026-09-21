@@ -112,10 +112,12 @@ CREATE TABLE IF NOT EXISTS games (
   game_url TEXT NOT NULL DEFAULT '',
   event_id BIGINT REFERENCES events(id) ON DELETE SET NULL,
   is_active INTEGER NOT NULL DEFAULT 1,
+  is_live INTEGER NOT NULL DEFAULT 0,
   "order" INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);CREATE TABLE IF NOT EXISTS settings (
+);
+ALTER TABLE games ADD COLUMN IF NOT EXISTS is_live INTEGER NOT NULL DEFAULT 0;CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -215,19 +217,8 @@ GRANT EXECUTE ON FUNCTION lookup_registration_tickets(TEXT, BIGINT) TO anon, aut
 
 -- 4. Initial Seed Data
 
--- Events Seed
-INSERT INTO events (id, title, slug, date, end_date, venue, description, summary, image, registration_link, tags, status, featured, capacity, webhook_url)
-VALUES (4, 'AI Frontiers Club', 'ai-frontiers-club', '2026-09-26T08:30:00.000Z'::timestamptz, NULL, 'LAB 5', 'Welcome to AI Frontiers Hackathon 2026! A premier collegiate 2-member team buildathon challenging students to design, prototype, and deploy real-world Artificial Intelligence systems.
-
-Event Schedule & Agenda:
-• 08:30 AM - 09:15 AM : Reporting, Check-In & Team Badge Distribution
-• 09:15 AM - 10:00 AM : Keynote Address & Problem Statements Release
-• 10:00 AM - 01:00 PM : Phase 1: Architecture Ideation & Data Pipeline
-• 01:00 PM - 01:45 PM : Networking & Lunch Break
-• 01:45 PM - 04:00 PM : Phase 2: Core Model Building & Frontend Integration
-• 04:00 PM - 05:30 PM : Final Pitch Deck & Live Project Demonstration
-• 05:30 PM - 06:00 PM : Valedictory Ceremony & Prize Distribution', 'Premier 2-member AI buildathon with model prototyping, live pitches, and mentorship.', '', '', '["AI","Hackathon","Coding"]'::jsonb, 'published', 0, 60, '')
-ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, description = EXCLUDED.description, summary = EXCLUDED.summary;
+-- NOTE: No demo events are seeded. Create events from the Admin portal
+-- (Events & Registrations → Create New Event) so only real events exist.
 
 -- Team Members Seed
 INSERT INTO team_members (id, name, role, department, photo, email, phone, linkedin, github, bio, "order", active)
@@ -299,16 +290,8 @@ INSERT INTO settings (key, value)
 VALUES ('email_sender_name', 'AI Frontier Club')
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 
--- Event Registrations Seed
-INSERT INTO event_registrations (id, event_id, team_name, member1, member2, name, email, phone, member2_phone, department, college, roll_number, year, notes, attended, checked_in_at)
-VALUES (9, 4, 'TEST TEAM', 'TEST NAME 1', 'TEST NAME 2', 'TEST NAME 1', 'lead@example.com', '', 'member2@example.com', 'Artificial Intelligence and Data Science', 'Artificial Intelligence and Data Science', '', '2nd Year', '', 1, '2026-09-18T04:58:27.130Z'::timestamptz)
-ON CONFLICT (id) DO NOTHING;
-INSERT INTO event_registrations (id, event_id, team_name, member1, member2, name, email, phone, member2_phone, department, college, roll_number, year, notes, attended, checked_in_at)
-VALUES (10, 4, 'Neural Knights', 'Sabesh E', 'Ram Pradeep RP', 'Sabesh E', 'sabeshsabesh082007@gmail.com', '', 'rampradeep4858@gmail.com', 'Artificial Intelligence and Data Science', 'Artificial Intelligence and Data Science', '', '3rd Year', '', 1, '2026-09-18T04:58:34.889Z'::timestamptz)
-ON CONFLICT (id) DO NOTHING;
-INSERT INTO event_registrations (id, event_id, team_name, member1, member2, name, email, phone, member2_phone, department, college, roll_number, year, notes, attended, checked_in_at)
-VALUES (11, 4, 'Debug Team', 'Test User', '', 'Test User', 'test@example.com', '1234567890', '', 'AI', 'AI', '', '3rd', '', 0, NULL)
-ON CONFLICT (id) DO NOTHING;
+-- NOTE: No demo registrations are seeded. All registrations come from the
+-- live registration form only, so the database contains real data.
 
 -- 5. Auto-Increment Sequences
 DO $$

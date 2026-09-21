@@ -501,6 +501,16 @@ export async function registerForEvent(eventId: number | string, input: Registra
 
   if (existing) {
     const regCode = `AIF-${numericId}-${existing.id}`;
+    const existingTeam = String(existing.team_name || "").trim();
+    const submittedTeam = String(input.teamName || "").trim();
+
+    // Same mail ID, different team name → block with a clear message instead of
+    // silently returning the old ticket (one mail ID = one team per event).
+    if (submittedTeam && existingTeam && submittedTeam.toLowerCase() !== existingTeam.toLowerCase()) {
+      throw new Error(
+        `This mail ID is already registered under team "${existingTeam}" for this event. One mail ID can register only one team per event — please use a different mail ID for the new team, or open your existing ticket.`
+      );
+    }
 
     // Re-dispatch confirmation pass to participant
     const recipientEmails = [existing.email, existing.member2_email].filter(
@@ -803,7 +813,7 @@ export async function resolveNumericEventId(eventId: number | string): Promise<n
 
 export async function getEventRegistrations(eventId: number | string) {
   const numericId = await resolveNumericEventId(eventId);
-  let { data, error } = await supabase
+  const { data, error } = await supabase
     .from("event_registrations")
     .select("*")
     .eq("event_id", numericId)
@@ -811,6 +821,7 @@ export async function getEventRegistrations(eventId: number | string) {
 
   if (error) {
     console.warn("[Supabase] getEventRegistrations error:", error.message);
+    return { success: false, error: error.message, data: [] };
   }
 
   const list = (data || []).map((r) => ({
@@ -841,6 +852,7 @@ export async function getAttendance(eventId: number | string) {
 
   if (error) {
     console.warn("[Supabase] getAttendance registrations query error:", error.message);
+    return { success: false, error: error.message, data: [] };
   }
 
   const regs = list || [];
@@ -1078,6 +1090,7 @@ export interface GameRecord {
   game_url?: string;
   event_id?: number | null;
   is_active?: number | boolean;
+  is_live?: number | boolean;
   order?: number;
   created_at?: string;
   updated_at?: string;
