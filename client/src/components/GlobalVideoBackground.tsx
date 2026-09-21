@@ -265,9 +265,6 @@ export default function GlobalVideoBackground() {
     };
   }, [renderFrame, isAdmin]);
 
-  // Don't mount heavy fixed canvases on admin at all
-  if (isAdmin) return null;
-
   // Cyber Matrix Rain Animation Loop (Active on First Frame, Full-Width Edge-to-Edge, skipped on Admin)
   // Lightweight: no per-glyph shadows, ~20fps cadence, skipped on small screens.
   useEffect(() => {
@@ -373,6 +370,9 @@ export default function GlobalVideoBackground() {
       if (matrixRafRef.current) cancelAnimationFrame(matrixRafRef.current);
     };
   }, [isAdmin]);
+
+  // Don't mount heavy fixed canvases on admin at all
+  if (isAdmin) return null;
 
   return (
     <div
