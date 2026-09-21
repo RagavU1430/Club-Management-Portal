@@ -9,6 +9,7 @@ import { list as eventsList, stats, getOne, create, update, remove, exportCSV, r
 import { list as teamList, roles, create as createTeam, update as updateTeam, remove as removeTeam, clearAll as clearAllTeam } from "./controllers/team.js";
 import { getGoogleSheetSettings, updateGoogleSheetSettings, syncAllSheets, syncSingleEventSheet, getEmailSettings, updateEmailSettings, sendTestEmailController } from "./controllers/settings.js";
 import { getClubDetails, updateClubDetails, listActivities, createActivity, updateActivity, deleteActivity } from "./controllers/club.js";
+import { listGames, createGame, updateGame, deleteGame } from "./controllers/games.js";
 import { upload } from "./middleware/upload.js";
 import { sendSubscriptionWelcomeEmail } from "./services/emailService.js";
 import sendConfirmationHandler from "../../api/send-confirmation.js";
@@ -133,6 +134,12 @@ app.get("/api/activities", listActivities);
 app.post("/api/activities", requireAuth, createActivity);
 app.put("/api/activities/:id", requireAuth, updateActivity);
 app.delete("/api/activities/:id", requireAuth, deleteActivity);
+
+// ── Event Games (public read, admin manage) ──
+app.get("/api/games", listGames);
+app.post("/api/games", requireAuth, createGame);
+app.put("/api/games/:id", requireAuth, updateGame);
+app.delete("/api/games/:id", requireAuth, deleteGame);
 
 // ── File Upload Handler ──
 app.post("/api/upload", requireAuth, upload.single("file"), (req, res) => {

@@ -10,6 +10,7 @@ import { apiFetch } from "../utils/api";
 const NAV_ITEMS = [
   { path: "/", label: "Home" },
   { path: "/events", label: "Events" },
+  { path: "/games", label: "Games" },
   { path: "/team", label: "Coordinators" },
   { path: "/about", label: "About" },
   { path: "/admin", label: "Admin" },

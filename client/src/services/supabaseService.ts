@@ -989,6 +989,58 @@ export async function deleteActivity(id: number) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// 4b. EVENT GAMES
+// ─────────────────────────────────────────────────────────────
+
+export interface GameRecord {
+  id: number;
+  title: string;
+  description?: string;
+  game_url?: string;
+  event_id?: number | null;
+  is_active?: number | boolean;
+  order?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export async function getGames(scope?: string) {
+  if (!isSupabaseConfigured) return { success: true, data: [] };
+
+  let query = supabase
+    .from("games")
+    .select("*")
+    .order("order", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (scope !== "all") {
+    query = query.eq("is_active", 1);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return { success: true, data: data || [] };
+}
+
+export async function createGame(payload: Record<string, unknown>) {
+  const { data, error } = await supabase.from("games").insert(payload).select().single();
+  if (error) throw error;
+  return { success: true, data };
+}
+
+export async function updateGame(id: number, payload: Record<string, unknown>) {
+  const { data, error } = await supabase.from("games").update(payload).eq("id", id).select().single();
+  if (error) throw error;
+  return { success: true, data };
+}
+
+export async function deleteGame(id: number) {
+  const { error } = await supabase.from("games").delete().eq("id", id);
+  if (error) throw error;
+  return { success: true, data: { id, deleted: true } };
+}
+
+// ─────────────────────────────────────────────────────────────
 // 5. NEWSLETTER SUBSCRIBERS
 // ─────────────────────────────────────────────────────────────
 

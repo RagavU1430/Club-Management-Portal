@@ -36,6 +36,7 @@ import {
   Award,
   QrCode,
   FileText,
+  Gamepad2,
 } from "lucide-react";
 import { GithubIcon, LinkedinIcon } from "../components/SocialIcons";
 import { apiFetch } from "../utils/api";
@@ -187,6 +188,7 @@ export default function Admin() {
         {[
           { id: "events", label: "Events & Registrations", icon: Calendar },
           { id: "team", label: "Coordinators", icon: Users },
+          { id: "games", label: "Games", icon: Gamepad2 },
           { id: "club", label: "Club & Activities", icon: Sparkles },
           { id: "email", label: "Email Settings", icon: Mail },
         ].map((t) => {
@@ -217,6 +219,9 @@ export default function Admin() {
       </div>
       <div className={tab === "team" ? "block" : "hidden"}>
         <TeamManager />
+      </div>
+      <div className={tab === "games" ? "block" : "hidden"}>
+        <GamesManager />
       </div>
       <div className={tab === "club" ? "block" : "hidden"}>
         <ClubManager />
@@ -4130,6 +4135,477 @@ function EmailSettingsManager() {
           ))}
         </ul>
       </div>
+    </div>
+  );
+}
+
+/* ── Games Manager (Event Game Arena) ── */
+const defaultGameForm = {
+  title: "",
+  description: "",
+  game_url: "",
+  event_id: "",
+  is_active: true,
+  order: 0,
+};
+
+function GamesManager() {
+  const [games, setGames] = useState<any[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [addForm, setAddForm] = useState({ ...defaultGameForm });
+  const [editingGame, setEditingGame] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({ ...defaultGameForm, is_active: true });
+  const [statusMsg, setStatusMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const loadGames = useCallback(() => {
+    setLoading(true);
+    apiFetch("/api/games?scope=all")
+      .then((r) => r.json())
+      .then((d) => setGames(d.success && Array.isArray(d.data) ? d.data : []))
+      .catch(() => setGames([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const loadEvents = useCallback(() => {
+    apiFetch("/api/events?scope=all")
+      .then((r) => r.json())
+      .then((d) => setEvents(d.success && Array.isArray(d.data) ? d.data : []))
+      .catch(() => setEvents([]));
+  }, []);
+
+  useEffect(() => {
+    loadGames();
+    loadEvents();
+  }, [loadGames, loadEvents]);
+
+  function toPayload(form: typeof defaultGameForm) {
+    return {
+      title: form.title.trim(),
+      description: form.description.trim(),
+      game_url: form.game_url.trim(),
+      event_id: form.event_id === "" ? null : Number(form.event_id),
+      is_active: form.is_active ? 1 : 0,
+      order: Number(form.order) || 0,
+    };
+  }
+
+  async function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setStatusMsg("");
+    setErrorMsg("");
+    try {
+      const token = localStorage.getItem("aif_token");
+      const res = await apiFetch("/api/games", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(toPayload(addForm)),
+      });
+      const d = await res.json();
+      if (!res.ok || !d.success) throw new Error(d.message || d.error || "Failed to add game.");
+      setGames((prev) => [...prev, d.data]);
+      setAddForm({ ...defaultGameForm });
+      setShowAddForm(false);
+      setStatusMsg("Game added successfully.");
+    } catch (err: any) {
+      setErrorMsg(err.message || "Could not add game.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleOpenEdit(game: any) {
+    setEditingGame(game);
+    setEditForm({
+      title: game.title || "",
+      description: game.description || "",
+      game_url: game.game_url || "",
+      event_id: game.event_id === null || game.event_id === undefined ? "" : String(game.event_id),
+      is_active: Number(game.is_active ?? 1) === 1,
+      order: Number(game.order) || 0,
+    });
+  }
+
+  async function handleUpdate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingGame) return;
+    setUpdating(true);
+    setStatusMsg("");
+    setErrorMsg("");
+    try {
+      const token = localStorage.getItem("aif_token");
+      const res = await apiFetch(`/api/games/${editingGame.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(toPayload(editForm)),
+      });
+      const d = await res.json();
+      if (!res.ok || !d.success) throw new Error(d.message || d.error || "Failed to update game.");
+      setGames((prev) => prev.map((g) => (g.id === editingGame.id ? d.data : g)));
+      setEditingGame(null);
+      setStatusMsg("Game updated successfully.");
+    } catch (err: any) {
+      setErrorMsg(err.message || "Could not update game.");
+    } finally {
+      setUpdating(false);
+    }
+  }
+
+  async function handleToggleActive(game: any) {
+    try {
+      const token = localStorage.getItem("aif_token");
+      const res = await apiFetch(`/api/games/${game.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ is_active: Number(game.is_active ?? 1) === 1 ? 0 : 1 }),
+      });
+      const d = await res.json();
+      if (!res.ok || !d.success) throw new Error(d.message || d.error || "Failed to update game.");
+      setGames((prev) => prev.map((g) => (g.id === game.id ? d.data : g)));
+    } catch (err: any) {
+      setErrorMsg(err.message || "Could not update game.");
+    }
+  }
+
+  async function handleDelete(id: number, title: string) {
+    if (!confirm(`Are you sure you want to delete game "${title}"?`)) return;
+    setStatusMsg("");
+    setErrorMsg("");
+    try {
+      const token = localStorage.getItem("aif_token");
+      const res = await apiFetch(`/api/games/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const d = await res.json();
+      if (!res.ok || !d.success) throw new Error(d.message || d.error || "Failed to delete game.");
+      setGames((prev) => prev.filter((g) => g.id !== id));
+      setStatusMsg(`Game "${title}" removed.`);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Could not delete game.");
+    }
+  }
+
+  function eventTitle(id: any) {
+    if (id === null || id === undefined) return "All Events";
+    const ev = events.find((e: any) => String(e.id) === String(id));
+    return ev ? ev.title : `Event #${id}`;
+  }
+
+  const inputCls =
+    "w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none";
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white font-display">Event Games</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Add games with a playable link. Verified registered participants can play them from the Games page.
+          </p>
+        </div>
+        <button
+          onClick={() => setShowAddForm(!showAddForm)}
+          className="flex items-center gap-2 rounded-xl bg-cyan-500 dark:bg-cyan-400 px-4 py-2.5 text-xs font-mono font-bold text-white dark:text-black hover:bg-cyan-600 dark:hover:bg-cyan-300 transition shadow-[0_0_20px_rgba(2,132,199,0.25)] dark:shadow-[0_0_20px_rgba(0,240,255,0.3)] cursor-pointer"
+        >
+          {showAddForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+          <span>{showAddForm ? "Cancel" : "Add New Game"}</span>
+        </button>
+      </div>
+
+      {statusMsg && (
+        <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 px-4 py-2.5 text-xs font-mono text-emerald-600 dark:text-emerald-300">
+          {statusMsg}
+        </div>
+      )}
+      {errorMsg && (
+        <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-2.5 text-xs font-mono text-red-600 dark:text-red-300">
+          {errorMsg}
+        </div>
+      )}
+
+      {showAddForm && (
+        <form onSubmit={handleAdd} className="glass rounded-2xl p-6 sm:p-8 border border-cyan-400/30 shadow-2xl">
+          <h3 className="font-display text-lg font-bold text-white mb-5">New Game Setup</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-xs font-mono text-slate-400 mb-1">GAME TITLE *</label>
+              <input
+                required
+                placeholder="e.g. AI Quiz Sprint"
+                value={addForm.title}
+                onChange={(e) => setAddForm({ ...addForm, title: e.target.value })}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-mono text-slate-400 mb-1">LINKED EVENT</label>
+              <select
+                value={addForm.event_id}
+                onChange={(e) => setAddForm({ ...addForm, event_id: e.target.value })}
+                className="w-full rounded-xl border border-white/10 bg-[#0d1321] px-4 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
+              >
+                <option value="">All Events (global)</option>
+                {events.map((ev: any) => (
+                  <option key={ev.id} value={String(ev.id)}>
+                    {ev.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-mono text-slate-400 mb-1">GAME URL (PLAYABLE LINK) *</label>
+              <input
+                required
+                type="url"
+                placeholder="https://... (embeddable game link)"
+                value={addForm.game_url}
+                onChange={(e) => setAddForm({ ...addForm, game_url: e.target.value })}
+                className={inputCls}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-mono text-slate-400 mb-1">DESCRIPTION</label>
+              <textarea
+                rows={3}
+                placeholder="Short rules / how to play..."
+                value={addForm.description}
+                onChange={(e) => setAddForm({ ...addForm, description: e.target.value })}
+                className={`${inputCls} leading-relaxed`}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-mono text-slate-400 mb-1">DISPLAY ORDER</label>
+              <input
+                type="number"
+                min="0"
+                value={addForm.order}
+                onChange={(e) => setAddForm({ ...addForm, order: Number(e.target.value) || 0 })}
+                className={inputCls}
+              />
+            </div>
+            <div className="flex items-end pb-1">
+              <label className="flex items-center gap-2 text-xs font-mono text-slate-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={addForm.is_active}
+                  onChange={(e) => setAddForm({ ...addForm, is_active: e.target.checked })}
+                  className="h-4 w-4 accent-cyan-400"
+                />
+                ACTIVE (visible to players)
+              </label>
+            </div>
+          </div>
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setShowAddForm(false)}
+              className="rounded-xl glass px-5 py-2.5 text-xs font-mono text-slate-300 hover:text-white cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-xl bg-cyan-400 px-6 py-2.5 text-xs font-mono font-bold text-black hover:bg-cyan-300 transition shadow-[0_0_15px_rgba(0,240,255,0.4)] disabled:opacity-50 cursor-pointer"
+            >
+              {saving ? "Adding Game..." : "Publish Game"}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {loading ? (
+        <div className="space-y-4">
+          <div className="skeleton h-24" />
+          <div className="skeleton h-24" />
+        </div>
+      ) : games.length === 0 ? (
+        <div className="glass rounded-2xl p-12 text-center">
+          <Gamepad2 className="mx-auto h-8 w-8 text-slate-600 mb-2" />
+          <p className="text-slate-400 text-sm">No games yet. Click "Add New Game" above.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {games.map((g: any) => {
+            const active = Number(g.is_active ?? 1) === 1;
+            return (
+              <div
+                key={g.id}
+                className="glass rounded-2xl p-5 border border-white/10 hover:border-white/20 transition flex flex-col md:flex-row md:items-center justify-between gap-4"
+              >
+                <div className="space-y-1.5 max-w-xl">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span
+                      className={`text-xs font-mono px-2.5 py-0.5 rounded-full border ${
+                        active
+                          ? "bg-emerald-400/10 text-emerald-300 border-emerald-400/20"
+                          : "bg-slate-400/10 text-slate-400 border-slate-400/20"
+                      }`}
+                    >
+                      {active ? "ACTIVE" : "HIDDEN"}
+                    </span>
+                    <span className="text-xs text-slate-400 flex items-center gap-1">
+                      <Calendar className="h-3 w-3 text-slate-500" />
+                      {eventTitle(g.event_id)}
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold text-white font-display">{g.title}</h3>
+                  <p className="text-xs text-slate-300 line-clamp-1">{g.description || g.game_url}</p>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                  <a
+                    href={g.game_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 rounded-xl glass px-3.5 py-2 text-xs font-mono text-cyan-300 hover:text-white hover:border-cyan-400/40 transition"
+                    title="Open game link"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    <span>Preview</span>
+                  </a>
+                  <button
+                    onClick={() => handleToggleActive(g)}
+                    className="flex items-center gap-1.5 rounded-xl glass px-3.5 py-2 text-xs font-mono text-slate-300 hover:text-white hover:border-cyan-400/30 transition cursor-pointer"
+                    title={active ? "Hide from players" : "Show to players"}
+                  >
+                    <span>{active ? "Hide" : "Show"}</span>
+                  </button>
+                  <button
+                    onClick={() => handleOpenEdit(g)}
+                    className="flex items-center gap-1.5 rounded-xl glass px-3.5 py-2 text-xs font-mono text-slate-300 hover:text-white hover:border-cyan-400/30 transition cursor-pointer"
+                    title="Edit game"
+                  >
+                    <Edit3 className="h-3.5 w-3.5" />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    onClick={() => handleDelete(g.id, g.title)}
+                    className="p-2 rounded-xl text-slate-500 hover:text-red-400 hover:bg-red-950/30 transition cursor-pointer"
+                    title="Delete game"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {editingGame &&
+        createPortal(
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+            <div className="relative w-full max-w-2xl rounded-3xl glass border border-white/15 shadow-2xl p-6 sm:p-8 max-h-[90vh] overflow-auto">
+              <div className="flex items-start justify-between pb-4 border-b border-white/10 mb-5">
+                <h3 className="text-xl font-bold text-white font-display">Edit Game</h3>
+                <button
+                  onClick={() => setEditingGame(null)}
+                  className="rounded-xl p-2 text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <form onSubmit={handleUpdate} className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-mono text-slate-400 mb-1">GAME TITLE *</label>
+                  <input
+                    required
+                    value={editForm.title}
+                    onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-slate-400 mb-1">LINKED EVENT</label>
+                  <select
+                    value={editForm.event_id}
+                    onChange={(e) => setEditForm({ ...editForm, event_id: e.target.value })}
+                    className="w-full rounded-xl border border-white/10 bg-[#0d1321] px-4 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
+                  >
+                    <option value="">All Events (global)</option>
+                    {events.map((ev: any) => (
+                      <option key={ev.id} value={String(ev.id)}>
+                        {ev.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-mono text-slate-400 mb-1">GAME URL (PLAYABLE LINK) *</label>
+                  <input
+                    required
+                    type="url"
+                    value={editForm.game_url}
+                    onChange={(e) => setEditForm({ ...editForm, game_url: e.target.value })}
+                    className={inputCls}
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-mono text-slate-400 mb-1">DESCRIPTION</label>
+                  <textarea
+                    rows={3}
+                    value={editForm.description}
+                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                    className={`${inputCls} leading-relaxed`}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-slate-400 mb-1">DISPLAY ORDER</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editForm.order}
+                    onChange={(e) => setEditForm({ ...editForm, order: Number(e.target.value) || 0 })}
+                    className={inputCls}
+                  />
+                </div>
+                <div className="flex items-end pb-1">
+                  <label className="flex items-center gap-2 text-xs font-mono text-slate-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editForm.is_active}
+                      onChange={(e) => setEditForm({ ...editForm, is_active: e.target.checked })}
+                      className="h-4 w-4 accent-cyan-400"
+                    />
+                    ACTIVE (visible to players)
+                  </label>
+                </div>
+                <div className="sm:col-span-2 mt-2 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditingGame(null)}
+                    className="rounded-xl glass px-5 py-2.5 text-xs font-mono text-slate-300 hover:text-white cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={updating}
+                    className="rounded-xl bg-cyan-400 px-6 py-2.5 text-xs font-mono font-bold text-black hover:bg-cyan-300 transition disabled:opacity-50 cursor-pointer"
+                  >
+                    {updating ? "Saving..." : "Save Changes"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

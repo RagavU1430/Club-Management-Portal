@@ -176,6 +176,30 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
         return jsonResponse(res);
       }
 
+      // ── EVENT GAMES ──
+      if (pathname === "/api/games" && method === "GET") {
+        const res = await sb.getGames(searchParams.get("scope") || undefined);
+        return jsonResponse(res);
+      }
+
+      if (pathname === "/api/games" && method === "POST") {
+        const body = init?.body ? JSON.parse(init.body as string) : {};
+        const res = await sb.createGame(body);
+        return jsonResponse(res, 201);
+      }
+
+      const gameMatch = pathname.match(/^\/api\/games\/(\d+)$/);
+      if (gameMatch && (method === "PUT" || method === "PATCH")) {
+        const body = init?.body ? JSON.parse(init.body as string) : {};
+        const res = await sb.updateGame(Number(gameMatch[1]), body);
+        return jsonResponse(res);
+      }
+
+      if (gameMatch && method === "DELETE") {
+        const res = await sb.deleteGame(Number(gameMatch[1]));
+        return jsonResponse(res);
+      }
+
       // ── NEWSLETTER ──
       if (pathname === "/api/subscribe" && method === "POST") {
         const body = init?.body ? JSON.parse(init.body as string) : {};

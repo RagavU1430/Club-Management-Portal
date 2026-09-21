@@ -174,6 +174,20 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_activities_date ON club_activities(date);
+
+  CREATE TABLE IF NOT EXISTS games (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    game_url TEXT NOT NULL DEFAULT '',
+    event_id INTEGER REFERENCES events(id) ON DELETE SET NULL,
+    is_active INTEGER NOT NULL DEFAULT 1,
+    "order" INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_games_event ON games(event_id);
 `);
 
 // Initialize default Google Sheet URL and ID if not exists
