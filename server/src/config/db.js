@@ -1,3 +1,4 @@
+import "dotenv/config";
 import Database from "better-sqlite3";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -250,18 +251,18 @@ function rowToJSON(row) {
 export { db, rowToJSON };
 export default db;
 
-// ── seed (dev only) ──
+// ── seed (dev only, credentials from env — never hardcoded) ──
 import bcrypt from "bcryptjs";
 
-const SEED = [
-  { name: "Admin", email: "admin@localhost", password: "admin123", role: "admin" },
-];
-
 export function seed() {
-  for (const s of SEED) {
-    if (!db.prepare("SELECT id FROM users WHERE email = ?").get(s.email)) {
-      db.prepare("INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)").run(s.name, s.email, bcrypt.hashSync(s.password, 12), s.role);
-    }
+  const email = (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
+  const password = process.env.ADMIN_PASSWORD || "";
+  if (!email || !password) {
+    console.log("[seed] ADMIN_EMAIL / ADMIN_PASSWORD not set — admin seed skipped.");
+    return;
   }
-  console.log("[seed] default admin: admin@localhost / admin123");
+  if (!db.prepare("SELECT id FROM users WHERE email = ?").get(email)) {
+    db.prepare("INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)").run("Admin", email, bcrypt.hashSync(password, 12), "admin");
+  }
+  console.log(`[seed] default admin ready: ${email}`);
 }

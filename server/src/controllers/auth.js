@@ -52,10 +52,6 @@ export async function logout(_req, res) {
   res.json({ success: true, data: { message: "Signed out." } });
 }
 
-const SEED = [
-  { name: "Admin", email: "admin@localhost", password: "admin123", role: "admin" },
-];
-
 export function seed() {
   if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
     throw new Error("JWT_SECRET must be configured in production.");
@@ -64,10 +60,14 @@ export function seed() {
     console.log("[seed] production mode: default admin seed skipped.");
     return;
   }
-  for (const s of SEED) {
-    if (!db.prepare("SELECT id FROM users WHERE email = ?").get(s.email)) {
-      db.prepare("INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)").run(s.name, s.email, bcrypt.hashSync(s.password, 12), s.role);
-    }
+  const email = (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
+  const password = process.env.ADMIN_PASSWORD || "";
+  if (!email || !password) {
+    console.log("[seed] ADMIN_EMAIL / ADMIN_PASSWORD not set — admin seed skipped.");
+    return;
   }
-  console.log("[seed] default admin: admin@localhost / admin123");
+  if (!db.prepare("SELECT id FROM users WHERE email = ?").get(email)) {
+    db.prepare("INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)").run("Admin", email, bcrypt.hashSync(password, 12), "admin");
+  }
+  console.log(`[seed] default admin ready: ${email}`);
 }
