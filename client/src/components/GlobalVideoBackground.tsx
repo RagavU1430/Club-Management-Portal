@@ -331,13 +331,13 @@ export default function GlobalVideoBackground() {
 
   return (
     <div
-      className="fixed inset-0 w-full h-full z-0 pointer-events-none overflow-hidden transition-colors duration-700 ease-in-out"
+      className="fixed inset-0 w-full h-full z-0 pointer-events-none overflow-hidden transition-colors duration-350 ease-in-out"
       style={{ backgroundColor: isDark ? "#050811" : "#f6f8fa" }}
     >
       {/* ── Dark Mode Canvas: Scroll-Driven Hardware-Accelerated ── */}
       <canvas
         ref={darkCanvasRef}
-        className="absolute inset-0 h-full w-full pointer-events-none transition-opacity duration-700 ease-in-out"
+        className="absolute inset-0 h-full w-full pointer-events-none transition-opacity duration-350 ease-in-out"
         style={{
           width: "100%",
           height: "100%",
@@ -348,7 +348,7 @@ export default function GlobalVideoBackground() {
       {/* ── Light Mode Canvas: Scroll-Driven Hardware-Accelerated (White Frames) ── */}
       <canvas
         ref={lightCanvasRef}
-        className="absolute inset-0 h-full w-full pointer-events-none transition-opacity duration-700 ease-in-out"
+        className="absolute inset-0 h-full w-full pointer-events-none transition-opacity duration-350 ease-in-out"
         style={{
           width: "100%",
           height: "100%",
@@ -360,7 +360,7 @@ export default function GlobalVideoBackground() {
       {!isAdmin && (
         <canvas
           ref={matrixCanvasRef}
-          className="absolute inset-0 h-full w-full pointer-events-none transition-opacity duration-700 ease-in-out"
+          className="absolute inset-0 h-full w-full pointer-events-none transition-opacity duration-350 ease-in-out"
           style={{
             width: "100%",
             height: "100%",
@@ -372,7 +372,7 @@ export default function GlobalVideoBackground() {
       {/* ── Light Mode: Vibrant Instagram Colorful Atmosphere & Gradient Depth ── */}
       {/* 1. Multi-chromatic Instagram sunset ambient orbs (Violet, Magenta, Coral, Amber) */}
       <div
-        className="absolute inset-0 pointer-events-none transition-opacity duration-700 ease-in-out"
+        className="absolute inset-0 pointer-events-none transition-opacity duration-350 ease-in-out"
         style={{
           opacity: isDark ? 0 : 1,
           background: `
@@ -387,7 +387,7 @@ export default function GlobalVideoBackground() {
 
       {/* 2. Top-to-bottom soft readability scrim */}
       <div
-        className="absolute inset-0 pointer-events-none transition-opacity duration-700 ease-in-out"
+        className="absolute inset-0 pointer-events-none transition-opacity duration-350 ease-in-out"
         style={{
           opacity: isDark ? 0 : 1,
           background:
@@ -397,7 +397,7 @@ export default function GlobalVideoBackground() {
 
       {/* 3. Iconic Instagram rainbow accent line */}
       <div
-        className="absolute top-0 left-0 right-0 h-[3px] pointer-events-none transition-opacity duration-700 ease-in-out z-20"
+        className="absolute top-0 left-0 right-0 h-[3px] pointer-events-none transition-opacity duration-350 ease-in-out z-20"
         style={{
           opacity: isDark ? 0 : 1,
           background:
@@ -407,7 +407,7 @@ export default function GlobalVideoBackground() {
 
       {/* ── Dark Mode: Ambient depth gradient ── */}
       <div
-        className="absolute inset-0 pointer-events-none transition-opacity duration-700 ease-in-out"
+        className="absolute inset-0 pointer-events-none transition-opacity duration-350 ease-in-out"
         style={{
           opacity: isDark ? 1 : 0,
           background:
@@ -415,7 +415,7 @@ export default function GlobalVideoBackground() {
         }}
       />
       <div
-        className="absolute inset-0 pointer-events-none transition-opacity duration-700 ease-in-out"
+        className="absolute inset-0 pointer-events-none transition-opacity duration-350 ease-in-out"
         style={{
           opacity: isDark ? 1 : 0,
           background:

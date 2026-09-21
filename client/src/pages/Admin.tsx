@@ -63,7 +63,7 @@ export default function Admin() {
     }
     return null;
   });
-  const [login, setLogin] = useState({ email: "aifrontierclub@gmail.com", password: "" });
+  const [login, setLogin] = useState({ email: "", password: "" });
   const [loginErr, setLoginErr] = useState("");
   const [loggingIn, setLoggingIn] = useState(false);
   const [tab, setTab] = useState(params.get("tab") || "events");
@@ -122,7 +122,7 @@ export default function Admin() {
                     value={login.email}
                     onChange={(e) => setLogin({ ...login, email: e.target.value })}
                     className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 py-2.5 pl-10 pr-4 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
-                    placeholder="aifrontierclub@gmail.com"
+                    placeholder="Enter admin ID"
                   />
                 </div>
               </div>

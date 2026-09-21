@@ -10,6 +10,7 @@ const Events = lazy(() => import("./pages/Events"));
 const Team = lazy(() => import("./pages/Team"));
 const About = lazy(() => import("./pages/About"));
 const Admin = lazy(() => import("./pages/Admin"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 function PageLoader() {
   return (
@@ -54,6 +55,7 @@ export default function App() {
               <Route path="/coordinators" element={<Team />} />
               <Route path="/about" element={<About />} />
               <Route path="/admin/*" element={<Admin />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </motion.div>
         </Suspense>

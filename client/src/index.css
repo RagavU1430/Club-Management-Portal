@@ -1,12 +1,13 @@
-@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Orbitron:wght@500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Sora:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: "Outfit", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-display: "Orbitron", "Space Grotesk", sans-serif;
-  --font-ai: "Orbitron", sans-serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Sora", "Plus Jakarta Sans", sans-serif;
+  --font-college: "Cinzel", "Playfair Display", Georgia, serif;
+  --font-ai: "Sora", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
   --color-accent: #00f0ff;
   --color-accent-hover: #38bdf8;
@@ -35,21 +36,21 @@
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
   scroll-behavior: smooth;
-  background-color: #050811;
+  background-color: #f6f8fa;
   transition: background-color 0.65s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-html.light {
-  color-scheme: light;
-  background-color: #f6f8fa;
+html.dark {
+  color-scheme: dark;
+  background-color: #050811;
 }
 
 body {
   font-family: var(--font-sans);
-  background-color: #050811;
-  color: #f1f5f9;
+  background-color: #f6f8fa;
+  color: #0f172a;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
@@ -63,18 +64,41 @@ html.theme-transitioning *,
 html.theme-transitioning *::before,
 html.theme-transitioning *::after {
   transition: 
-    background-color 650ms cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 650ms cubic-bezier(0.4, 0, 0.2, 1),
-    color 650ms cubic-bezier(0.4, 0, 0.2, 1),
-    fill 650ms cubic-bezier(0.4, 0, 0.2, 1),
-    stroke 650ms cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 650ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+    background-color 350ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 350ms cubic-bezier(0.4, 0, 0.2, 1),
+    color 350ms cubic-bezier(0.4, 0, 0.2, 1),
+    fill 350ms cubic-bezier(0.4, 0, 0.2, 1),
+    stroke 350ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 350ms cubic-bezier(0.4, 0, 0.2, 1) !important;
   transition-delay: 0s !important;
 }
 
 h1, h2, h3, h4, h5, h6, .font-display {
   font-family: var(--font-display);
-  letter-spacing: 0.015em;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+/* ── College brand (navbar) — elegant collegiate serif with gradient ── */
+.college-brand {
+  font-family: var(--font-college);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  background: linear-gradient(135deg, #1e1b4b 0%, #6d28d9 45%, #c13584 80%, #e1306c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 1px 1px rgba(109, 40, 217, 0.15));
+}
+
+html.dark .college-brand,
+.dark .college-brand {
+  background: linear-gradient(180deg, #ffffff 0%, #fde68a 45%, #f59e0b 75%, #fbbf24 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.25));
 }
 
 .font-ai {
@@ -86,9 +110,9 @@ code, kbd, samp, pre, .font-mono {
   font-family: var(--font-mono);
 }
 
-html.light body {
-  background-color: #f6f8fa;
-  color: #0f172a;
+html.dark body {
+  background-color: #050811;
+  color: #f1f5f9;
 }
 
 ::selection {

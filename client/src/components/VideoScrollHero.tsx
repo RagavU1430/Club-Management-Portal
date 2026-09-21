@@ -53,7 +53,7 @@ export default function VideoScrollHero() {
         onClick={scrollToContent}
         className="flex flex-col items-center gap-2 text-xs font-mono tracking-widest text-slate-500 dark:text-slate-400 hover:text-[#c13584] dark:hover:text-cyan-400 transition animate-bounce cursor-pointer group"
       >
-        <span className="group-hover:text-[#c13584] dark:group-hover:text-cyan-300 font-bold">SCROLL DOWN TO EXPLORE</span>
+        <span className="group-hover:text-[#c13584] dark:group-hover:text-cyan-300 font-bold">SCROLL DOWN TO REGISTER</span>
         <ChevronDown className="h-4 w-4 text-[#e1306c] dark:text-cyan-400" />
       </button>
     </div>

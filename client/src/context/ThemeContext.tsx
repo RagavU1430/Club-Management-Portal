@@ -18,9 +18,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     try {
       const saved = localStorage.getItem(THEME_STORAGE_KEY);
       if (saved === "light" || saved === "dark") return saved;
-      return "dark";
+      return "light";
     } catch {
-      return "dark";
+      return "light";
     }
   });
 
@@ -43,7 +43,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     const timer = setTimeout(() => {
       root.classList.remove("theme-transitioning");
-    }, 700);
+    }, 350);
 
     return () => clearTimeout(timer);
   }, [theme]);
