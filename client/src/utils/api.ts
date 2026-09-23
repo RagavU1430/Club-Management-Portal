@@ -72,7 +72,10 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
 
       if (pathname === "/api/events/lookup-ticket" && method === "POST") {
         const body = init?.body ? JSON.parse(init.body as string) : {};
-        const res = await sb.lookupTicket(body.identifier || body.email || body.ticketCode, body.eventId);
+        const res = await sb.lookupTicket(
+          body.identifier || body.email || body.ticketCode || body.teamName,
+          body.eventId
+        );
         return jsonResponse(res);
       }
 

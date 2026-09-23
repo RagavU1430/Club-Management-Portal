@@ -347,19 +347,41 @@ export async function registerForEvent(req, res) {
 
 // ── POST /api/events/lookup-ticket (Public Self-Service Ticket Lookup) ──
 export async function lookupTicket(req, res) {
-  const { email, eventId } = req.body || {};
-  if (!email || !email.trim() || !email.includes("@")) {
-    throw new ApiError(400, "Valid email address is required to look up registration passes.");
+  const { email, teamName, identifier, eventId } = req.body || {};
+  // Accept email OR team name (either one is enough for game arena entry)
+  const rawEmail = email || identifier || "";
+  const cleanEmail = String(rawEmail || "").trim().toLowerCase();
+  const cleanTeam = String(teamName || "").trim();
+  const hasEmail = Boolean(cleanEmail && cleanEmail.includes("@"));
+  const hasTeam = Boolean(cleanTeam);
+
+  // Allow plain identifier that is a team name (no @) as team lookup
+  let effectiveTeam = cleanTeam;
+  if (!hasEmail && !hasTeam && String(rawEmail || "").trim()) {
+    effectiveTeam = String(rawEmail).trim();
   }
-  const cleanEmail = email.trim().toLowerCase();
+
+  if (!hasEmail && !effectiveTeam) {
+    throw new ApiError(400, "Please provide your team name or registered mail ID.");
+  }
 
   let sql = `
     SELECT r.*, e.title as event_title, e.date as event_date, e.venue as event_venue
     FROM event_registrations r
     JOIN events e ON r.event_id = e.id
-    WHERE LOWER(r.email) = ? OR LOWER(r.member2_email) = ? OR LOWER(r.member2_phone) = ?
-  `;
-  const params = [cleanEmail, cleanEmail, cleanEmail];
+    WHERE `;
+  const params = [];
+
+  if (hasEmail && effectiveTeam) {
+    sql += `(LOWER(r.email) = ? OR LOWER(r.member2_email) = ? OR LOWER(r.member2_phone) = ?) AND LOWER(r.team_name) = ?`;
+    params.push(cleanEmail, cleanEmail, cleanEmail, effectiveTeam.toLowerCase());
+  } else if (hasEmail) {
+    sql += `(LOWER(r.email) = ? OR LOWER(r.member2_email) = ? OR LOWER(r.member2_phone) = ?)`;
+    params.push(cleanEmail, cleanEmail, cleanEmail);
+  } else {
+    sql += `LOWER(r.team_name) = ?`;
+    params.push(effectiveTeam.toLowerCase());
+  }
 
   if (eventId) {
     sql += " AND r.event_id = ?";
@@ -369,10 +391,11 @@ export async function lookupTicket(req, res) {
 
   const matches = db.prepare(sql).all(...params);
   if (!matches || matches.length === 0) {
+    const lookupLabel = hasEmail ? cleanEmail : effectiveTeam;
     return res.json({
       success: true,
       found: false,
-      message: `No registration passes found matching email "${cleanEmail}".`,
+      message: `No registration passes found matching "${lookupLabel}".`,
       data: []
     });
   }

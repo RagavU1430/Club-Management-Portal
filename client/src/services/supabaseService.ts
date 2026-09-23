@@ -882,7 +882,7 @@ export async function lookupTicket(identifier: string, eventId?: number | string
       if (aifMatch) {
         q = q.eq("id", Number(aifMatch[1]));
       } else {
-        q = q.or(`email.ilike.${clean},member2_email.ilike.${clean},roll_number.ilike.${clean},phone.ilike.${clean}`);
+        q = q.or(`email.ilike.${clean},member2_email.ilike.${clean},roll_number.ilike.${clean},phone.ilike.${clean},team_name.ilike.${clean}`);
       }
 
       const { data, error } = await q.order("created_at", { ascending: false });

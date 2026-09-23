@@ -87,8 +87,12 @@ export default function Games() {
     setVerifyErr("");
     const cleanTeam = teamName.trim();
     const cleanEmail = email.trim().toLowerCase();
-    if (!cleanTeam || !cleanEmail) {
-      setVerifyErr("Please enter both your team name and registered mail ID.");
+    if (!cleanTeam && !cleanEmail) {
+      setVerifyErr("Please enter your team name or registered mail ID.");
+      return;
+    }
+    if (cleanEmail && !cleanEmail.includes("@")) {
+      setVerifyErr("Please enter a valid mail ID, or leave it empty and use team name only.");
       return;
     }
     setVerifying(true);
@@ -96,21 +100,34 @@ export default function Games() {
       const res = await apiFetch("/api/events/lookup-ticket", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: cleanEmail }),
+        body: JSON.stringify({
+          email: cleanEmail || undefined,
+          teamName: cleanTeam || undefined,
+        }),
       });
       const d = await res.json();
       const tickets: any[] = Array.isArray(d?.data) ? d.data : [];
-      const match = tickets.find(
-        (t) => String(t.teamName || t.team_name || "").trim().toLowerCase() === cleanTeam.toLowerCase()
-      );
+      let match: any = null;
+      if (cleanTeam && cleanEmail) {
+        match = tickets.find(
+          (t) => String(t.teamName || t.team_name || "").trim().toLowerCase() === cleanTeam.toLowerCase()
+        );
+      } else if (cleanTeam) {
+        match =
+          tickets.find(
+            (t) => String(t.teamName || t.team_name || "").trim().toLowerCase() === cleanTeam.toLowerCase()
+          ) || tickets[0];
+      } else {
+        match = tickets[0];
+      }
       if (!match) {
         throw new Error(
-          "Please enter the correct details to enter the game arena. The team name and mail ID must match your event registration."
+          "No registration found for the details entered. Please check your team name or mail ID and try again."
         );
       }
       const verified: VerifiedAccess = {
-        teamName: String(match.teamName || match.team_name || cleanTeam),
-        email: cleanEmail,
+        teamName: String(match.teamName || match.team_name || cleanTeam || "Team"),
+        email: String(match.email || match.member2Email || match.member2_email || cleanEmail || ""),
         eventId: match.event_id !== undefined && match.event_id !== null ? Number(match.event_id) : null,
         eventTitle: String(match.eventTitle || match.event_title || "Club Event"),
       };
@@ -148,7 +165,7 @@ export default function Games() {
           Event Games
         </h1>
         <p className="mt-4 text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
-          Enter your team name and registered mail ID to unlock the games arena for your event.
+          Enter your team name or registered mail ID to unlock the games arena for your event.
         </p>
       </div>
 
@@ -166,7 +183,7 @@ export default function Games() {
               Unlock the Arena
             </h2>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Use the same team name and mail ID from your event registration.
+              Use the same team name or mail ID from your event registration. Either one is enough.
             </p>
 
             <form onSubmit={handleVerify} className="mt-6 space-y-4">
@@ -178,13 +195,18 @@ export default function Games() {
                   <Users className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
-                    required
                     value={teamName}
                     onChange={(e) => setTeamName(e.target.value)}
                     placeholder="Enter team name"
                     className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 py-2.5 pl-10 pr-4 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
                   />
                 </div>
+              </div>
+
+              <div className="flex items-center gap-3 text-[11px] font-mono text-slate-400 dark:text-slate-500">
+                <span className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+                OR
+                <span className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
               </div>
 
               <div>
@@ -195,7 +217,6 @@ export default function Games() {
                   <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
                     type="email"
-                    required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter registered mail ID"
@@ -240,7 +261,7 @@ export default function Games() {
                   Welcome, {access.teamName}!
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Verified for {access.eventTitle} • {access.email}
+                  Verified for {access.eventTitle}{access.email ? ` • ${access.email}` : ""}
                 </p>
               </div>
             </div>
