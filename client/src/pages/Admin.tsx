@@ -1223,6 +1223,7 @@ function EventManager() {
           onSent={(message) => {
             setSelectedPostponementEvent(null);
             setActionMsg(message);
+            load();
           }}
         />
       )}

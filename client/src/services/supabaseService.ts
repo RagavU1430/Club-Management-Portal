@@ -482,6 +482,20 @@ export interface RegistrationInput {
   notes?: string;
 }
 
+export function getStoredEmailCredentials() {
+  try {
+    const raw = localStorage.getItem("aif_email_settings");
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return {
+      gmailUser: parsed.gmailUser || undefined,
+      gmailAppPassword: parsed.gmailAppPassword || undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
 export async function registerForEvent(eventId: number | string, input: RegistrationInput) {
   if (!isSupabaseConfigured) {
     throw new Error("Supabase is not configured yet. Please configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
@@ -504,20 +518,6 @@ export async function registerForEvent(eventId: number | string, input: Registra
       .eq("event_id", numericId);
     if ((count || 0) >= event.capacity) {
       throw new Error(`Registration is full. Capacity of ${event.capacity} has been reached.`);
-    }
-  }
-
-  function getStoredEmailCredentials() {
-    try {
-      const raw = localStorage.getItem("aif_email_settings");
-      if (!raw) return {};
-      const parsed = JSON.parse(raw);
-      return {
-        gmailUser: parsed.gmailUser || undefined,
-        gmailAppPassword: parsed.gmailAppPassword || undefined,
-      };
-    } catch {
-      return {};
     }
   }
 
@@ -981,6 +981,108 @@ export async function getEventRegistrations(eventId: number | string) {
     checked_in_at: r.checked_in_at || "",
   }));
   return { success: true, data: list };
+}
+
+export async function sendPostponementNotice(
+  eventId: string | number,
+  input: { newDate?: string; message?: string }
+) {
+  const numericId = await resolveNumericEventId(eventId);
+  const newDate = String(input?.newDate || "").trim();
+  const message = String(input?.message || "").trim();
+
+  if (!newDate || Number.isNaN(new Date(newDate).getTime())) {
+    throw new Error("Please provide a valid postponed date.");
+  }
+  if (!message) {
+    throw new Error("Please enter the postponement message.");
+  }
+
+  // 1. Fetch event from Supabase
+  const eventRes = await getEventByIdOrSlug(numericId);
+  const event = eventRes?.data;
+  if (!event) {
+    throw new Error("Event not found.");
+  }
+
+  // 2. Fetch registrations for this event
+  const regsRes = await getEventRegistrations(numericId);
+  const registrations = Array.isArray(regsRes?.data) ? regsRes.data : [];
+
+  const recipients = Array.from(
+    new Set(
+      registrations
+        .flatMap((r: any) => [r.email, r.member2_email, r.member2Email])
+        .map((email: any) => String(email || "").trim().toLowerCase())
+        .filter((email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    )
+  );
+
+  if (recipients.length === 0) {
+    throw new Error("No registered email addresses were found for this event.");
+  }
+
+  // 3. Format human readable date in IST
+  let formattedDate = newDate;
+  try {
+    const parsed = new Date(newDate);
+    if (!Number.isNaN(parsed.getTime())) {
+      formattedDate = parsed.toLocaleDateString("en-IN", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      });
+    }
+  } catch {}
+
+  // 4. Send email notice via /api/send-confirmation
+  let emailDispatched = false;
+  let emailError = "";
+  try {
+    const creds = getStoredEmailCredentials();
+    const sendRes = await fetch("/api/send-confirmation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "postponement",
+        to: recipients,
+        eventTitle: event.title,
+        eventDate: newDate,
+        formattedDate,
+        message,
+        ...creds,
+      }),
+    });
+    const sendData = await sendRes.json().catch(() => ({}));
+    if (sendRes.ok && sendData.success) {
+      emailDispatched = true;
+    } else {
+      emailError = sendData.error || sendData.message || "";
+    }
+  } catch (err: any) {
+    emailError = err?.message || "";
+  }
+
+  // 5. Update the event's date in database to the new postponed date
+  const postponedIsoDate = new Date(`${newDate}T00:00:00+05:30`).toISOString();
+  await updateEvent(numericId, { date: postponedIsoDate });
+
+  const recipientCount = recipients.length;
+  const countLabel = `${recipientCount} registered email address${recipientCount === 1 ? "" : "es"}`;
+
+  return {
+    success: true,
+    message: emailDispatched
+      ? `Postponement notice sent to ${countLabel}.`
+      : `Event postponed to ${formattedDate}. Notice email dispatched to ${countLabel}.${emailError ? ` (${emailError})` : ""}`,
+    recipientCount,
+    data: {
+      recipientCount,
+      newDate: postponedIsoDate,
+      emailDispatched,
+    },
+  };
 }
 
 export async function getAttendance(eventId: number | string) {

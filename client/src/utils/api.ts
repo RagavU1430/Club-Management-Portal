@@ -91,6 +91,20 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
         return jsonResponse(res);
       }
 
+      const postponeMatch = pathname.match(/^\/api\/events\/([^/]+)\/postponement-notice\/?$/);
+      if (postponeMatch && method === "POST") {
+        let body: any = {};
+        if (init?.body) {
+          if (typeof init.body === "string") {
+            try { body = JSON.parse(init.body); } catch { body = {}; }
+          } else {
+            body = init.body;
+          }
+        }
+        const res = await sb.sendPostponementNotice(postponeMatch[1], body);
+        return jsonResponse(res);
+      }
+
       // ── ATTENDANCE ──
       const attMatch = pathname.match(/^\/api\/events\/([^/]+)\/attendance\/?$/);
       if (attMatch && method === "GET") {

@@ -86,10 +86,103 @@ export default async function handler(req, res) {
     }
   } catch {}
 
-  const subject = `🎉 Participation Confirmed: ${eventTitle} (${registrationCode})`;
+  let subject;
+  let htmlContent;
+  let textContent;
 
-  // High-End Responsive HTML Pass
-  const htmlContent = `
+  if (body.type === "postponement") {
+    const newDate = body.newDate || body.eventDate || "TBD";
+    const customMessage = body.message || "The event has been postponed. We apologize for any inconvenience.";
+    let formattedNewDate = body.formattedDate || newDate;
+    try {
+      const d = new Date(newDate);
+      if (!isNaN(d.getTime())) {
+        formattedNewDate = d.toLocaleDateString("en-US", {
+          weekday: "long",
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+          timeZone: "Asia/Kolkata",
+        });
+      }
+    } catch {}
+
+    subject = `📢 Event Postponed: ${eventTitle}`;
+
+    htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${subject}</title>
+    </head>
+    <body style="margin: 0; padding: 20px; background-color: #030712; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #f8fafc;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; background: #0b0f19; border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);">
+        <tr>
+          <td style="padding: 35px 30px 25px; text-align: center; background: radial-gradient(circle at top, rgba(245, 158, 11, 0.18) 0%, transparent 70%); border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
+            <span style="display: inline-block; padding: 5px 16px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.45); border-radius: 9999px; color: #fbbf24; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;">
+              ⚠️ IMPORTANT SCHEDULE NOTICE
+            </span>
+            <h1 style="margin: 16px 0 6px; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">
+              ${eventTitle}
+            </h1>
+            <p style="margin: 0; color: #f59e0b; font-size: 14px; font-weight: 600;">
+              Event Postponed • Schedule Update
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 28px 30px 20px;">
+            <p style="margin: 0 0 16px; font-size: 15px; color: #e2e8f0; line-height: 1.6;">
+              Dear Registered Participant,
+            </p>
+            <div style="margin: 0 0 22px; font-size: 14px; line-height: 1.7; color: #cbd5e1; white-space: pre-line; background: rgba(255, 255, 255, 0.03); border-left: 4px solid #f59e0b; padding: 14px 18px; border-radius: 0 10px 10px 0;">
+              ${customMessage}
+            </div>
+            
+            <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background: rgba(245, 158, 11, 0.06); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 14px; padding: 18px; margin: 20px 0;">
+              <tr>
+                <td style="padding: 6px 0; font-size: 12px; color: #f59e0b; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-family: monospace;">NEW EVENT DATE</td>
+                <td style="padding: 6px 0; font-size: 15px; color: #ffffff; font-weight: 700; text-align: right;">${formattedNewDate}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; font-size: 12px; color: #94a3b8; font-weight: 500; font-family: monospace;">REGISTRATION STATUS</td>
+                <td style="padding: 6px 0; font-size: 13px; color: #34d399; font-weight: 600; text-align: right;">Seat Secured & Transferred ✓</td>
+              </tr>
+            </table>
+
+            <p style="margin: 18px 0 0; font-size: 13px; line-height: 1.6; color: #94a3b8;">
+              Your existing registration pass remains 100% valid for the rescheduled date. No re-registration is required. We appreciate your patience and look forward to your active participation.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 20px 30px; border-top: 1px solid rgba(255, 255, 255, 0.08); text-align: center; font-size: 12px; color: #64748b;">
+            <p style="margin: 0 0 4px; font-weight: 600; color: #94a3b8;">${senderName}</p>
+            <p style="margin: 0; font-size: 11px;">
+              Questions? Contact <a href="mailto:${clubEmail}" style="color: #38bdf8; text-decoration: none;">${clubEmail}</a> • 📱 <a href="tel:+919360376757" style="color: #38bdf8; text-decoration: none;">+91 9360376757</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+    `;
+
+    textContent = `Dear Registered Participant,\n\n${customMessage}\n\n` +
+      `========================================\n` +
+      `📢 EVENT POSTPONED: ${eventTitle.toUpperCase()}\n` +
+      `🗓️ NEW DATE: ${formattedNewDate}\n` +
+      `========================================\n\n` +
+      `Your existing registration and seat remain secured for the rescheduled date.\n\n` +
+      `Thank you for your understanding and support!\n\n` +
+      `${senderName}\nEmail: ${clubEmail}\nPhone: +91 9360376757\n`;
+  } else {
+    subject = `🎉 Participation Confirmed: ${eventTitle} (${registrationCode})`;
+
+    // High-End Responsive HTML Pass
+    htmlContent = `
   <!DOCTYPE html>
   <html>
   <head>
@@ -194,8 +287,8 @@ export default async function handler(req, res) {
   </html>
   `;
 
-  // Fallback plain text
-  const textContent = `Hi ${greeting} 👋\n\n` +
+    // Fallback plain text
+    textContent = `Hi ${greeting} 👋\n\n` +
 `========================================\n` +
 `🎉 OFFICIAL PARTICIPATION PASS: ${eventTitle.toUpperCase()}\n` +
 `========================================\n\n` +
@@ -213,6 +306,7 @@ export default async function handler(req, res) {
 `2. Bring your college ID card.\n` +
 `3. Keep your Registration ID (${registrationCode}) handy for desk verification.\n\n` +
 `See you there!\n${senderName}\nEmail: aifrontierclub@gmail.com\nPhone: +91 9360376757\n`;
+  }
 
   const customUser = body.gmailUser;
   const customPass = body.gmailAppPassword;
@@ -234,7 +328,9 @@ export default async function handler(req, res) {
   const mailOptions = {
     from: `"${senderName}" <${gmailUser}>`,
     replyTo: clubEmail,
-    to: uniqueRecipients.join(", "),
+    ...(body.type === "postponement"
+      ? { to: gmailUser, bcc: uniqueRecipients }
+      : { to: uniqueRecipients.join(", ") }),
     subject,
     html: htmlContent,
     text: textContent,
@@ -264,6 +360,7 @@ export default async function handler(req, res) {
       id: info.messageId,
       sender: gmailUser,
       recipients: uniqueRecipients,
+      recipientCount: uniqueRecipients.length,
     });
   } catch (err) {
     console.warn("[Email] Primary Gmail SMTP delivery error:", err.message);
@@ -297,6 +394,7 @@ export default async function handler(req, res) {
           id: fallbackInfo.messageId,
           sender: envUser,
           recipients: uniqueRecipients,
+          recipientCount: uniqueRecipients.length,
         });
       } catch (fbErr) {
         console.error("[Email] Fallback delivery error:", fbErr.message);
