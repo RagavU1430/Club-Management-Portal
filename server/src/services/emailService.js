@@ -285,6 +285,65 @@ export async function sendTestEmail({ toEmail }) {
 }
 
 /**
+ * Sends a postponement notice to every email address registered for an event.
+ * Recipient lookup stays on the server so the admin UI never receives the list.
+ */
+export async function sendEventPostponementEmail({ event, newDate, message }) {
+  const registrations = db.prepare(`
+    SELECT email, member2_email
+    FROM event_registrations
+    WHERE event_id = ?
+  `).all(event.id);
+
+  const recipients = [...new Set(
+    registrations
+      .flatMap((registration) => [registration.email, registration.member2_email])
+      .map((email) => String(email || "").trim().toLowerCase())
+      .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+  )];
+
+  if (recipients.length === 0) {
+    return { success: false, error: "No registered email addresses were found for this event." };
+  }
+
+  const { user, senderName } = getRawEmailCredentials();
+  const transporter = createTransporter();
+  if (!transporter || !user) {
+    return { success: false, error: "Please configure the admin Gmail address and App Password first." };
+  }
+
+  let formattedDate = newDate;
+  try {
+    const parsed = new Date(newDate);
+    if (!Number.isNaN(parsed.getTime())) {
+      formattedDate = parsed.toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+        timeZone: "Asia/Kolkata",
+      });
+    }
+  } catch {}
+
+  const subject = `Event Postponed: ${event.title}`;
+  const text = `Hi there,\n\n${message}\n\nEvent: ${event.title}\nNew date: ${formattedDate}\n\nThank you for your patience.\n\n${senderName}`;
+
+  try {
+    const info = await transporter.sendMail({
+      from: `"${senderName}" <${user}>`,
+      bcc: recipients,
+      subject,
+      text,
+    });
+    console.log(`[Email] Postponement notice sent to ${recipients.length} registered addresses for event ${event.id}.`);
+    return { success: true, sent: true, recipientCount: recipients.length, messageId: info.messageId };
+  } catch (err) {
+    return { success: false, error: `Failed to deliver postponement notice: ${err.message}` };
+  }
+}
+
+/**
  * Sends automated notification email to all newsletter subscribers when a new event is created
  */
 export async function notifySubscribersNewEvent(event) {

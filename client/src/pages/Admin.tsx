@@ -257,6 +257,7 @@ function EventManager() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedEventResponses, setSelectedEventResponses] = useState<any | null>(null);
+  const [selectedPostponementEvent, setSelectedPostponementEvent] = useState<any | null>(null);
   const [selectedAttendanceEvent, setSelectedAttendanceEvent] = useState<any | null>(null);
   const [initialAttendanceData, setInitialAttendanceData] = useState<any[] | null>(null);
 
@@ -1109,6 +1110,15 @@ function EventManager() {
                     </span>
                   </button>
 
+                  <button
+                    onClick={() => setSelectedPostponementEvent(ev)}
+                    className="flex items-center gap-1.5 rounded-xl bg-amber-500/15 border border-amber-400/30 px-3.5 py-2 text-xs font-mono text-amber-300 hover:bg-amber-500/25 transition cursor-pointer"
+                    title="Send a postponement notice to all registered members"
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    <span>Postpone & Notify</span>
+                  </button>
+
                   {/* Attendance & OD Generator Button */}
                   <button
                     onClick={() => setSelectedAttendanceEvent(ev)}
@@ -1206,6 +1216,17 @@ function EventManager() {
         />
       )}
 
+      {selectedPostponementEvent && (
+        <PostponementNoticeModal
+          event={selectedPostponementEvent}
+          onClose={() => setSelectedPostponementEvent(null)}
+          onSent={(message) => {
+            setSelectedPostponementEvent(null);
+            setActionMsg(message);
+          }}
+        />
+      )}
+
       {/* Attendance & OD Generator Modal */}
       {selectedAttendanceEvent && (
         <AttendanceGeneratorModal
@@ -1243,6 +1264,119 @@ function EventManager() {
 
 
     </div>
+  );
+}
+
+function PostponementNoticeModal({
+  event,
+  onClose,
+  onSent,
+}: {
+  event: any;
+  onClose: () => void;
+  onSent: (message: string) => void;
+}) {
+  const toLocalInput = (value: string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  };
+  const formatDate = (value: string) => {
+    if (!value) return "the new date";
+    return new Date(`${value}T12:00:00`).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
+
+  const [newDate, setNewDate] = useState(toLocalInput(event.date));
+  const [message, setMessage] = useState("");
+  const [messageEdited, setMessageEdited] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!messageEdited) {
+      const dateLabel = formatDate(newDate);
+      setMessage(`Sorry, the event has been postponed to ${dateLabel}. Thank you for your patience. Let's meet on ${dateLabel}.`);
+    }
+  }, [newDate, messageEdited]);
+
+  async function handleSend(e: React.FormEvent) {
+    e.preventDefault();
+    setSending(true);
+    setError("");
+    try {
+      const token = localStorage.getItem("aif_token");
+      const res = await apiFetch(`/api/events/${event.id}/postponement-notice`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ newDate, message }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.error || data.message || "The notice could not be sent.");
+      onSent(data.message || "Postponement notice sent successfully.");
+    } catch (err: any) {
+      setError(err.message || "The notice could not be sent.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onMouseDown={onClose}>
+      <div className="glass w-full max-w-lg rounded-2xl border border-amber-400/30 p-6 shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-mono uppercase tracking-wider text-amber-300">Registered Members</p>
+            <h2 className="mt-1 text-xl font-bold text-white font-display">Postpone {event.title}</h2>
+            <p className="mt-1 text-xs text-slate-400">The notice will be sent to every registered email address for this event.</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white" title="Close">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSend} className="space-y-4">
+          <div>
+            <label className="mb-1.5 block text-xs font-mono text-slate-400">NEW EVENT DATE</label>
+            <input
+              type="date"
+              required
+              value={newDate}
+              onChange={(e) => setNewDate(e.target.value)}
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-amber-400 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-mono text-slate-400">MESSAGE TO MEMBERS</label>
+            <textarea
+              required
+              rows={5}
+              value={message}
+              onChange={(e) => {
+                setMessageEdited(true);
+                setMessage(e.target.value);
+              }}
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm leading-relaxed text-white placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
+            />
+          </div>
+          {error && <p className="rounded-lg border border-red-400/30 bg-red-500/10 p-3 text-xs text-red-300">{error}</p>}
+          <div className="flex justify-end gap-3 pt-1">
+            <button type="button" onClick={onClose} className="rounded-xl border border-white/10 px-4 py-2.5 text-xs font-mono text-slate-300 hover:bg-white/10">Cancel</button>
+            <button type="submit" disabled={sending} className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-xs font-mono font-bold text-black hover:bg-amber-300 disabled:opacity-50">
+              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {sending ? "Sending..." : "Send Notice"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body
   );
 }
 

@@ -1,7 +1,7 @@
 import { db, rowToJSON } from "../config/db.js";
 import { ApiError } from "../utils/http.js";
 import { createEventSheet, recordRegistration } from "../services/googleSheets.js";
-import { sendRegistrationEmail, notifySubscribersNewEvent } from "../services/emailService.js";
+import { sendRegistrationEmail, notifySubscribersNewEvent, sendEventPostponementEmail } from "../services/emailService.js";
 import XLSX from "xlsx";
 
 const EVENT_FIELDS = new Set([
@@ -443,6 +443,32 @@ export async function getEventRegistrations(req, res) {
       registrationCode: `AIF-${eventId}-${r.id}`
     })),
     event
+  });
+}
+
+// ── POST /api/events/:id/postponement-notice (Admin Bulk Email) ──
+export async function sendPostponementNotice(req, res) {
+  const eventId = Number(req.params.id);
+  const event = db.prepare("SELECT * FROM events WHERE id = ?").get(eventId);
+  if (!event) throw new ApiError(404, "Event not found.");
+
+  const newDate = String(req.body?.newDate || "").trim();
+  const message = String(req.body?.message || "").trim();
+  if (!newDate || Number.isNaN(new Date(newDate).getTime())) {
+    throw new ApiError(400, "Please provide a valid postponed date.");
+  }
+  if (!message) throw new ApiError(400, "Please enter the postponement message.");
+
+  const result = await sendEventPostponementEmail({ event, newDate, message });
+  if (!result.success) throw new ApiError(400, result.error);
+
+  const postponedDate = new Date(`${newDate}T00:00:00+05:30`).toISOString();
+  db.prepare("UPDATE events SET date = ? WHERE id = ?").run(postponedDate, eventId);
+
+  res.json({
+    success: true,
+    message: `Postponement notice sent to ${result.recipientCount} registered email address${result.recipientCount === 1 ? "" : "es"}.`,
+    data: result,
   });
 }
 
