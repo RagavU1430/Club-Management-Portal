@@ -5,11 +5,9 @@ import {
   Mail,
   ShieldCheck,
   Play,
-  ArrowLeft,
   Loader2,
   Hourglass,
   Trophy,
-  Maximize2,
 } from "lucide-react";
 import { apiFetch } from "../utils/api";
 import type { GameRecord } from "../services/supabaseService";
@@ -32,6 +30,14 @@ function loadAccess(): VerifiedAccess | null {
   }
 }
 
+function formatGameUrl(url?: string | null): string {
+  if (!url) return "#";
+  const trimmed = url.trim();
+  if (trimmed.startsWith("/") || trimmed.startsWith("#")) return trimmed;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
 export default function Games() {
   const [access, setAccess] = useState<VerifiedAccess | null>(() => loadAccess());
   const [teamName, setTeamName] = useState("");
@@ -41,7 +47,6 @@ export default function Games() {
   const [games, setGames] = useState<GameRecord[]>([]);
   const [loadingGames, setLoadingGames] = useState(false);
   const [gamesErr, setGamesErr] = useState("");
-  const [activeGame, setActiveGame] = useState<GameRecord | null>(null);
 
   const fetchGames = useCallback(async (silent = false) => {
     if (!silent) setLoadingGames(true);
@@ -72,15 +77,6 @@ export default function Games() {
     const poll = setInterval(() => fetchGames(true), 10000);
     return () => clearInterval(poll);
   }, [access, fetchGames]);
-
-  // If the host stops a game mid-play, return the player to the arena
-  useEffect(() => {
-    if (!activeGame || games.length === 0) return;
-    const current = games.find((g) => g.id === activeGame.id);
-    if (current && Number(current.is_live ?? 0) !== 1) {
-      setActiveGame(null);
-    }
-  }, [games, activeGame]);
 
   async function handleVerify(e: React.FormEvent) {
     e.preventDefault();
@@ -249,7 +245,7 @@ export default function Games() {
       )}
 
       {/* ── Step 2: Games Arena ── */}
-      {access && !activeGame && (
+      {access && (
         <div className="relative z-10">
           <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl glass border border-emerald-500/25 dark:border-emerald-400/25 px-5 py-4">
             <div className="flex items-center gap-3">
@@ -329,13 +325,15 @@ export default function Games() {
                     </p>
                   )}
                   {playable ? (
-                    <button
-                      onClick={() => setActiveGame(g)}
+                    <a
+                      href={formatGameUrl(g.game_url)}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#833ab4] via-[#e1306c] to-[#f77737] dark:from-cyan-500 dark:to-blue-600 py-2.5 text-sm font-bold text-white shadow-md transition hover:scale-[1.02] cursor-pointer"
                     >
                       <Play className="h-4 w-4" />
                       Play Now
-                    </button>
+                    </a>
                   ) : (
                     <div className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-slate-100 dark:bg-white/5 border border-dashed border-slate-300 dark:border-white/15 py-2.5 text-sm font-semibold text-slate-500 dark:text-slate-400">
                       <Hourglass className="h-4 w-4 animate-pulse" />
@@ -347,51 +345,6 @@ export default function Games() {
               })}
             </div>
           )}
-        </div>
-      )}
-
-      {/* ── Step 3: Play view ── */}
-      {access && activeGame && (
-        <div className="relative z-10">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <button
-              onClick={() => setActiveGame(null)}
-              className="inline-flex items-center gap-2 rounded-xl glass px-4 py-2 text-xs font-mono text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white border border-slate-200 dark:border-white/10 transition cursor-pointer"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              All Games
-            </button>
-            <span className="text-xs font-mono text-slate-500 dark:text-slate-400 truncate">
-              Playing as <strong className="text-slate-800 dark:text-white">{access.teamName}</strong>
-            </span>
-          </div>
-
-          <div className="overflow-hidden rounded-3xl glass border border-slate-200 dark:border-white/10 shadow-2xl">
-            <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-slate-200 dark:border-white/10">
-              <h2 className="font-display text-base sm:text-lg font-bold text-slate-900 dark:text-white truncate">
-                {activeGame.title}
-              </h2>
-              <a
-                href={activeGame.game_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-slate-100 dark:bg-white/5 px-3 py-1.5 text-xs font-mono text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white transition"
-              >
-                <Maximize2 className="h-3.5 w-3.5" />
-                Fullscreen
-              </a>
-            </div>
-            <div className="relative bg-black" style={{ height: "min(72vh, 720px)" }}>
-              <iframe
-                key={activeGame.id}
-                src={activeGame.game_url}
-                title={activeGame.title}
-                allow="fullscreen; autoplay; gamepad"
-                allowFullScreen
-                className="absolute inset-0 h-full w-full border-0"
-              />
-            </div>
-          </div>
         </div>
       )}
     </main>
