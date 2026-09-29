@@ -37,11 +37,10 @@ export default function VideoScrollHero() {
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#f09433] via-[#dc2743] to-[#bc1888] opacity-80 dark:opacity-0" />
 
         <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-slate-900 dark:text-white dark:glow-text leading-[1.1]">
-          Learn, Code, and{" "}
           <span className="bg-gradient-to-r from-[#833ab4] via-[#e1306c] to-[#f77737] bg-clip-text text-transparent dark:text-white font-black">
-            Build the Future
+            AI Frontier Club
           </span>{" "}
-          with AI.
+          welcomes you
         </h1>
         <p className="mt-5 text-base sm:text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto font-normal leading-relaxed">
           Explore neural networks, build generative AI projects, compete in hackathons, and collaborate with student developers in hands-on machine learning.
