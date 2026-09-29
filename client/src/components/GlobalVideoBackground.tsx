@@ -8,8 +8,8 @@ const FRAME_PATH = (i: number) =>
 const WHITE_FRAME_PATH = (i: number) =>
   `/white_frames/frame_${String(i).padStart(4, "0")}.jpg`;
 
-// Keep background canvases cheap: full DPR is wasted on a blurred backdrop.
-const MAX_BG_DPR = 1.25;
+// Render at high DPR for crisp, high-definition video quality on Retina and high-res screens.
+const MAX_BG_DPR = 2.0;
 // Frames needed instantly for first paint; the rest streams in when idle.
 const EAGER_FRAMES = 12;
 // Max parallel image downloads for the background (avoids network contention
@@ -76,6 +76,8 @@ export default function GlobalVideoBackground() {
     const x = (cWidth - iWidth * scale) / 2;
     const y = (cHeight - iHeight * scale) / 2;
 
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
     ctx.clearRect(0, 0, cWidth, cHeight);
     ctx.drawImage(img, x, y, iWidth * scale, iHeight * scale);
   };
@@ -397,7 +399,7 @@ export default function GlobalVideoBackground() {
         style={{
           width: "100%",
           height: "100%",
-          opacity: isDark ? 0 : 0.95,
+          opacity: isDark ? 0 : 1,
         }}
       />
 
@@ -430,13 +432,13 @@ export default function GlobalVideoBackground() {
         }}
       />
 
-      {/* 2. Top-to-bottom soft readability scrim */}
+      {/* 2. Top-to-bottom soft readability scrim (subdued in hero so video logo is crisp) */}
       <div
         className="absolute inset-0 pointer-events-none transition-opacity duration-350 ease-in-out"
         style={{
           opacity: isDark ? 0 : 1,
           background:
-            "linear-gradient(180deg, rgba(246,248,250,0.05) 0%, rgba(246,248,250,0.45) 30%, rgba(246,248,250,0.85) 65%, #f6f8fa 100%)",
+            "linear-gradient(180deg, rgba(246,248,250,0.02) 0%, rgba(246,248,250,0.18) 35%, rgba(246,248,250,0.85) 70%, #f6f8fa 100%)",
         }}
       />
 

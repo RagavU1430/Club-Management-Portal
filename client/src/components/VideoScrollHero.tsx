@@ -31,18 +31,18 @@ export default function VideoScrollHero() {
         </span>
       </div>
 
-      {/* Headline & Subtitle with refined frosted glass backing and Instagram top accent */}
-      <div className="relative max-w-4xl py-7 sm:py-9 px-6 sm:px-10 rounded-3xl bg-white/90 dark:bg-white/[0.03] border border-slate-200/90 dark:border-white/10 shadow-2xl shadow-pink-500/10 dark:shadow-black/50 backdrop-blur-2xl transition-all duration-300 overflow-hidden">
+      {/* Headline & Subtitle with refined frosted glass backing allowing background club logo to be slightly visible */}
+      <div className="relative max-w-4xl py-7 sm:py-9 px-6 sm:px-10 rounded-3xl bg-white/40 dark:bg-white/[0.03] border border-white/60 dark:border-white/10 shadow-2xl shadow-pink-500/10 dark:shadow-black/50 backdrop-blur-md transition-all duration-300 overflow-hidden">
         {/* Top vibrant Instagram rainbow line */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#f09433] via-[#dc2743] to-[#bc1888] opacity-80 dark:opacity-0" />
 
-        <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-slate-900 dark:text-white dark:glow-text leading-[1.1]">
+        <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-slate-900 dark:text-white dark:glow-text leading-[1.1] drop-shadow-sm">
           <span className="bg-gradient-to-r from-[#833ab4] via-[#e1306c] to-[#f77737] bg-clip-text text-transparent dark:text-white font-black">
             AI Frontier Club
           </span>{" "}
           welcomes you
         </h1>
-        <p className="mt-5 text-base sm:text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto font-normal leading-relaxed">
+        <p className="mt-5 text-base sm:text-xl text-slate-800 dark:text-slate-300 max-w-2xl mx-auto font-medium leading-relaxed drop-shadow-sm">
           Explore neural networks, build generative AI projects, compete in hackathons, and collaborate with student developers in hands-on machine learning.
         </p>
       </div>
