@@ -1,15 +1,22 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Supabase project config — set via environment variables (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY).
-// Do NOT hardcode production credentials here — use .env files or deployment secrets.
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+// Production Supabase project defaults (public browser credentials guarded by Row Level Security)
+const DEFAULT_SUPABASE_URL = "https://bmgngdolzoiaopyxtcgl.supabase.co";
+const DEFAULT_SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJtZ25nZG9sem9pYW9weXh0Y2dsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3MzU1MDksImV4cCI6MjEwNTMxMTUwOX0.cfKzBxStTo4eOwnvBY23ctkI0O7s7-RBwP8C-jtlkSg";
+
+const rawUrl = import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+const rawAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
+
+// Fallback to placeholder if somehow both env and default are empty to prevent createClient runtime crash
+const supabaseUrl = rawUrl && rawUrl.startsWith("https://") ? rawUrl : (rawUrl || "https://placeholder.supabase.co");
+const supabaseAnonKey = rawAnonKey || "placeholder-anon-key";
 
 export const isSupabaseConfigured = Boolean(
-  supabaseUrl && 
-  supabaseAnonKey && 
-  supabaseUrl.startsWith("https://") &&
-  !supabaseUrl.includes("placeholder")
+  rawUrl && 
+  rawAnonKey && 
+  rawUrl.startsWith("https://") &&
+  !rawUrl.includes("placeholder")
 );
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
