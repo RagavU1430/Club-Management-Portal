@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import Layout from "./components/Layout";
 import { ThemeProvider } from "./context/ThemeContext";
@@ -44,24 +44,28 @@ const pageVariants = {
 };
 
 export default function App() {
+  const location = useLocation();
+
   return (
     <ThemeProvider>
       <Layout>
         <ScrollToTop />
         <Suspense fallback={<PageLoader />}>
-          <motion.div {...pageVariants}>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/events" element={<Events />} />
-              <Route path="/team" element={<Team />} />
-              <Route path="/coordinators" element={<Team />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/games" element={<Games />} />
-              <Route path="/events/:idOrSlug/register" element={<EventRegister />} />
-              <Route path="/admin/*" element={<Admin />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </motion.div>
+          <AnimatePresence mode="wait">
+            <motion.div key={location.pathname} {...pageVariants}>
+              <Routes location={location}>
+                <Route path="/" element={<Home />} />
+                <Route path="/events" element={<Events />} />
+                <Route path="/team" element={<Team />} />
+                <Route path="/coordinators" element={<Team />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/games" element={<Games />} />
+                <Route path="/events/:idOrSlug/register" element={<EventRegister />} />
+                <Route path="/admin/*" element={<Admin />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </motion.div>
+          </AnimatePresence>
         </Suspense>
       </Layout>
     </ThemeProvider>

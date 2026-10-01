@@ -29,9 +29,13 @@ function calculateTimeLeft(dateStr: string, endDateStr?: string | null): TimeLef
   if (endDateStr) {
     endTime = new Date(endDateStr).getTime();
   } else if (typeof dateStr === "string" && !dateStr.includes("T") && !dateStr.includes(":")) {
+    // Date-only (no time component): treat end of day as the end
     const d = new Date(dateStr);
     d.setHours(23, 59, 59, 999);
     endTime = d.getTime();
+  } else {
+    // Timed event with no explicit end date: default to 3 hours after start
+    endTime = startTime + 3 * 60 * 60 * 1000;
   }
 
   const isEnded = now >= endTime;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import {
   X,
@@ -109,10 +109,15 @@ export default function RegistrationModal({
   const isRegistrationPaused = String(event.status || "").toLowerCase() === "registration_paused";
   const isPast = event.computedStatus === "past";
 
-  // Prevent background scroll
+  // Prevent background scroll — use ref for onClose to stabilize useEffect
+  const onCloseRef = React.useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     };
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", handleKeyDown);
@@ -120,7 +125,7 @@ export default function RegistrationModal({
       document.body.style.overflow = "unset";
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [onClose]);
+  }, []);
 
   // Date & Time formatting
   const dateObj = new Date(event.date);

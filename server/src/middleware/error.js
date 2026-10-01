@@ -20,6 +20,14 @@ export function errorHandler(err, req, res, _next) {
     message = `That ${field} is already taken.`;
     details = { [field]: "Already in use" };
   }
+  // SQLite unique constraint violations → 409 Conflict
+  if (err.code === "SQLITE_CONSTRAINT_UNIQUE" || (err.message && err.message.includes("UNIQUE constraint failed"))) {
+    status = 409;
+    const match = (err.message || "").match(/UNIQUE constraint failed: \\w+\\.(\\w+)/);
+    const field = match ? match[1] : "field";
+    message = `That ${field} is already taken.`;
+    details = { [field]: "Already in use" };
+  }
   if (err.name === "MulterError") {
     status = 400;
     message = err.code === "LIMIT_FILE_SIZE" ? "Image is too large (max 5 MB)." : err.message;

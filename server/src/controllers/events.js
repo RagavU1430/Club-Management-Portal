@@ -7,6 +7,7 @@ import XLSX from "xlsx";
 const EVENT_FIELDS = new Set([
   "title", "venue", "description", "summary", "image", "status", "date",
   "end_date", "registration_link", "webhook_url", "agenda_url", "capacity", "featured", "tags",
+  "slug",
 ]);
 
 function pickBody(body = {}) {
@@ -149,7 +150,7 @@ export async function create(req, res) {
   while (db.prepare("SELECT id FROM events WHERE slug = ?").get(slug)) slug = `${slug}-${n++}`;
   body.slug = slug;
   const cols = Object.keys(body).filter((key) => EVENT_FIELDS.has(key));
-  const vals = Object.values(body);
+  const vals = cols.map((k) => body[k]);
   const placeholders = cols.map(() => "?").join(", ");
   const colNames = cols.join(", ");
   const result = db.prepare(`INSERT INTO events (${colNames}) VALUES (${placeholders})`).run(...vals);
@@ -595,7 +596,9 @@ export async function exportEventRegistrationsCSV(req, res) {
 export async function deleteEventRegistration(req, res) {
   const eventId = Number(req.params.id);
   const regId = Number(req.params.regId);
-  db.prepare("DELETE FROM event_registrations WHERE id = ? AND event_id = ?").run(regId, eventId);
+  const result = db.prepare("DELETE FROM event_registrations WHERE id = ? AND event_id = ?").run(regId, eventId);
+  const deleted = result.changes > 0;
+  if (!deleted) throw new ApiError(404, "Registration not found.");
   res.json({ success: true, message: "Registration deleted." });
 }
 

@@ -1,18 +1,33 @@
 import nodemailer from "nodemailer";
 
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "https://ai-frontier-club.vercel.app";
+const API_SECRET = process.env.EMAIL_API_SECRET || "";
+
+function escapeHtml(str) {
+  if (typeof str !== "string") return str;
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 /**
  * Vercel Serverless Function: /api/send-confirmation
  * Automatically sends official event confirmation passes to participant emails.
  * Powered by Gmail SMTP (aifrontierclub@gmail.com).
  */
 export default async function handler(req, res) {
-  // Set CORS headers for Vercel
+  // Set CORS headers for Vercel — restrict to site origin
+  const origin = req.headers?.origin || "";
+  const isAllowed = origin === ALLOWED_ORIGIN || origin.endsWith(".vercel.app") || origin.startsWith("http://localhost");
   res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,PATCH,DELETE,POST,PUT");
+  res.setHeader("Access-Control-Allow-Origin", isAllowed ? origin : ALLOWED_ORIGIN);
+  res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
+    "Content-Type, Authorization"
   );
 
   if (req.method === "OPTIONS") {
@@ -21,6 +36,15 @@ export default async function handler(req, res) {
 
   if (req.method !== "POST") {
     return res.status(405).json({ success: false, error: "Method not allowed" });
+  }
+
+  // Auth check: require shared secret when configured
+  if (API_SECRET) {
+    const authHeader = req.headers?.authorization || "";
+    const providedSecret = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : (req.body?.apiSecret || "");
+    if (providedSecret !== API_SECRET) {
+      return res.status(403).json({ success: false, error: "Unauthorized: invalid or missing API secret." });
+    }
   }
 
   let body = req.body;
@@ -34,16 +58,26 @@ export default async function handler(req, res) {
   body = body || {};
 
   const {
-    eventTitle = "AI Frontier Club Event",
+    eventTitle: rawEventTitle = "AI Frontier Club Event",
     eventDate = "TBD",
-    venue = "Campus AI Lab & Auditorium",
-    registrationCode = "AIF-EVENT-PASS",
-    teamName = "",
-    member1 = "Participant",
-    member2 = "",
-    department = "Artificial Intelligence and Data Science",
-    year = "",
+    venue: rawVenue = "Campus AI Lab & Auditorium",
+    registrationCode: rawRegistrationCode = "AIF-EVENT-PASS",
+    teamName: rawTeamName = "",
+    member1: rawMember1 = "Participant",
+    member2: rawMember2 = "",
+    department: rawDepartment = "Artificial Intelligence and Data Science",
+    year: rawYear = "",
   } = body;
+
+  // HTML-escape all user-supplied fields to prevent injection
+  const eventTitle = escapeHtml(rawEventTitle);
+  const venue = escapeHtml(rawVenue);
+  const registrationCode = escapeHtml(rawRegistrationCode);
+  const teamName = escapeHtml(rawTeamName);
+  const member1 = escapeHtml(rawMember1);
+  const member2 = escapeHtml(rawMember2);
+  const department = escapeHtml(rawDepartment);
+  const year = escapeHtml(rawYear);
 
   // Year may arrive as "" for older registrations — never render empty "()"
   const safeYear = String(year || "").trim();
@@ -308,14 +342,12 @@ export default async function handler(req, res) {
 `See you there!\n${senderName}\nEmail: aifrontierclub@gmail.com\nPhone: +91 9360376757\n`;
   }
 
-  const customUser = body.gmailUser;
-  const customPass = body.gmailAppPassword;
-
+  // Only use server-side env credentials — never accept SMTP creds from the request body
   const envUser = (process.env.GMAIL_USER || "").trim();
   const envPass = (process.env.GMAIL_APP_PASSWORD || process.env.GMAIL_PASSWORD || "").replace(/\s+/g, "").trim();
 
-  let gmailUser = (customUser || envUser).trim();
-  let gmailPass = (customPass || envPass).replace(/\s+/g, "").trim();
+  let gmailUser = envUser;
+  let gmailPass = envPass;
 
   if (!gmailUser || !gmailPass) {
     return res.status(500).json({
@@ -346,7 +378,7 @@ export default async function handler(req, res) {
         pass: gmailPass,
       },
       tls: {
-        rejectUnauthorized: false,
+        rejectUnauthorized: true,
       },
       connectionTimeout: 15000,
       socketTimeout: 20000,
@@ -363,43 +395,7 @@ export default async function handler(req, res) {
       recipientCount: uniqueRecipients.length,
     });
   } catch (err) {
-    console.warn("[Email] Primary Gmail SMTP delivery error:", err.message);
-
-    // Fallback: If custom credentials failed, retry using environment credentials (.env)
-    if (envUser && envPass && (gmailUser !== envUser || gmailPass !== envPass)) {
-      try {
-        const fallbackTransporter = nodemailer.createTransport({
-          host: "smtp.gmail.com",
-          port: 465,
-          secure: true,
-          auth: {
-            user: envUser,
-            pass: envPass,
-          },
-          tls: {
-            rejectUnauthorized: false,
-          },
-          connectionTimeout: 15000,
-          socketTimeout: 20000,
-        });
-
-        const fallbackInfo = await fallbackTransporter.sendMail({
-          ...mailOptions,
-          from: `"${senderName}" <${envUser}>`,
-        });
-
-        return res.json({
-          success: true,
-          provider: "gmail-smtp-fallback",
-          id: fallbackInfo.messageId,
-          sender: envUser,
-          recipients: uniqueRecipients,
-          recipientCount: uniqueRecipients.length,
-        });
-      } catch (fbErr) {
-        console.error("[Email] Fallback delivery error:", fbErr.message);
-      }
-    }
+    console.warn("[Email] Gmail SMTP delivery error:", err.message);
 
     return res.status(500).json({
       success: false,

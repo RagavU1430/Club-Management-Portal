@@ -52,11 +52,11 @@ const corsOptions = {
     // Allow requests with no origin (like mobile apps, curl, server-to-server)
     if (!origin) return callback(null, true);
 
-    // Explicitly allow ai-frontier-club.vercel.app and preview domains
+    // Explicitly allow ai-frontier-club.vercel.app and Vercel preview domains
     if (
-      origin === "https://ai-frontier-club.vercel.app" ||
-      origin.endsWith(".vercel.app") ||
-      allowedOrigins.some(o => origin === o || origin.endsWith(o.replace(/^https?:\/\//, "")))
+      allowedOrigins.includes(origin) ||
+      // Allow Vercel preview deployments for this specific project only
+      /^https:\/\/ai-frontier-club[\w-]*\.vercel\.app$/.test(origin)
     ) {
       return callback(null, true);
     }
@@ -181,7 +181,6 @@ app.get("/api/subscribers", requireAuth, (_req, res) => {
 app.delete("/api/subscribers/:id", requireAuth, (req, res) => {
   const id = Number(req.params.id);
   db.prepare("DELETE FROM subscribers WHERE id = ?").run(id);
-  deleteSubscriberFromFirestore(id).catch(err => console.warn("[Firestore] delete subscriber failed:", err.message));
   res.json({ success: true, message: "Subscriber removed." });
 });
 

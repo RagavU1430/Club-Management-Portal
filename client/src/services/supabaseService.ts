@@ -72,8 +72,12 @@ export async function getEvents(options: { scope?: string; limit?: number } = {}
   let query = supabase.from("events").select("*");
 
   if (options.scope === "upcoming") {
+    // Include events that are still in progress (started but not ended)
+    // by filtering where end_date >= now OR (end_date is null AND date >= 3 hours ago)
+    const now = new Date().toISOString();
+    const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
     query = query
-      .gte("date", new Date().toISOString())
+      .or(`end_date.gte.${now},and(end_date.is.null,date.gte.${threeHoursAgo})`)
       .order("date", { ascending: true });
   } else if (options.scope === "past") {
     query = query
@@ -125,10 +129,13 @@ export async function getEvents(options: { scope?: string; limit?: number } = {}
 export async function getEventByIdOrSlug(idOrSlug: string | number) {
   if (!isSupabaseConfigured) return { success: false, error: "Supabase not configured" };
 
-  const isNumeric = !isNaN(Number(idOrSlug));
+  const trimmed = String(idOrSlug || "").trim();
+  if (!trimmed) return { success: false, error: "Event identifier is required." };
+
+  const isNumeric = /^\d+$/.test(trimmed);
   const query = isNumeric
-    ? supabase.from("events").select("*").eq("id", Number(idOrSlug)).single()
-    : supabase.from("events").select("*").eq("slug", String(idOrSlug)).single();
+    ? supabase.from("events").select("*").eq("id", Number(trimmed)).single()
+    : supabase.from("events").select("*").eq("slug", trimmed).single();
 
   const { data, error } = await query;
   if (error) throw error;
@@ -531,6 +538,7 @@ export async function registerForEvent(eventId: number | string, input: Registra
     p_member2: (input.member2 || "").trim(),
     p_email: input.email.trim().toLowerCase(),
     p_phone: String(input.phone || "").trim(),
+    p_member2_phone: String(input.member2Phone || input.member2_phone || "").trim(),
     p_department: String(input.department || input.college || "AI & Data Science").trim(),
     p_college: String(input.college || input.department || "AI & Data Science").trim(),
     p_roll_number: String(input.rollNumber || "").trim(),
@@ -882,7 +890,9 @@ export async function lookupTicket(identifier: string, eventId?: number | string
       if (aifMatch) {
         q = q.eq("id", Number(aifMatch[1]));
       } else {
-        q = q.or(`email.ilike.${clean},member2_email.ilike.${clean},roll_number.ilike.${clean},phone.ilike.${clean},team_name.ilike.${clean}`);
+        // Escape special characters in PostgREST filter values to prevent injection
+        const escaped = clean.replace(/[,()"\\]/g, "");
+        q = q.or(`email.ilike.${escaped},member2_email.ilike.${escaped},roll_number.ilike.${escaped},phone.ilike.${escaped},team_name.ilike.${escaped}`);
       }
 
       const { data, error } = await q.order("created_at", { ascending: false });
@@ -1189,7 +1199,9 @@ export async function quickCheckIn(eventId: number | string, codeOrEmail: string
   } else if (/^\d+$/.test(clean)) {
     query = query.eq("id", Number(clean));
   } else {
-    query = query.or(`email.ilike.%${clean}%,name.ilike.%${clean}%,member1.ilike.%${clean}%,member2.ilike.%${clean}%,team_name.ilike.%${clean}%`);
+    // Escape special characters to prevent PostgREST filter injection
+    const escaped = clean.replace(/[,()"\\\\/]/g, "");
+    query = query.or(`email.ilike.%${escaped}%,name.ilike.%${escaped}%,member1.ilike.%${escaped}%,member2.ilike.%${escaped}%,team_name.ilike.%${escaped}%`);
   }
 
   const { data: records, error } = await query;

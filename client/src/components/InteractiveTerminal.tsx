@@ -125,7 +125,9 @@ export default function InteractiveTerminal() {
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText("npx ai-frontier-club join");
+    navigator.clipboard.writeText("npx ai-frontier-club join").catch(() => {
+      // Clipboard API not available (insecure context or denied permission)
+    });
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

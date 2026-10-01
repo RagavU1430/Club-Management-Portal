@@ -4,8 +4,12 @@ import jwt from "jsonwebtoken";
 import { db, rowToJSON } from "../config/db.js";
 import { ApiError } from "../utils/http.js";
 
-const SECRET = process.env.JWT_SECRET || "dev-only-insecure-secret-change-me";
+const SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === "production" ? undefined : "dev-only-insecure-secret-change-me");
 const EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
+
+if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
+  throw new Error("FATAL: JWT_SECRET must be set in production.");
+}
 
 export function signToken(user) {
   return jwt.sign({ sub: String(user.id), role: user.role, email: user.email }, SECRET, { expiresIn: EXPIRES_IN });
@@ -13,7 +17,7 @@ export function signToken(user) {
 
 export function requireAuth(req, _res, next) {
   const header = req.headers.authorization || "";
-  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : (req.query?.token || null);
+  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : null;
   if (!token) return next(new ApiError(401, "Sign in to continue."));
   let payload;
   try { payload = jwt.verify(token, SECRET); }
@@ -41,6 +45,7 @@ export async function me(req, res) {
 
 export async function changePassword(req, res) {
   const { currentPassword, newPassword } = req.body || {};
+  if (!currentPassword) throw new ApiError(400, "Current password is required.");
   if (!newPassword || newPassword.length < 8) throw new ApiError(400, "New password must be at least 8 characters.");
   const user = db.prepare("SELECT password_hash FROM users WHERE id = ?").get(req.user.id);
   if (!bcrypt.compareSync(currentPassword, user.password_hash)) throw new ApiError(401, "Current password is incorrect.");

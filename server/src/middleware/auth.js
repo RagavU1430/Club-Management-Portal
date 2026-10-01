@@ -3,10 +3,13 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { ApiError, asyncHandler } from "../utils/http.js";
 
-const SECRET = process.env.JWT_SECRET || "dev-only-insecure-secret-change-me";
+const SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === "production" ? undefined : "dev-only-insecure-secret-change-me");
 const EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
 if (!process.env.JWT_SECRET) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("FATAL: JWT_SECRET must be set in production. Refusing to start with an insecure default.");
+  }
   console.warn("[auth] JWT_SECRET not set — using an insecure development default.");
 }
 
@@ -18,7 +21,7 @@ function readToken(req) {
   const header = req.headers.authorization || "";
   if (header.startsWith("Bearer ")) return header.slice(7).trim();
   if (req.cookies?.token) return req.cookies.token;
-  if (req.query?.token) return req.query.token;
+  // Intentionally NOT reading from req.query.token — tokens in URLs leak into logs/history
   return null;
 }
 

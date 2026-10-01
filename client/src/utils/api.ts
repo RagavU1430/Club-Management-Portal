@@ -53,12 +53,29 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
 
       if (eventMatch && (method === "PUT" || method === "PATCH")) {
         const body = init?.body ? JSON.parse(init.body as string) : {};
-        const res = await sb.updateEvent(Number(eventMatch[1]), body);
+        const idOrSlug = eventMatch[1];
+        const numericId = /^\d+$/.test(idOrSlug) ? Number(idOrSlug) : null;
+        if (!numericId) {
+          // Resolve slug to numeric id
+          const lookup = await sb.getEventByIdOrSlug(idOrSlug);
+          if (!lookup?.data?.id) return jsonResponse({ success: false, error: "Event not found." }, 404);
+          const res = await sb.updateEvent(lookup.data.id, body);
+          return jsonResponse(res);
+        }
+        const res = await sb.updateEvent(numericId, body);
         return jsonResponse(res);
       }
 
       if (eventMatch && method === "DELETE") {
-        const res = await sb.deleteEvent(Number(eventMatch[1]));
+        const idOrSlug = eventMatch[1];
+        const numericId = /^\d+$/.test(idOrSlug) ? Number(idOrSlug) : null;
+        if (!numericId) {
+          const lookup = await sb.getEventByIdOrSlug(idOrSlug);
+          if (!lookup?.data?.id) return jsonResponse({ success: false, error: "Event not found." }, 404);
+          const res = await sb.deleteEvent(lookup.data.id);
+          return jsonResponse(res);
+        }
+        const res = await sb.deleteEvent(numericId);
         return jsonResponse(res);
       }
 
@@ -233,6 +250,8 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
             return jsonResponse({ success: true, url }, 201);
           }
         }
+        // Explicit error instead of falling through to network fetch
+        return jsonResponse({ success: false, error: "No file was provided in the upload." }, 400);
       }
 
       // ── AUTH (ADMIN LOGIN) ──
