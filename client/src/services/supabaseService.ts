@@ -66,30 +66,68 @@ export async function getAdminUser() {
   };
 }
 
+export function isEventEnded(e: { date?: string | null; end_date?: string | null; endDate?: string | null; status?: string | null }): boolean {
+  if (!e || !e.date) return false;
+  const rawStatus = String(e.status || "").toLowerCase();
+  if (rawStatus === "past" || rawStatus === "completed" || rawStatus === "ended") {
+    return true;
+  }
+  const now = Date.now();
+  const startTime = new Date(e.date).getTime();
+  if (Number.isNaN(startTime)) return false;
+
+  const rawEndDate = e.endDate || e.end_date;
+  let endTime: number;
+
+  if (rawEndDate) {
+    endTime = new Date(rawEndDate).getTime();
+  } else if (typeof e.date === "string" && !e.date.includes("T") && !e.date.includes(":")) {
+    const d = new Date(e.date);
+    d.setHours(23, 59, 59, 999);
+    endTime = d.getTime();
+  } else {
+    endTime = startTime + 3 * 60 * 60 * 1000;
+  }
+
+  return now >= endTime;
+}
+
+export function computeEventStatus(e: { date?: string | null; end_date?: string | null; endDate?: string | null; status?: string | null }): "upcoming" | "past" | "live" {
+  if (!e || !e.date) return "upcoming";
+  const rawStatus = String(e.status || "").toLowerCase();
+  if (rawStatus === "past" || rawStatus === "completed" || rawStatus === "ended") {
+    return "past";
+  }
+  const now = Date.now();
+  const startTime = new Date(e.date).getTime();
+  if (Number.isNaN(startTime)) return "upcoming";
+
+  const rawEndDate = e.endDate || e.end_date;
+  let endTime: number;
+
+  if (rawEndDate) {
+    endTime = new Date(rawEndDate).getTime();
+  } else if (typeof e.date === "string" && !e.date.includes("T") && !e.date.includes(":")) {
+    const d = new Date(e.date);
+    d.setHours(23, 59, 59, 999);
+    endTime = d.getTime();
+  } else {
+    endTime = startTime + 3 * 60 * 60 * 1000;
+  }
+
+  if (now >= endTime) {
+    return "past";
+  }
+  if (now >= startTime && now < endTime) {
+    return "live";
+  }
+  return "upcoming";
+}
+
 export async function getEvents(options: { scope?: string; limit?: number } = {}) {
   if (!isSupabaseConfigured) return { success: true, data: [] };
 
-  let query = supabase.from("events").select("*");
-
-  if (options.scope === "upcoming") {
-    // Include events that are still in progress (started but not ended)
-    // by filtering where end_date >= now OR (end_date is null AND date >= 3 hours ago)
-    const now = new Date().toISOString();
-    const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
-    query = query
-      .or(`end_date.gte.${now},and(end_date.is.null,date.gte.${threeHoursAgo})`)
-      .order("date", { ascending: true });
-  } else if (options.scope === "past") {
-    query = query
-      .lt("date", new Date().toISOString())
-      .order("date", { ascending: false });
-  } else {
-    query = query.order("date", { ascending: false });
-  }
-
-  if (options.limit && options.limit > 0) {
-    query = query.limit(options.limit);
-  }
+  const query = supabase.from("events").select("*").order("date", { ascending: false });
 
   const { data, error } = await query;
   if (error) {
@@ -109,8 +147,9 @@ export async function getEvents(options: { scope?: string; limit?: number } = {}
     }
   }
 
-  const normalized = (data || []).map((e) => {
+  let normalized = (data || []).map((e) => {
     const regCount = countMap[e.id] || 0;
+    const computedStatus = computeEventStatus(e);
     return {
       ...e,
       tags: parseTags(e.tags),
@@ -120,8 +159,23 @@ export async function getEvents(options: { scope?: string; limit?: number } = {}
       registrationLink: e.registration_link || "",
       agendaUrl: e.agenda_url || "",
       endDate: e.end_date || null,
+      computedStatus,
     };
   });
+
+  if (options.scope === "upcoming") {
+    normalized = normalized
+      .filter((e) => e.computedStatus !== "past")
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  } else if (options.scope === "past") {
+    normalized = normalized
+      .filter((e) => e.computedStatus === "past")
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }
+
+  if (options.limit && options.limit > 0) {
+    normalized = normalized.slice(0, options.limit);
+  }
 
   return { success: true, data: normalized };
 }
@@ -145,6 +199,8 @@ export async function getEventByIdOrSlug(idOrSlug: string | number) {
     .select("*", { count: "exact", head: true })
     .eq("event_id", data.id);
 
+  const computedStatus = computeEventStatus(data);
+
   return {
     success: true,
     data: {
@@ -156,6 +212,7 @@ export async function getEventByIdOrSlug(idOrSlug: string | number) {
       registrationLink: data.registration_link || "",
       agendaUrl: data.agenda_url || "",
       endDate: data.end_date || null,
+      computedStatus,
     },
   };
 }

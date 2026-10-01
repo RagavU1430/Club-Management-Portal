@@ -1,7 +1,50 @@
 import { useState, useEffect, useMemo } from "react";
-import { Calendar, MapPin, Search, ArrowRight, Sparkles, Link2, Check } from "lucide-react";
+import { Calendar, MapPin, Search, ArrowRight, Sparkles, Link2, Check, Radio } from "lucide-react";
 import { apiFetch } from "../utils/api";
 import RegistrationModal, { EventItem } from "../components/RegistrationModal";
+
+function checkIsPast(event: EventItem): boolean {
+  if (event.computedStatus === "past") return true;
+  if (event.computedStatus === "upcoming" || event.computedStatus === "live") return false;
+  const rawStatus = String(event.status || "").toLowerCase();
+  if (rawStatus === "past" || rawStatus === "completed" || rawStatus === "ended") return true;
+  if (!event.date) return false;
+  const startTime = new Date(event.date).getTime();
+  if (Number.isNaN(startTime)) return false;
+  const rawEndDate = event.endDate || (event as any).end_date;
+  let endTime: number;
+  if (rawEndDate) {
+    endTime = new Date(rawEndDate).getTime();
+  } else if (typeof event.date === "string" && !event.date.includes("T") && !event.date.includes(":")) {
+    const d = new Date(event.date);
+    d.setHours(23, 59, 59, 999);
+    endTime = d.getTime();
+  } else {
+    endTime = startTime + 3 * 60 * 60 * 1000;
+  }
+  return Date.now() >= endTime;
+}
+
+function checkIsLive(event: EventItem): boolean {
+  if (checkIsPast(event)) return false;
+  if (event.computedStatus === "live") return true;
+  if (!event.date) return false;
+  const startTime = new Date(event.date).getTime();
+  if (Number.isNaN(startTime)) return false;
+  const rawEndDate = event.endDate || (event as any).end_date;
+  let endTime: number;
+  if (rawEndDate) {
+    endTime = new Date(rawEndDate).getTime();
+  } else if (typeof event.date === "string" && !event.date.includes("T") && !event.date.includes(":")) {
+    const d = new Date(event.date);
+    d.setHours(23, 59, 59, 999);
+    endTime = d.getTime();
+  } else {
+    endTime = startTime + 3 * 60 * 60 * 1000;
+  }
+  const now = Date.now();
+  return now >= startTime && now < endTime;
+}
 
 export default function Events() {
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -44,9 +87,10 @@ export default function Events() {
 
   const filteredEvents = useMemo(() => {
     return events.filter((e) => {
+      const isPast = checkIsPast(e);
       const matchScope =
         scope === "all" ||
-        (e.computedStatus ? e.computedStatus === scope : true);
+        (scope === "past" ? isPast : !isPast);
 
       const matchQuery =
         !q ||
@@ -174,12 +218,16 @@ function EventCard({
   onRegister: () => void;
 }) {
   const dateObj = new Date(event.date);
-  const formattedDate = dateObj.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-  const isPast = event.computedStatus === "past";
+  const formattedDate = !Number.isNaN(dateObj.getTime())
+    ? dateObj.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : event.date;
+
+  const isPast = checkIsPast(event);
+  const isLive = checkIsLive(event);
   const [copied, setCopied] = useState(false);
 
   async function copyRegisterLink(e: React.MouseEvent) {
@@ -218,10 +266,21 @@ function EventCard({
             className={`rounded-full px-2.5 py-0.5 text-[11px] font-mono capitalize ${
               isPast
                 ? "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                : isLive
+                ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 font-bold animate-pulse inline-flex items-center gap-1"
                 : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
             }`}
           >
-            {isPast ? "Concluded" : "Upcoming"}
+            {isPast ? (
+              "Concluded"
+            ) : isLive ? (
+              <>
+                <Radio className="h-3 w-3 inline text-rose-500 animate-pulse" />
+                Live Now
+              </>
+            ) : (
+              "Upcoming"
+            )}
           </span>
         </div>
 
@@ -288,5 +347,3 @@ function EventCard({
     </div>
   );
 }
-
-

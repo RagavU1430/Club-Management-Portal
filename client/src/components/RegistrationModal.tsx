@@ -107,7 +107,25 @@ export default function RegistrationModal({
 
   const isFull = Boolean(event.capacity && event.capacity > 0 && (event.registrationCount || 0) >= event.capacity);
   const isRegistrationPaused = String(event.status || "").toLowerCase() === "registration_paused";
-  const isPast = event.computedStatus === "past";
+  const isPast = event.computedStatus === "past" || (() => {
+    const rawStatus = String(event.status || "").toLowerCase();
+    if (rawStatus === "past" || rawStatus === "completed" || rawStatus === "ended") return true;
+    if (!event.date) return false;
+    const startTime = new Date(event.date).getTime();
+    if (Number.isNaN(startTime)) return false;
+    const rawEndDate = event.endDate || (event as any).end_date;
+    let endTime: number;
+    if (rawEndDate) {
+      endTime = new Date(rawEndDate).getTime();
+    } else if (typeof event.date === "string" && !event.date.includes("T") && !event.date.includes(":")) {
+      const d = new Date(event.date);
+      d.setHours(23, 59, 59, 999);
+      endTime = d.getTime();
+    } else {
+      endTime = startTime + 3 * 60 * 60 * 1000;
+    }
+    return Date.now() >= endTime;
+  })();
 
   // Prevent background scroll — use ref for onClose to stabilize useEffect
   const onCloseRef = React.useRef(onClose);

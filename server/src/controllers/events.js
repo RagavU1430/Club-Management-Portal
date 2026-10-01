@@ -80,11 +80,24 @@ function csvCell(value) {
 }
 
 function isUpcoming(e) {
-  const end = e.end_date ? new Date(e.end_date) : new Date(e.date);
-  if (typeof e.date === "string" && !e.date.includes("T") && !e.date.includes(":") && !e.end_date) {
+  if (!e || !e.date) return false;
+  const rawStatus = String(e.status || "").toLowerCase();
+  if (rawStatus === "past" || rawStatus === "completed" || rawStatus === "ended") return false;
+
+  const startTime = new Date(e.date).getTime();
+  if (Number.isNaN(startTime)) return false;
+
+  let endTime;
+  if (e.end_date) {
+    endTime = new Date(e.end_date).getTime();
+  } else if (typeof e.date === "string" && !e.date.includes("T") && !e.date.includes(":")) {
+    const end = new Date(e.date);
     end.setHours(23, 59, 59, 999);
+    endTime = end.getTime();
+  } else {
+    endTime = startTime + 3 * 60 * 60 * 1000;
   }
-  return (e.status === "published" || e.status === "registration_paused" || !e.status) && end.getTime() >= Date.now();
+  return endTime >= Date.now();
 }
 
 function decorate(event) {
