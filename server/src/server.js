@@ -60,7 +60,10 @@ const corsOptions = {
     ) {
       return callback(null, true);
     }
-    return callback(new Error("Origin is not allowed by CORS."));
+    // Return a 403 status (not a 500) for disallowed origins
+    const err = new Error("CORS: Origin not allowed.");
+    err.status = 403;
+    return callback(err);
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -150,9 +153,12 @@ app.post("/api/upload", requireAuth, upload.single("file"), (req, res) => {
 });
 
 // ── Newsletter Subscription & Notification Management ──
+// RFC5322-lite: local@domain.tld, no spaces, no HTML chars, max 254 chars
+const EMAIL_REGEX = /^[^\s@<>"'&;,]{1,64}@[^\s@<>"'&;,]+\.[^\s@<>"'&;,]{2,}$/;
+
 app.post("/api/subscribe", async (req, res) => {
   const email = String(req.body?.email || "").trim().toLowerCase();
-  if (!email || !email.includes("@") || !email.includes(".")) {
+  if (!email || email.length > 254 || !EMAIL_REGEX.test(email)) {
     return res.status(400).json({ success: false, error: "Please provide a valid email address." });
   }
 
